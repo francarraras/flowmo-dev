@@ -78,7 +78,7 @@ Clock rule: UI displays `now - timestamp` (or frozen values while paused). A 1-s
 | **FlowmoCLI** | Verbs + `status --json` on Core. Snapshot, not a ticking TUI. | Pause-as-flow, daily human UX. |
 | **Adapters** | Phase-change sound; notification if window is background. | Session math. |
 
-Later Xcode app = another executable that imports `FlowmoWindow` + `FlowmoCore`. Same as `swift run`.
+The Xcode app (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) is another executable that imports `FlowmoWindow` + `FlowmoCore`. Same as `swift run`.
 
 **Window vs CLI liveness:** Window ticks from timestamps and **reloads when `world.json` changes** (file watch). CLI is request/response. Two clocks is a bug.
 
@@ -115,4 +115,4 @@ Not in the sketch. Plan: stay on a quiet summary (focus duration, break duration
 
 ## 8. Out of this design
 
-Brand, living terminal, menu bar, iPhone, SQLite, history UI, Xcode app target, growing the CLI into the product.
+Brand, living terminal, menu bar, iPhone, SQLite, history UI, growing the CLI into the product.

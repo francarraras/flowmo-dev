@@ -230,7 +230,7 @@ A future implementation should implement **this brief**, not grow that CLI into 
 
 macOS on this machine is case-insensitive: `~/flowmo` and `~/Flowmo` are the **same path**. New work must stay under `~/dev/flowmo` (or another name that is not `Flowmo`).
 
-This Mac has **Command Line Tools only** (no full Xcode). `import XCTest` / `import Testing` may fail. There is no Xcode app target yet.
+Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may fail without full Xcode). The Dock `.app` is a thin Xcode host of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`); `swift run` remains the SwiftPM launcher.
 
 ---
 
@@ -296,7 +296,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Pause button | No |
 | After recall | Quiet close beat; **click to dismiss** (Skip = dismiss). Then idle |
 | History UI | Today line only |
-| Window delivery | SwiftPM launcher now; later Xcode wraps the same window |
+| Window delivery | SwiftPM launcher (`swift run`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
 
 ---

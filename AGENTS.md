@@ -38,6 +38,7 @@ Read `docs/PROJECT.md` before changing product behavior. Checkable v1 lines: `do
 ## Run
 
 - Window: `swift run` (product `flowmo`)
+- Dock app: `xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES` then open `Flowmo.app` (bundle `app.flowmo.mac`). Same `FlowmoWindow` / Core as `swift run`. Ad-hoc sign; no Apple Developer team.
 - Same live session, side door: `swift run flowmo status --json` and the other verbs
 - Core proofs: `swift run flowmo check`
 - Store: `~/.flowmo/world.json` (override with `FLOWMO_HOME`)

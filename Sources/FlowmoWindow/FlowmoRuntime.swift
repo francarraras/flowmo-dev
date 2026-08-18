@@ -2,7 +2,7 @@ import AppKit
 import Darwin
 import SwiftUI
 
-/// Hosts the compact window. Later an Xcode app target can call the same entry.
+/// Hosts the compact window. `swift run` and the Xcode Dock app both call this entry.
 @MainActor
 public enum FlowmoRuntime {
     public static func run() {

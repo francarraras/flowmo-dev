@@ -5,7 +5,9 @@ Done means [`acceptance.md`](acceptance.md) holds.
 
 Signed off by the captain on 2026-08-18. Implementation of this list is allowed.
 
-Do not start a second store. Do not add a brand, menu bar, living TUI, Xcode app target, or pause-during-focus.
+The first slice of this list shipped. The Dock `.app` wrap is `Apps/Flowmo.xcodeproj` (same `FlowmoWindow`); it is not a second engine.
+
+Do not start a second store. Do not add a brand, menu bar, living TUI, or pause-during-focus.
 
 ---
 
@@ -22,7 +24,7 @@ Do not start a second store. Do not add a brand, menu bar, living TUI, Xcode app
    Compact SwiftUI frame for every phase plus paused+Continue. Focus: count-up, earned strip, **+** capture. Timed phases: determinate ring. Close beat: summary until click. Idle: last intention, Start, today total. Pin default off. Plain chrome. No fake focus %, no Home/tabs.
 
 5. **Thin SwiftPM launcher**  
-   `swift run` hosts the window. Quit/sleep → Core recovery pause. Do not put the product in `main.swift`. Later Xcode wraps the same window.
+   `swift run` hosts the window. Quit/sleep → Core recovery pause. Do not put the product in `main.swift`. The Xcode target wraps the same window.
 
 6. **Window follows timestamps and the file**  
    Ticks from Core numbers. Reloads when `world.json` changes. Hide/close keeps the session running. Appearing after pause does not Continue.
