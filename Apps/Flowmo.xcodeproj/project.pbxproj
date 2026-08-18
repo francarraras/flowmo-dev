@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8F1A0B0C0D0E0F101112130B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1A0B0C0D0E0F101112130A /* main.swift */; };
+		8F1A0B0C0D0E0F101112130B /* FlowmoMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1A0B0C0D0E0F101112130A /* FlowmoMac.swift */; };
 		8F1A0B0C0D0E0F1011121312 /* FlowmoWindow in Frameworks */ = {isa = PBXBuildFile; productRef = 8F1A0B0C0D0E0F1011121311 /* FlowmoWindow */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		8F1A0B0C0D0E0F1011121309 /* Flowmo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Flowmo.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		8F1A0B0C0D0E0F101112130A /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		8F1A0B0C0D0E0F101112130A /* FlowmoMac.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowmoMac.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -31,7 +31,7 @@
 		8F1A0B0C0D0E0F1011121310 = {
 			isa = PBXGroup;
 			children = (
-				8F1A0B0C0D0E0F101112130A /* main.swift */,
+				8F1A0B0C0D0E0F101112130A /* FlowmoMac.swift */,
 				8F1A0B0C0D0E0F101112130F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -114,7 +114,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8F1A0B0C0D0E0F101112130B /* main.swift in Sources */,
+				8F1A0B0C0D0E0F101112130B /* FlowmoMac.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
