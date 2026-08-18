@@ -37,13 +37,16 @@ public struct Store: Sendable {
     public func update(_ body: (inout Engine) throws -> Void) throws -> Engine {
         try withLock {
             var engine = Engine(world: try load())
+            let before = engine.world
             try body(&engine)
-            try save(engine.world)
+            if engine.world != before {
+                try save(engine.world)
+            }
             return engine
         }
     }
 
-    private var worldURL: URL {
+    public var worldURL: URL {
         root.appendingPathComponent("world.json")
     }
 

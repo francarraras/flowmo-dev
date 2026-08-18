@@ -22,4 +22,8 @@ public enum Format {
         }
         return String(format: "%.0fs", interval)
     }
+
+    public static func earned(_ interval: TimeInterval) -> String {
+        "\(minutes(interval)) earned"
+    }
 }

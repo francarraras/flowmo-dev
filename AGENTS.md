@@ -35,6 +35,13 @@ Exact SwiftUI pixel look belongs in a later visual pass. Pin-on-top is one contr
 
 Read `docs/PROJECT.md` before changing product behavior. Checkable v1 lines: `docs/acceptance.md`. Constraints: `docs/plan.md`. Engineering plan: `docs/design.md`. First slice: `docs/tasks.md`. `docs/V1.md` is superseded.
 
+## Run
+
+- Window: `swift run` (product `flowmo`)
+- Same live session, side door: `swift run flowmo status --json` and the other verbs
+- Core proofs: `swift run flowmo check`
+- Store: `~/.flowmo/world.json` (override with `FLOWMO_HOME`)
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

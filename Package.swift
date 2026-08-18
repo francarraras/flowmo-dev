@@ -8,12 +8,17 @@ let package = Package(
     ],
     products: [
         .library(name: "FlowmoCore", targets: ["FlowmoCore"]),
-        .executable(name: "flowmo", targets: ["FlowmoCLI"]),
-        .executable(name: "flowmo-check", targets: ["FlowmoCheck"]),
+        .library(name: "FlowmoWindow", targets: ["FlowmoWindow"]),
+        .executable(name: "flowmo", targets: ["FlowmoApp"]),
     ],
     targets: [
         .target(name: "FlowmoCore"),
-        .executableTarget(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
-        .executableTarget(name: "FlowmoCheck", dependencies: ["FlowmoCore"]),
+        .target(name: "FlowmoWindow", dependencies: ["FlowmoCore"]),
+        .target(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
+        .target(name: "FlowmoCheck", dependencies: ["FlowmoCore"]),
+        .executableTarget(
+            name: "FlowmoApp",
+            dependencies: ["FlowmoWindow", "FlowmoCLI", "FlowmoCheck"]
+        ),
     ]
 )

@@ -15,33 +15,49 @@ public struct Engine: Equatable, Sendable {
     }
 
     public mutating func apply(_ event: Event, now: Date) throws {
-        sync(now: now)
         switch event {
-        case .start(let label):
-            try start(label: label, now: now)
-        case .pause:
-            try pause(now: now)
-        case .resume:
-            try resume(now: now)
-        case .stopEncoding:
-            try stopEncoding(now: now)
+        case .pauseForRecovery:
+            if world.live?.isPaused != true {
+                sync(now: now)
+            }
+            pauseForRecovery(now: now)
+            return
+        case .`continue`:
+            try continuePaused(now: now)
+            return
+        default:
+            break
+        }
+        if world.live?.isPaused != true {
+            sync(now: now)
+        }
+        switch event {
+        case .start(let intention):
+            try start(intention: intention, now: now)
         case .skip:
             try skip(now: now)
-        case .cancel:
-            try cancel()
+        case .stopFocus:
+            try stopFocus(now: now)
         case .capture(let text):
             try capture(text, now: now)
+        case .setRecallText(let text):
+            try setRecallText(text)
+        case .cancel:
+            try cancel()
+        case .pauseForRecovery, .`continue`:
+            break
         }
     }
 
-    /// Move timed phases forward if their clock has run out.
+    /// Move timed phases forward if their clock has run out. Close beat never auto-idles.
+    /// Frozen (paused) sessions do not advance.
     public mutating func sync(now: Date) {
-        guard var live = world.live else { return }
+        guard var live = world.live, !live.isPaused else { return }
 
-        switch live.state {
-        case .priming:
+        switch live.phase {
+        case .prime:
             if now.timeIntervalSince(live.phaseStartedAt) >= live.primeDuration {
-                enterEncoding(&live, now: now)
+                enterFocus(&live, now: now)
                 world.live = live
             }
         case .onBreak:
@@ -52,100 +68,111 @@ public struct Engine: Equatable, Sendable {
             }
         case .recall:
             if now.timeIntervalSince(live.phaseStartedAt) >= live.recallDuration {
-                finish(live, now: now)
+                enterCloseBeat(live, now: now)
             }
-        case .encoding, .paused:
+        case .focus, .closeBeat:
             break
         }
     }
 
-    public func status(now: Date) -> ViewStatus? {
-        guard let live = world.live else { return nil }
-        return Self.viewStatus(live, now: now)
+    public func status(now: Date, calendar: Calendar = .current) -> SessionStatus {
+        Self.sessionStatus(world, now: now, calendar: calendar)
     }
 
-    public static func viewStatus(_ live: SessionSnapshot, now: Date) -> ViewStatus {
-        let focus = focusElapsed(live, now: now)
-        switch live.state {
-        case .priming:
-            let elapsed = now.timeIntervalSince(live.phaseStartedAt)
-            return ViewStatus(
-                state: .priming,
-                label: live.label,
-                elapsed: elapsed,
-                remaining: max(0, live.primeDuration - elapsed),
+    public static func sessionStatus(_ world: World, now: Date, calendar: Calendar = .current) -> SessionStatus {
+        let today = world.todayFocusSeconds(now: now, calendar: calendar)
+        let lastIntention = world.profile.lastIntention
+        guard let live = world.live else {
+            return SessionStatus(
+                phase: nil,
+                isPaused: false,
+                intention: lastIntention,
+                lastIntention: lastIntention,
+                elapsed: 0,
+                remaining: nil,
+                phaseDuration: nil,
                 focusSeconds: 0,
                 breakSeconds: nil,
-                captures: live.captures,
-                ratio: live.breakRatio
+                earnedBreakSeconds: 0,
+                captures: [],
+                recallText: "",
+                todayFocusSeconds: today,
+                ratio: world.profile.breakRatio
             )
-        case .encoding:
-            return ViewStatus(
-                state: .encoding,
-                label: live.label,
-                elapsed: focus,
-                remaining: nil,
+        }
+        return viewStatus(live, now: now, todayFocusSeconds: today, lastIntention: lastIntention)
+    }
+
+    public static func viewStatus(_ live: SessionSnapshot, now: Date) -> SessionStatus {
+        viewStatus(live, now: now, todayFocusSeconds: 0, lastIntention: live.intention)
+    }
+
+    public static func viewStatus(
+        _ live: SessionSnapshot,
+        now: Date,
+        todayFocusSeconds: TimeInterval,
+        lastIntention: String
+    ) -> SessionStatus {
+        let clock = live.pausedAt ?? now
+        if live.isPaused {
+            let focus = live.phase == .focus
+                ? (live.frozenElapsed ?? focusElapsed(live, now: clock))
+                : completedFocus(live)
+            let earned = BreakMath.earnedBreak(focus: focus, ratio: live.breakRatio)
+            return SessionStatus(
+                phase: live.phase,
+                isPaused: true,
+                intention: live.intention,
+                lastIntention: lastIntention,
+                elapsed: live.frozenElapsed ?? elapsed(live, now: clock),
+                remaining: live.frozenRemaining ?? remaining(live, now: clock),
+                phaseDuration: phaseDuration(live),
                 focusSeconds: focus,
-                breakSeconds: nil,
-                captures: live.captures,
-                ratio: live.breakRatio
-            )
-        case .paused:
-            let elapsed = live.pausedElapsed ?? 0
-            return ViewStatus(
-                state: .paused,
-                label: live.label,
-                elapsed: elapsed,
-                remaining: nil,
-                focusSeconds: elapsed,
-                breakSeconds: nil,
-                captures: live.captures,
-                ratio: live.breakRatio
-            )
-        case .onBreak:
-            let duration = live.breakDuration ?? 0
-            let elapsed = live.breakStartedAt.map { now.timeIntervalSince($0) } ?? 0
-            return ViewStatus(
-                state: .onBreak,
-                label: live.label,
-                elapsed: min(elapsed, duration),
-                remaining: max(0, duration - elapsed),
-                focusSeconds: completedFocus(live),
-                breakSeconds: duration,
-                captures: live.captures,
-                ratio: live.breakRatio
-            )
-        case .recall:
-            let elapsed = now.timeIntervalSince(live.phaseStartedAt)
-            return ViewStatus(
-                state: .recall,
-                label: live.label,
-                elapsed: elapsed,
-                remaining: max(0, live.recallDuration - elapsed),
-                focusSeconds: completedFocus(live),
                 breakSeconds: live.breakDuration,
+                earnedBreakSeconds: earned,
                 captures: live.captures,
+                recallText: live.recallText,
+                todayFocusSeconds: todayFocusSeconds,
                 ratio: live.breakRatio
             )
         }
+
+        let focus = focusElapsed(live, now: now)
+        let earned = BreakMath.earnedBreak(focus: focus, ratio: live.breakRatio)
+        return SessionStatus(
+            phase: live.phase,
+            isPaused: false,
+            intention: live.intention,
+            lastIntention: lastIntention,
+            elapsed: elapsed(live, now: now),
+            remaining: remaining(live, now: now),
+            phaseDuration: phaseDuration(live),
+            focusSeconds: focus,
+            breakSeconds: live.breakDuration,
+            earnedBreakSeconds: earned,
+            captures: live.captures,
+            recallText: live.recallText,
+            todayFocusSeconds: todayFocusSeconds,
+            ratio: live.breakRatio
+        )
     }
 
     // MARK: - Events
 
-    private mutating func start(label: String, now: Date) throws {
+    private mutating func start(intention: String, now: Date) throws {
         if world.live != nil { throw EngineError.alreadyRunning }
-        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        let name = trimmed.isEmpty ? "focus" : trimmed
+        let trimmed = intention.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = trimmed.isEmpty ? world.profile.lastIntention : trimmed
+        world.profile.lastIntention = name
         world.live = SessionSnapshot(
             id: UUID(),
-            label: name,
-            state: .priming,
+            intention: name,
+            phase: .prime,
             breakRatio: world.profile.breakRatio,
             startedAt: now,
             phaseStartedAt: now,
-            encodingStartedAt: nil,
-            encodingEndedAt: nil,
-            pausedElapsed: nil,
+            focusStartedAt: nil,
+            focusEndedAt: nil,
             breakStartedAt: nil,
             breakDuration: nil,
             captures: [],
@@ -154,52 +181,84 @@ public struct Engine: Equatable, Sendable {
         )
     }
 
-    private mutating func pause(now: Date) throws {
-        guard var live = world.live else { throw EngineError.nothingRunning }
-        guard live.state == .encoding else { throw EngineError.cannotPause }
-        live.pausedElapsed = Self.focusElapsed(live, now: now)
-        live.state = .paused
+    private mutating func pauseForRecovery(now: Date) {
+        guard var live = world.live, !live.isPaused else { return }
+        let view = Self.viewStatus(live, now: now)
+        live.pausedAt = now
+        live.frozenElapsed = view.elapsed
+        live.frozenRemaining = view.remaining
         world.live = live
     }
 
-    private mutating func resume(now: Date) throws {
+    private mutating func continuePaused(now: Date) throws {
         guard var live = world.live else { throw EngineError.nothingRunning }
-        guard live.state == .paused else { throw EngineError.notPaused }
-        let elapsed = live.pausedElapsed ?? 0
-        live.encodingStartedAt = now.addingTimeInterval(-elapsed)
-        live.pausedElapsed = nil
-        live.state = .encoding
-        live.phaseStartedAt = live.encodingStartedAt ?? now
+        guard live.isPaused else { throw EngineError.notPaused }
+
+        switch live.phase {
+        case .prime:
+            let remaining = live.frozenRemaining ?? max(0, live.primeDuration - (live.frozenElapsed ?? 0))
+            let elapsed = live.primeDuration - remaining
+            live.phaseStartedAt = now.addingTimeInterval(-elapsed)
+        case .focus:
+            let elapsed = live.frozenElapsed ?? 0
+            let start = now.addingTimeInterval(-elapsed)
+            live.focusStartedAt = start
+            live.phaseStartedAt = start
+        case .onBreak:
+            let duration = live.breakDuration ?? 0
+            let remaining = live.frozenRemaining ?? max(0, duration - (live.frozenElapsed ?? 0))
+            let elapsed = duration - remaining
+            let start = now.addingTimeInterval(-elapsed)
+            live.breakStartedAt = start
+            live.phaseStartedAt = start
+        case .recall:
+            let remaining = live.frozenRemaining ?? max(0, live.recallDuration - (live.frozenElapsed ?? 0))
+            let elapsed = live.recallDuration - remaining
+            live.phaseStartedAt = now.addingTimeInterval(-elapsed)
+        case .closeBeat:
+            live.phaseStartedAt = now
+        }
+
+        live.pausedAt = nil
+        live.frozenElapsed = nil
+        live.frozenRemaining = nil
         world.live = live
     }
 
-    private mutating func stopEncoding(now: Date) throws {
+    private mutating func stopFocus(now: Date) throws {
         guard var live = world.live else { throw EngineError.nothingRunning }
-        guard live.state == .encoding else { throw EngineError.notEncoding }
-        let focus = Self.focusElapsed(live, now: now)
-        live.encodingEndedAt = now
+        guard live.phase == .focus else { throw EngineError.notFocus }
+        let clock = live.pausedAt ?? now
+        let focus = live.isPaused
+            ? (live.frozenElapsed ?? Self.focusElapsed(live, now: clock))
+            : Self.focusElapsed(live, now: now)
+        live.focusEndedAt = live.isPaused ? live.pausedAt : now
+        if live.focusStartedAt == nil {
+            live.focusStartedAt = (live.focusEndedAt ?? now).addingTimeInterval(-focus)
+        }
         live.breakDuration = BreakMath.earnedBreak(focus: focus, ratio: live.breakRatio)
         live.breakStartedAt = now
-        live.state = .onBreak
+        live.phase = .onBreak
         live.phaseStartedAt = now
+        Self.clearFreeze(&live)
         world.live = live
     }
 
     private mutating func skip(now: Date) throws {
         guard var live = world.live else { throw EngineError.nothingRunning }
-        switch live.state {
-        case .priming:
-            enterEncoding(&live, now: now)
+        switch live.phase {
+        case .prime:
+            enterFocus(&live, now: now)
             world.live = live
         case .onBreak:
             enterRecall(&live, now: now)
             world.live = live
         case .recall:
-            finish(live, now: now)
-        case .encoding:
-            try stopEncoding(now: now)
-        case .paused:
-            throw EngineError.notEncoding
+            enterCloseBeat(live, now: now)
+        case .focus:
+            try stopFocus(now: now)
+        case .closeBeat:
+            world.live = nil
         }
     }
 
@@ -210,59 +269,120 @@ public struct Engine: Equatable, Sendable {
 
     private mutating func capture(_ text: String, now: Date) throws {
         guard var live = world.live else { throw EngineError.nothingRunning }
-        guard live.state == .encoding || live.state == .paused else {
-            throw EngineError.cannotCapture
-        }
+        guard live.phase == .focus else { throw EngineError.cannotCapture }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw EngineError.emptyCapture }
         live.captures.append(CaptureItem(text: trimmed, createdAt: now))
         world.live = live
     }
 
+    private mutating func setRecallText(_ text: String) throws {
+        guard var live = world.live else { throw EngineError.nothingRunning }
+        guard live.phase == .recall else { throw EngineError.cannotSetRecallText }
+        live.recallText = text
+        world.live = live
+    }
+
     // MARK: - Transitions
 
-    private func enterEncoding(_ live: inout SessionSnapshot, now: Date) {
-        live.state = .encoding
+    private func enterFocus(_ live: inout SessionSnapshot, now: Date) {
+        live.phase = .focus
         live.phaseStartedAt = now
-        live.encodingStartedAt = now
-        live.pausedElapsed = nil
+        live.focusStartedAt = now
+        Self.clearFreeze(&live)
     }
 
     private func enterRecall(_ live: inout SessionSnapshot, now: Date) {
-        live.state = .recall
+        live.phase = .recall
         live.phaseStartedAt = now
+        Self.clearFreeze(&live)
     }
 
-    private mutating func finish(_ live: SessionSnapshot, now: Date) {
+    private mutating func enterCloseBeat(_ live: SessionSnapshot, now: Date) {
+        var next = live
+        next.phase = .closeBeat
+        next.phaseStartedAt = now
+        Self.clearFreeze(&next)
+        recordCompletion(next, now: now)
+        world.live = next
+    }
+
+    private mutating func recordCompletion(_ live: SessionSnapshot, now: Date) {
         let focus = Self.completedFocus(live)
-        let breakTaken = live.breakDuration ?? 0
+        let recall = live.recallText.trimmingCharacters(in: .whitespacesAndNewlines)
         let completed = CompletedSession(
             id: live.id,
-            label: live.label,
+            intention: live.intention,
             focusSeconds: focus,
-            breakSeconds: breakTaken,
+            breakSeconds: live.breakDuration ?? 0,
             captureCount: live.captures.count,
-            endedAt: now
+            recallText: recall.isEmpty ? nil : recall,
+            endedAt: live.focusEndedAt ?? now
         )
         world.history.append(completed)
         world.profile = ProfileLearner.apply(world.profile, focusSeconds: focus)
-        world.live = nil
+    }
+
+    private static func clearFreeze(_ live: inout SessionSnapshot) {
+        live.pausedAt = nil
+        live.frozenElapsed = nil
+        live.frozenRemaining = nil
+    }
+
+    private static func elapsed(_ live: SessionSnapshot, now: Date) -> TimeInterval {
+        switch live.phase {
+        case .prime:
+            return max(0, now.timeIntervalSince(live.phaseStartedAt))
+        case .focus:
+            return focusElapsed(live, now: now)
+        case .onBreak:
+            let duration = live.breakDuration ?? 0
+            let raw = live.breakStartedAt.map { now.timeIntervalSince($0) } ?? 0
+            return min(max(0, raw), duration)
+        case .recall:
+            return max(0, now.timeIntervalSince(live.phaseStartedAt))
+        case .closeBeat:
+            return completedFocus(live)
+        }
+    }
+
+    private static func remaining(_ live: SessionSnapshot, now: Date) -> TimeInterval? {
+        switch live.phase {
+        case .prime:
+            return max(0, live.primeDuration - now.timeIntervalSince(live.phaseStartedAt))
+        case .onBreak:
+            let duration = live.breakDuration ?? 0
+            let raw = live.breakStartedAt.map { now.timeIntervalSince($0) } ?? 0
+            return max(0, duration - raw)
+        case .recall:
+            return max(0, live.recallDuration - now.timeIntervalSince(live.phaseStartedAt))
+        case .focus, .closeBeat:
+            return nil
+        }
+    }
+
+    private static func phaseDuration(_ live: SessionSnapshot) -> TimeInterval? {
+        switch live.phase {
+        case .prime: return live.primeDuration
+        case .onBreak: return live.breakDuration
+        case .recall: return live.recallDuration
+        case .focus, .closeBeat: return nil
+        }
     }
 
     private static func focusElapsed(_ live: SessionSnapshot, now: Date) -> TimeInterval {
-        if live.state == .paused { return live.pausedElapsed ?? 0 }
-        if let ended = live.encodingEndedAt, let started = live.encodingStartedAt {
-            return ended.timeIntervalSince(started)
+        if let ended = live.focusEndedAt, let started = live.focusStartedAt {
+            return max(0, ended.timeIntervalSince(started))
         }
-        if let started = live.encodingStartedAt {
+        if live.phase == .focus, let started = live.focusStartedAt {
             return max(0, now.timeIntervalSince(started))
         }
-        return 0
+        return completedFocus(live)
     }
 
     private static func completedFocus(_ live: SessionSnapshot) -> TimeInterval {
-        guard let start = live.encodingStartedAt else { return 0 }
-        let end = live.encodingEndedAt ?? start
+        guard let start = live.focusStartedAt else { return 0 }
+        let end = live.focusEndedAt ?? start
         return max(0, end.timeIntervalSince(start))
     }
 }
@@ -294,12 +414,16 @@ public enum ProfileLearner {
             next.breakRatio = max(minRatio, next.breakRatio - step)
             if next.breakRatio < before {
                 next.lastNote = "Last three sessions ran long, so the next break will be a bit longer (ratio \(format(next.breakRatio)))."
+            } else {
+                next.lastNote = nil
             }
         } else if recent.allSatisfy({ $0 <= shortSession }) {
             let before = next.breakRatio
             next.breakRatio = min(maxRatio, next.breakRatio + step)
             if next.breakRatio > before {
                 next.lastNote = "Last three sessions were short, so the next break will be a bit shorter (ratio \(format(next.breakRatio)))."
+            } else {
+                next.lastNote = nil
             }
         } else {
             next.lastNote = nil
