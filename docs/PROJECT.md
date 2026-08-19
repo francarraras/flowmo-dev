@@ -4,9 +4,9 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-18  
+Last updated: 2026-08-19  
 Owner: Fran Carrara  
-Status: brief locked; visual look not designed; implementation of this brief has not started as the product
+Status: brief locked; first slice and signed visual pass shipped. Menu bar, living TUI, iPhone, and Focus Guard stay later.
 
 ---
 
@@ -251,7 +251,8 @@ Suggested first vertical slice when someone is told to build: **idle → type on
 
 ## 12. Later (explicitly not v1)
 
-- Visual identity / themes
+- Visual identity / themes (beyond the signed compact pass)
+- Focus Guard (researched in [`focus-guard-handoff.md`](focus-guard-handoff.md); not signed)
 - Menu bar glance
 - Living terminal face
 - iPhone client
@@ -286,7 +287,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Learning in v1 | Quiet; **ratio only** |
 | Window size | Compact; optional float on top |
 | Pin default | Off |
-| Look | Decide later |
+| Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
 | Idle | Last intention + Start + today total |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |
