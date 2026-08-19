@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-08-19  
 Owner: Fran Carrara  
-Status: brief locked; window, visual pass, Focus Guard, and menu-bar glance shipped. Living TUI (`flowmo live`) is next. iPhone stays later.
+Status: brief locked; window, visual pass, Focus Guard, menu-bar glance, and `flowmo live` shipped. Phase cues stay on by default; mute is a window control. iPhone stays later.
 
 ---
 
@@ -126,7 +126,7 @@ Pause exists only as **recovery**:
 
 - Soft cues **on by default** at phase changes (prime ended, you stopped, break ended, recall ended).
 - If the window is in the background: **sound + a system notification**. Clicking the banner brings the window forward.
-- User can mute later; v1 default is audible.
+- Mute is a compact-window control. Default is audible. Mute silences the phase sound; background banners still post.
 
 ---
 

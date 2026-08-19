@@ -41,9 +41,29 @@ struct FlowmoRootView: View {
         .background(Look.field)
         .preferredColorScheme(.dark)
         .overlay(alignment: .topTrailing) {
-            pinButton
+            HStack(spacing: 0) {
+                muteButton
+                pinButton
+            }
         }
         .background(WindowPin(pinned: controller.isPinned))
+    }
+
+    private var muteButton: some View {
+        let on = controller.world.config.cuesEnabled
+        return Button {
+            controller.setCuesEnabled(!on)
+        } label: {
+            Image(systemName: on ? "speaker.wave.2" : "speaker.slash")
+                .font(.body.weight(.medium))
+                .foregroundStyle(on ? Look.mute : Look.accent)
+                .frame(width: 36, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .help(on ? "Mute cues" : "Unmute cues")
+        .accessibilityLabel(on ? "Mute cues" : "Unmute cues")
+        .padding(.top, 4)
     }
 
     private var pinButton: some View {

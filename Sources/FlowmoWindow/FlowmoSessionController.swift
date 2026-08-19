@@ -118,6 +118,10 @@ public final class FlowmoSessionController: ObservableObject {
         apply(.configureFocusGuard(config))
     }
 
+    public func setCuesEnabled(_ enabled: Bool) {
+        apply(.setCuesEnabled(enabled))
+    }
+
     public func addGuardedApp(bundleIdentifier: String) {
         var config = world.config.focusGuard
         config.bundleIdentifiers.append(bundleIdentifier)
@@ -164,7 +168,7 @@ public final class FlowmoSessionController: ObservableObject {
             }
             world = engine.world
             now = Date()
-            attention.phaseChanged(from: before, to: world.live?.phase)
+            attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
         } catch {
@@ -184,7 +188,7 @@ public final class FlowmoSessionController: ObservableObject {
             }
             world = engine.world
             now = Date()
-            attention.phaseChanged(from: before, to: world.live?.phase)
+            attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
         } catch {
@@ -208,7 +212,7 @@ public final class FlowmoSessionController: ObservableObject {
             world = engine.world
             now = Date()
             if cueIfChanged, changed {
-                attention.phaseChanged(from: before, to: world.live?.phase)
+                attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             }
             refreshDraftsAfterChange()
             reconcileGuard()

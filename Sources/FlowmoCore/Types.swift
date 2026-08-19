@@ -5,30 +5,35 @@ public struct Config: Equatable, Sendable {
     public var recallSeconds: TimeInterval
     public var defaultBreakRatio: Double
     public var focusGuard: FocusGuardConfiguration
+    /// Phase-change sound. On by default.
+    public var cuesEnabled: Bool
 
     public static let `default` = Config(
         primeSeconds: 2 * 60,
         recallSeconds: 5 * 60,
         defaultBreakRatio: 5,
-        focusGuard: .default
+        focusGuard: .default,
+        cuesEnabled: true
     )
 
     public init(
         primeSeconds: TimeInterval,
         recallSeconds: TimeInterval,
         defaultBreakRatio: Double,
-        focusGuard: FocusGuardConfiguration = .default
+        focusGuard: FocusGuardConfiguration = .default,
+        cuesEnabled: Bool = true
     ) {
         self.primeSeconds = primeSeconds
         self.recallSeconds = recallSeconds
         self.defaultBreakRatio = defaultBreakRatio
         self.focusGuard = focusGuard
+        self.cuesEnabled = cuesEnabled
     }
 }
 
 extension Config: Codable {
     enum CodingKeys: String, CodingKey {
-        case primeSeconds, recallSeconds, defaultBreakRatio, focusGuard
+        case primeSeconds, recallSeconds, defaultBreakRatio, focusGuard, cuesEnabled
     }
 
     public init(from decoder: Decoder) throws {
@@ -37,6 +42,7 @@ extension Config: Codable {
         recallSeconds = try c.decode(TimeInterval.self, forKey: .recallSeconds)
         defaultBreakRatio = try c.decode(Double.self, forKey: .defaultBreakRatio)
         focusGuard = try c.decodeIfPresent(FocusGuardConfiguration.self, forKey: .focusGuard) ?? .default
+        cuesEnabled = try c.decodeIfPresent(Bool.self, forKey: .cuesEnabled) ?? true
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -45,6 +51,7 @@ extension Config: Codable {
         try c.encode(recallSeconds, forKey: .recallSeconds)
         try c.encode(defaultBreakRatio, forKey: .defaultBreakRatio)
         try c.encode(focusGuard, forKey: .focusGuard)
+        try c.encode(cuesEnabled, forKey: .cuesEnabled)
     }
 }
 
@@ -369,6 +376,7 @@ public enum Event: Equatable, Sendable {
     case `continue`
     case cancel
     case configureFocusGuard(FocusGuardConfiguration)
+    case setCuesEnabled(Bool)
 }
 
 public enum EngineError: Error, Equatable, CustomStringConvertible {

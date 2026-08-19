@@ -30,7 +30,7 @@
 29:
 30:## Not frozen here
 31:
-32:Exact SwiftUI pixel look: signed in [`docs/visual.md`](docs/visual.md). Pin default off.
+32:Exact SwiftUI pixel look: signed in [`docs/visual.md`](docs/visual.md). Pin default off. Phase cues on by default; speaker control mutes the sound.
 
 Focus Guard is signed in [`docs/focus-guard-tasks.md`](docs/focus-guard-tasks.md). Do not escalate to Accessibility or a helper if hide() fails.
 

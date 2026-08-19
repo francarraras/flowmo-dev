@@ -5,28 +5,21 @@ import UserNotifications
 @MainActor
 public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate {
     weak var window: NSWindow?
-    private let usesUserNotifications: Bool
-    private let legacy = LegacyNotifier()
+    private let canNotify: Bool
 
     public override init() {
-        usesUserNotifications = Self.hasNotificationBundle
+        canNotify = Bundle.main.bundleIdentifier != nil
         super.init()
-        if usesUserNotifications {
-            UNUserNotificationCenter.current().delegate = self
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
-        } else {
-            legacy.onActivate = { [weak self] in
-                Task { @MainActor in
-                    self?.bringWindowForward()
-                }
-            }
-            legacy.install()
-        }
+        guard canNotify else { return }
+        UNUserNotificationCenter.current().delegate = self
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
     }
 
-    func phaseChanged(from: SessionPhase?, to: SessionPhase?) {
+    func phaseChanged(from: SessionPhase?, to: SessionPhase?, cuesEnabled: Bool) {
         guard AttentionCue.shouldPlay(from: from, to: to) else { return }
-        playCue()
+        if cuesEnabled {
+            playCue()
+        }
         if windowIsInBackground {
             postNotification(phase: to)
         }
@@ -36,10 +29,6 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
         NSApp.unhide(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-    }
-
-    private static var hasNotificationBundle: Bool {
-        Bundle.main.bundleURL.pathExtension == "app"
     }
 
     private var windowIsInBackground: Bool {
@@ -60,16 +49,13 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
     }
 
     private func postNotification(phase: SessionPhase?) {
+        guard canNotify else { return }
         let (title, body) = Self.copy(for: phase)
-        if usesUserNotifications {
-            let content = UNMutableNotificationContent()
-            content.title = title
-            content.body = body
-            let request = UNNotificationRequest(identifier: "flowmo.phase", content: content, trigger: nil)
-            UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
-        } else {
-            legacy.deliver(title: title, body: body)
-        }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        let request = UNNotificationRequest(identifier: "flowmo.phase", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
     }
 
     private static func copy(for phase: SessionPhase?) -> (String, String) {
@@ -104,32 +90,5 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .list])
-    }
-}
-
-/// Used when `swift run` has no bundle identifier (UNUserNotificationCenter crashes).
-private final class LegacyNotifier: NSObject, @unchecked Sendable {
-    var onActivate: (@Sendable () -> Void)?
-
-    func install() {
-        NSUserNotificationCenter.default.delegate = self
-    }
-
-    func deliver(title: String, body: String) {
-        let notification = NSUserNotification()
-        notification.title = title
-        notification.informativeText = body
-        notification.soundName = nil
-        NSUserNotificationCenter.default.deliver(notification)
-    }
-}
-
-extension LegacyNotifier: NSUserNotificationCenterDelegate {
-    func userNotificationCenter(_ center: NSUserNotificationCenter, didActivate notification: NSUserNotification) {
-        onActivate?()
-    }
-
-    func userNotificationCenter(_ center: NSUserNotificationCenter, shouldPresent notification: NSUserNotification) -> Bool {
-        true
     }
 }

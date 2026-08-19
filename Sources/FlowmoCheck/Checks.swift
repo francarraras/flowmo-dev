@@ -475,6 +475,36 @@ do {
     Check.expect(false, "live view threw \(error)")
 }
 
+
+do {
+    Check.expect(Config.default.cuesEnabled, "cues on by default")
+    var engine = Engine()
+    try engine.apply(.setCuesEnabled(false), now: t0)
+    Check.expect(!engine.world.config.cuesEnabled, "mute persists on engine")
+    try engine.apply(.start(intention: "x"), now: t0)
+    try engine.apply(.setCuesEnabled(true), now: t0)
+    Check.expect(engine.world.config.cuesEnabled, "unmute during prime")
+    try engine.apply(.skip, now: t0)
+    Check.expect(engine.world.live?.phase == .focus, "mute does not change phase")
+} catch {
+    Check.expect(false, "cues threw \(error)")
+}
+
+do {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("flowmo-cues-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = Store(root: root)
+    _ = try store.update { engine in
+        try engine.apply(.setCuesEnabled(false), now: t0)
+    }
+    let loaded = try store.load()
+    Check.expect(!loaded.config.cuesEnabled, "store keeps mute")
+    Check.expect(AttentionCue.shouldPlay(from: .prime, to: .focus), "cue rule independent of mute")
+} catch {
+    Check.expect(false, "cues store threw \(error)")
+}
+
     if Check.failed == 0 {
         print("ok")
         return 0

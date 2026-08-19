@@ -46,6 +46,8 @@ public struct Engine: Equatable, Sendable {
             try cancel()
         case .configureFocusGuard(let config):
             try configureFocusGuard(config)
+        case .setCuesEnabled(let enabled):
+            world.config.cuesEnabled = enabled
         case .pauseForRecovery, .`continue`:
             break
         }
