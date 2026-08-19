@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-08-19  
 Owner: Fran Carrara  
-Status: brief locked; first slice and signed visual pass shipped. Menu bar, living TUI, iPhone, and Focus Guard stay later.
+Status: brief locked; window, visual pass, Focus Guard, and menu-bar glance shipped. Living TUI (`flowmo live`) is next. iPhone stays later.
 
 ---
 
@@ -135,8 +135,8 @@ Pause exists only as **recovery**:
 | Surface | Role in v1 | Role later |
 |---|---|---|
 | **Mac window** | The product | Still the product |
-| **Menu bar** | Out | Glance only (time visible if the window is hidden) |
-| **Terminal living view** | Optional / later | `flowmo` with no args can *stay open* and tick — a view, not a command list |
+| **Menu bar** | Glance only (clock; click shows the window) | Still not the product |
+| **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
 | **CLI / JSON API** | For agents and scripts | Same verbs, same store as the window |
 | **iPhone** | Out | Same loop, same store schema, after Mac window is real |
 | **Widgets** | Out | Projection of the same session |
@@ -252,9 +252,7 @@ Suggested first vertical slice when someone is told to build: **idle → type on
 ## 12. Later (explicitly not v1)
 
 - Visual identity / themes (beyond the signed compact pass)
-- Focus Guard (researched in [`focus-guard-handoff.md`](focus-guard-handoff.md); not signed)
-- Menu bar glance
-- Living terminal face
+- Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
 - iPhone client
 - Widgets, Watch, iCloud
 - Flashcards, SM-2, consolidation, reflection
@@ -282,8 +280,8 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Focus visual | Big clock + thin earned-break strip and “Xm earned” |
 | Timed-phase visual | Determinate ring/bar |
 | Fake 0–100% focus bar | No |
-| Menu bar in v1 | No (later glance) |
-| Terminal | Agents + optional living view; not command-by-command |
+| Menu bar | Glance only ([`menu-bar.md`](menu-bar.md)). Window stays the product. |
+| Terminal | `flowmo live` is a ticking view. Verbs stay a side door. |
 | Learning in v1 | Quiet; **ratio only** |
 | Window size | Compact; optional float on top |
 | Pin default | Off |
@@ -311,6 +309,6 @@ Someone picking this up cold should be able to:
 3. Ignore the sketch CLI as UX.
 4. Implement the compact Mac window against a timestamped session store.
 5. Keep CLI/JSON as a side door to that same store.
-6. Not add Home, scores, flashcards, menu bar, or a 25-minute countdown unless the owner reopens those decisions.
+6. Not add Home, scores, flashcards, or a 25-minute countdown unless the owner reopens those decisions.
 
 When a formal visual/engineering design is wanted, start from **this** document, not from `FLOWMO_VISION.md` or `APP_STORE_MVP_LAUNCH_PLAN.md` in the old repo.

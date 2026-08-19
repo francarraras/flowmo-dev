@@ -22,7 +22,7 @@
 21:
 22:- Do not add a Pause button during focus. Quit or sleep restores paused with one Continue; that is recovery, not a flow control. Window appearing must not resume by itself.
 23:- Do not add a 0–100% progress ring during focus.
-24:- Do not add Home, tabs, setup screens, scores, streaks, flashcards, or a v1 menu bar.
+24:- Do not add Home, tabs, setup screens, scores, streaks, or flashcards. A status-item glance is allowed ([`docs/menu-bar.md`](docs/menu-bar.md)); it is not the product.
 25:- Do not grow the sketch CLI in this repo into the app. Reuse store or reducer ideas if they still fit; throw away command-by-command UX.
 26:- Do not invent a visual brand or theme pack. Look is undecided; the old iPhone black + cyan is reference only.
 27:- Do not start from or extend `~/Flowmo`. Formula and old timer/break screens are reference only.
@@ -33,6 +33,8 @@
 32:Exact SwiftUI pixel look: signed in [`docs/visual.md`](docs/visual.md). Pin default off.
 
 Focus Guard is signed in [`docs/focus-guard-tasks.md`](docs/focus-guard-tasks.md). Do not escalate to Accessibility or a helper if hide() fails.
+
+Menu-bar glance: [`docs/menu-bar.md`](docs/menu-bar.md). Window stays the product. Keep shipping unless the captain names a stop.
 33:
 34:## Source of truth
 35:
@@ -42,7 +44,7 @@ Focus Guard is signed in [`docs/focus-guard-tasks.md`](docs/focus-guard-tasks.md
 39:
 40:- Window: `swift run` (product `flowmo`)
 41:- Dock app: `xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES` then open `Flowmo.app` (bundle `app.flowmo.mac`). Same `FlowmoWindow` / Core as `swift run`. Ad-hoc sign; no Apple Developer team.
-42:- Same live session, side door: `swift run flowmo status --json` and the other verbs
+42:- Same live session, side door: `swift run flowmo status --json` and the other verbs; living view: `swift run flowmo live`
 43:- Core proofs: `swift run flowmo check`
 44:- Store: `~/.flowmo/world.json` (override with `FLOWMO_HOME`)
 45:

@@ -27,6 +27,68 @@ public enum Format {
         "\(minutes(interval)) earned"
     }
 
+    /// Compact menu-bar title. Same clocks as the window.
+    public static func glance(_ status: SessionStatus) -> String {
+        let mark = status.isPaused ? "· " : ""
+        guard let phase = status.phase else { return "Flowmo" }
+        switch phase {
+        case .prime, .onBreak, .recall:
+            return mark + remainingClock(status.remaining ?? 0)
+        case .focus:
+            return mark + clock(status.elapsed)
+        case .closeBeat:
+            return mark + clock(status.focusSeconds)
+        }
+    }
+
+    /// Living terminal frame. Same session facts as status, not a command list.
+    public static func liveView(_ view: SessionStatus) -> String {
+        func trim(_ value: Double) -> String { String(format: "%g", value) }
+        guard let phase = view.phase else {
+            return """
+            Flowmo  idle
+            last \(view.lastIntention.isEmpty ? "—" : view.lastIntention)
+            today \(clock(view.todayFocusSeconds))
+            ratio \(trim(view.ratio))
+            """
+        }
+        let paused = view.isPaused ? "  paused" : ""
+        switch phase {
+        case .prime:
+            return """
+            Flowmo  prime\(paused)  \(view.intention)
+            \(remainingClock(view.remaining ?? 0)) remaining
+            """
+        case .focus:
+            return """
+            Flowmo  focus\(paused)  \(view.intention)
+            \(clock(view.elapsed))
+            \(earned(view.earnedBreakSeconds))
+            """
+        case .onBreak:
+            return """
+            Flowmo  break\(paused)  \(view.intention)
+            \(remainingClock(view.remaining ?? 0)) remaining
+            earned from \(minutes(view.focusSeconds)) focus
+            """
+        case .recall:
+            return """
+            Flowmo  recall\(paused)  \(view.intention)
+            What did you just do?
+            \(remainingClock(view.remaining ?? 0)) remaining
+            """
+        case .closeBeat:
+            let recall = view.recallText.trimmingCharacters(in: .whitespacesAndNewlines)
+            var lines = [
+                "Flowmo  close beat\(paused)",
+                "focus \(clock(view.focusSeconds))",
+                "break \(clock(view.breakSeconds ?? 0))",
+            ]
+            if !recall.isEmpty { lines.append(recall) }
+            return lines.joined(separator: "\n")
+        }
+    }
+
     private static func render(_ total: Int) -> String {
         let hours = total / 3600
         let minutes = (total % 3600) / 60

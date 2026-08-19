@@ -1,0 +1,19 @@
+# Flowmo — menu-bar glance
+
+Signed by the captain on 2026-08-19 (keep shipping). The window remains the product. This is the glance from [`PROJECT.md`](PROJECT.md): time visible when the window is hidden.
+
+## In
+
+- One `NSStatusItem`. Title is the same clock the window would show (remaining on timed beats, count-up on Focus, frozen with a leading `·` while recovery-paused, `Flowmo` when idle).
+- Click brings the existing window forward. Does not Continue a paused session.
+- Same Core timestamps as the window. No second clock.
+
+## Out
+
+Pause, Start, Skip, scores, extra menus, replacing the window.
+
+WHEN Focus is showing in the window  
+THE SYSTEM SHALL still not put a menu bar *inside* that frame.
+
+WHEN the process is running  
+THE SYSTEM SHALL show a status-item clock from Core status.

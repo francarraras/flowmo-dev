@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     let controller = FlowmoSessionController()
     var window: NSWindow?
+    private let glance = StatusGlance()
     private var signalSources: [DispatchSourceSignal] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -29,6 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         self.window = window
         controller.attention.window = window
         window.delegate = self
+        glance.attach(controller: controller) { [weak self] in
+            self?.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         watchSleep()

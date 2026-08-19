@@ -5,7 +5,7 @@ public enum FlowmoCLI {
     public static let verbs: Set<String> = [
         "help", "-h", "--help",
         "start", "stop", "skip", "continue", "cancel",
-        "capture", "log", "recall", "status", "check",
+        "capture", "log", "recall", "status", "live", "check",
         "pause", "resume",
     ]
 
@@ -91,6 +91,8 @@ public enum FlowmoCLI {
         case "status":
             let json = args.contains("--json")
             return try status(json: json)
+        case "live":
+            return try LiveView.run()
         default:
             FileHandle.standardError.write(Data(("Unknown command: \(command)\n\n\(help)\n").utf8))
             return 2
@@ -142,61 +144,14 @@ public enum FlowmoCLI {
     }
 
     static func humanStatus(_ world: World, now: Date) -> String {
-        let view = Engine.sessionStatus(world, now: now)
-        guard let phase = view.phase else {
-            return """
-            Flowmo  idle
-            last \(view.lastIntention.isEmpty ? "—" : view.lastIntention)
-            today \(Format.clock(view.todayFocusSeconds))
-            ratio \(trim(view.ratio))
-            """
-        }
-
-        let paused = view.isPaused ? "  paused" : ""
-        switch phase {
-        case .prime:
-            return """
-            Flowmo  prime\(paused)  \(view.intention)
-            \(Format.remainingClock(view.remaining ?? 0)) remaining
-            """
-        case .focus:
-            return """
-            Flowmo  focus\(paused)  \(view.intention)
-            \(Format.clock(view.elapsed))
-            \(Format.earned(view.earnedBreakSeconds))
-            """
-        case .onBreak:
-            return """
-            Flowmo  break\(paused)  \(view.intention)
-            \(Format.remainingClock(view.remaining ?? 0)) remaining
-            earned from \(Format.minutes(view.focusSeconds)) focus
-            """
-        case .recall:
-            return """
-            Flowmo  recall\(paused)  \(view.intention)
-            What did you just do?
-            \(Format.remainingClock(view.remaining ?? 0)) remaining
-            """
-        case .closeBeat:
-            let recall = view.recallText.trimmingCharacters(in: .whitespacesAndNewlines)
-            var lines = [
-                "Flowmo  close beat\(paused)",
-                "focus \(Format.clock(view.focusSeconds))",
-                "break \(Format.clock(view.breakSeconds ?? 0))",
-            ]
-            if !recall.isEmpty { lines.append(recall) }
-            return lines.joined(separator: "\n")
-        }
-    }
-
-    static func trim(_ value: Double) -> String {
-        String(format: "%g", value)
+        Format.liveView(Engine.sessionStatus(world, now: now))
     }
 
     static let help = """
     flowmo — Mac window. Verbs are a side door to the same live session.
 
     (no args)                open the compact window
+    live                     stay open and tick (view, not a command list)
     start [intention]
     stop
     skip

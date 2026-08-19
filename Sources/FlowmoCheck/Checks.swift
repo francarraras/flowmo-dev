@@ -446,6 +446,35 @@ do {
     Check.expect(false, "guard store threw \(error)")
 }
 
+
+do {
+    var engine = Engine()
+    Check.expectEqual(Format.glance(engine.status(now: t0)), "Flowmo", "idle glance")
+    try engine.apply(.start(intention: "x"), now: t0)
+    Check.expectEqual(Format.glance(engine.status(now: t0)), "02:00", "prime glance remaining")
+    try engine.apply(.skip, now: t0)
+    Check.expectEqual(Format.glance(engine.status(now: t0.addingTimeInterval(65))), "01:05", "focus glance elapsed")
+    try engine.apply(.pauseForRecovery, now: t0.addingTimeInterval(65))
+    Check.expectEqual(Format.glance(engine.status(now: t0.addingTimeInterval(200))), "· 01:05", "paused glance frozen")
+} catch {
+    Check.expect(false, "glance threw \(error)")
+}
+
+
+do {
+    var engine = Engine()
+    Check.expect(Format.liveView(engine.status(now: t0)).contains("idle"), "live view idle")
+    try engine.apply(.start(intention: "x"), now: t0)
+    Check.expect(Format.liveView(engine.status(now: t0)).contains("prime"), "live view prime")
+    Check.expect(Format.liveView(engine.status(now: t0)).contains("02:00 remaining"), "live view remaining")
+    try engine.apply(.skip, now: t0)
+    let focus = Format.liveView(engine.status(now: t0.addingTimeInterval(65)))
+    Check.expect(focus.contains("focus"), "live view focus")
+    Check.expect(focus.contains("01:05"), "live view elapsed")
+} catch {
+    Check.expect(false, "live view threw \(error)")
+}
+
     if Check.failed == 0 {
         print("ok")
         return 0

@@ -29,7 +29,7 @@ WHEN the user submits a capture line during Focus
 THE SYSTEM SHALL park that line and clear the field. No sheet, no categories.
 
 WHEN Focus is showing  
-THE SYSTEM SHALL NOT show a 0–100% progress ring, a Pause control, Home, tabs, or a menu bar.
+THE SYSTEM SHALL NOT show a 0–100% progress ring, a Pause control, Home, or tabs. A status-item glance may show the clock; it is not inside the Focus frame.
 
 WHEN the user stops Focus, or skips during Focus  
 THE SYSTEM SHALL end Focus and start Break of length `focus / ratio` (default ratio 5), with a determinate ring and copy that the rest was earned.
