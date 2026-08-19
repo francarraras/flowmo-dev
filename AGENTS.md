@@ -35,7 +35,7 @@ Focus Guard is signed in [`docs/focus-guard-tasks.md`](docs/focus-guard-tasks.md
 
 Menu-bar glance: [`docs/menu-bar.md`](docs/menu-bar.md). Living terminal: [`docs/live.md`](docs/live.md). Window stays the product.
 
-iPhone is signed in [`docs/iphone-tasks.md`](docs/iphone-tasks.md). Background suspends; schedule timed-phase banners. Widgets, history, and theme packs stay later.
+iPhone is signed in [`docs/iphone-tasks.md`](docs/iphone-tasks.md). Background suspends; schedule timed-phase banners. v2 candidates: [`docs/v2.md`](docs/v2.md) — unsigned; no v2 code until a slice is signed.
 
 ## Source of truth
 

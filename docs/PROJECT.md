@@ -260,6 +260,8 @@ Suggested first vertical slice when someone is told to build: **idle → type on
 - Learning anything other than break ratio
 - Monetization, licensing, marketing (out of scope for this brief)
 
+Unsigned next-version brief: [`v2.md`](v2.md). Not a license to code.
+
 ---
 
 ## 13. Decision log
