@@ -14,7 +14,7 @@ Status: brief locked; Mac shipped. iPhone slice signed ([`iphone-tasks.md`](ipho
 
 Flowmo is a Flowmodoro — a Pomodoro with the science left in — that gets more accurate to the person using it.
 
-You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window (Mac first, iPhone later). Power users and agents can read and tweak the same session; they do not *be* the session.
+You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and agents can read and tweak the same session; they do not *be* the session.
 
 **Tagline (kept):** Stop counting down. Start flowing up.
 

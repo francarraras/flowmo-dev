@@ -59,18 +59,7 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
     }
 
     private static func copy(for phase: SessionPhase?) -> (String, String) {
-        switch phase {
-        case .focus:
-            return ("Flowmo", "Prime ended.")
-        case .onBreak:
-            return ("Flowmo", "Focus stopped. Break earned.")
-        case .recall:
-            return ("Flowmo", "Break ended.")
-        case .closeBeat:
-            return ("Flowmo", "Recall ended.")
-        default:
-            return ("Flowmo", "Phase changed.")
-        }
+        TimedNotice.copy(for: phase)
     }
 
     public nonisolated func userNotificationCenter(

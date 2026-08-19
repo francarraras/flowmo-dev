@@ -181,6 +181,10 @@ private struct StatusPayload: Encodable {
     var recallText: String?
     var todayFocusSeconds: TimeInterval
     var sessionCount: Int
+    var cuesEnabled: Bool
+    var recentFocusSeconds: [TimeInterval]
+    var primeSeconds: TimeInterval
+    var recallSeconds: TimeInterval
 
     init(world: World, now: Date) {
         let view = Engine.sessionStatus(world, now: now)
@@ -199,5 +203,9 @@ private struct StatusPayload: Encodable {
         recallText = view.recallText.isEmpty ? nil : view.recallText
         todayFocusSeconds = view.todayFocusSeconds
         sessionCount = world.profile.sessionCount
+        cuesEnabled = world.config.cuesEnabled
+        recentFocusSeconds = world.profile.recentFocusSeconds
+        primeSeconds = world.config.primeSeconds
+        recallSeconds = world.config.recallSeconds
     }
 }

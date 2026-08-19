@@ -44,6 +44,10 @@ public final class PhoneSessionController: ObservableObject {
 
     public func startRunning() {
         attention.requestPermission()
+        guard timer == nil else {
+            becameActive()
+            return
+        }
         let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.tick()
@@ -51,6 +55,13 @@ public final class PhoneSessionController: ObservableObject {
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        becameActive()
+    }
+
+    /// Background suspends the 0.25s timer. Catch up as soon as we are looking.
+    public func becameActive() {
+        tick()
+        attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
     }
 
     public func start() { apply(.start(intention: intentionDraft)) }

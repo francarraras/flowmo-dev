@@ -25,4 +25,4 @@ flowmo status --json
 flowmo cancel
 ```
 
-Sessions live in `~/.flowmo/world.json`. The old iPhone app in `~/Flowmo` is reference only.
+Sessions live in `~/.flowmo/world.json`. The iPhone app is `Apps/FlowmoPhone.xcodeproj` (bundle `app.flowmo.phone`, local container store). The old tree in `~/Flowmo` is reference only.

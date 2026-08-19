@@ -516,9 +516,14 @@ do {
     try engine.apply(.`continue`, now: t0)
     try engine.apply(.skip, now: t0)
     Check.expect(TimedNotice.remainingToSchedule(engine.status(now: t0)) == nil, "focus has no end notice")
+    try engine.apply(.stopFocus, now: t0.addingTimeInterval(50))
+    Check.expectNear(TimedNotice.remainingToSchedule(engine.status(now: t0.addingTimeInterval(50))) ?? -1, 10, "break schedules remaining")
+    try engine.apply(.skip, now: t0.addingTimeInterval(51))
+    Check.expectNear(TimedNotice.remainingToSchedule(engine.status(now: t0.addingTimeInterval(51))) ?? -1, 300, "skip break schedules recall")
 } catch {
     Check.expect(false, "timed notice threw \(error)")
 }
+
 
 do {
     var engine = Engine()

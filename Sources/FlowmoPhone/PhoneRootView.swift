@@ -41,8 +41,11 @@ public struct PhoneRootView: View {
         .foregroundStyle(Look.ink)
         .background(Look.field)
         .preferredColorScheme(.dark)
-        .overlay(alignment: .topTrailing) {
-            muteButton
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack {
+                Spacer()
+                muteButton
+            }
         }
     }
 
