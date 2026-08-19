@@ -332,6 +332,15 @@ do {
     Check.expect(false, "store threw \(error)")
 }
 
+Check.expectEqual(Format.clock(0.4), "00:00", "elapsed rounds 0.4s down")
+Check.expectEqual(Format.clock(0.6), "00:01", "elapsed rounds 0.6s up")
+Check.expectEqual(Format.remainingClock(0), "00:00", "remaining zero")
+Check.expectEqual(Format.remainingClock(0.2), "00:01", "remaining 0.2s still shows a second")
+Check.expectEqual(Format.remainingClock(119.1), "02:00", "remaining 119.1s ceils to 2:00")
+Check.expectEqual(Format.earned(90), "1.5m earned", "earned copy")
+Check.expectEqual(Format.minutes(0.2), "0s", "sub-second earned still formats as 0s")
+Check.expectEqual(Format.minutes(1), "1s", "1s earned is visible")
+
     if Check.failed == 0 {
         print("ok")
         return 0

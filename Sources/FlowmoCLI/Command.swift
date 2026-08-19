@@ -157,7 +157,7 @@ public enum FlowmoCLI {
         case .prime:
             return """
             Flowmo  prime\(paused)  \(view.intention)
-            \(Format.clock(view.remaining ?? 0)) remaining
+            \(Format.remainingClock(view.remaining ?? 0)) remaining
             """
         case .focus:
             return """
@@ -168,14 +168,14 @@ public enum FlowmoCLI {
         case .onBreak:
             return """
             Flowmo  break\(paused)  \(view.intention)
-            \(Format.clock(view.remaining ?? 0)) remaining
+            \(Format.remainingClock(view.remaining ?? 0)) remaining
             earned from \(Format.minutes(view.focusSeconds)) focus
             """
         case .recall:
             return """
             Flowmo  recall\(paused)  \(view.intention)
             What did you just do?
-            \(Format.clock(view.remaining ?? 0)) remaining
+            \(Format.remainingClock(view.remaining ?? 0)) remaining
             """
         case .closeBeat:
             let recall = view.recallText.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -18,7 +18,6 @@ public final class FlowmoSessionController: ObservableObject {
     private var timer: Timer?
     private var watcher: WorldWatcher?
     private var applying = false
-    private var lastKnownPhase: SessionPhase?
 
     public var status: SessionStatus {
         Engine.sessionStatus(world, now: now)
@@ -30,7 +29,6 @@ public final class FlowmoSessionController: ObservableObject {
         let loaded = (try? store.load()) ?? .empty
         self.world = loaded
         self.intentionDraft = loaded.profile.lastIntention
-        self.lastKnownPhase = loaded.live?.phase
         if loaded.live?.phase == .recall {
             self.recallDraft = loaded.live?.recallText ?? ""
         }
@@ -81,6 +79,7 @@ public final class FlowmoSessionController: ObservableObject {
 
     public func persistRecall() {
         guard world.live?.phase == .recall else { return }
+        guard world.live?.recallText != recallDraft else { return }
         apply(.setRecallText(recallDraft))
     }
 
@@ -160,18 +159,17 @@ public final class FlowmoSessionController: ObservableObject {
 
     private func refreshDraftsAfterChange() {
         let phase = world.live?.phase
-        if phase != lastKnownPhase {
-            if phase == .recall {
-                recallDraft = world.live?.recallText ?? ""
+        if phase == .recall {
+            let stored = world.live?.recallText ?? ""
+            if recallDraft != stored {
+                recallDraft = stored
             }
-            lastKnownPhase = phase
         }
         if world.live == nil {
             intentionDraft = world.profile.lastIntention
             showCapture = false
             captureDraft = ""
             recallDraft = ""
-            lastKnownPhase = nil
         }
     }
 }

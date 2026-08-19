@@ -13,13 +13,15 @@ cd ~/dev/flowmo
 swift build
 alias flowmo="$(swift build --show-bin-path)/flowmo"
 
-flowmo start writing     # setup + 2 min prime
-flowmo skip              # skip prime / break / recall
+swift run                # compact window (the product)
+
+# same live session, side door:
+flowmo start writing
+flowmo skip
 flowmo capture "call the accountant"
-flowmo stop              # end focus, start earned break
-flowmo status
-flowmo pause
-flowmo resume
+flowmo stop
+flowmo continue          # after quit/sleep recovery
+flowmo status --json
 flowmo cancel
 ```
 

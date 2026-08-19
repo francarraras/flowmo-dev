@@ -16,6 +16,7 @@ struct FlowmoRootView: View {
                 }
                 .buttonStyle(.plain)
                 .help(controller.isPinned ? "Unpin" : "Pin on top")
+                .accessibilityLabel(controller.isPinned ? "Unpin" : "Pin on top")
             }
 
             Group {
@@ -72,6 +73,7 @@ private struct IdlePane: View {
                 controller.start()
             }
             .keyboardShortcut(.defaultAction)
+            .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             Text("Today \(Format.clock(status.todayFocusSeconds))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -88,7 +90,7 @@ private struct PrimePane: View {
             Text(status.intention)
                 .multilineTextAlignment(.center)
             DeterminateRing(progress: ringProgress(status))
-            Text(Format.clock(status.remaining ?? 0))
+            Text(Format.remainingClock(status.remaining ?? 0))
                 .font(.system(size: 28, weight: .light, design: .monospaced))
             if !status.isPaused {
                 Button("Skip") { controller.skip() }
@@ -113,6 +115,10 @@ private struct FocusPane: View {
                         .textFieldStyle(.roundedBorder)
                         .focused($captureFocused)
                         .onSubmit { controller.submitCapture() }
+                        .onExitCommand {
+                            controller.captureDraft = ""
+                            controller.showCapture = false
+                        }
                         .onAppear { captureFocused = true }
                 } else {
                     Button {
@@ -122,6 +128,7 @@ private struct FocusPane: View {
                     }
                     .buttonStyle(.plain)
                     .help("Park a thought")
+                    .accessibilityLabel("Park a thought")
                 }
                 Button("Stop") { controller.stopFocus() }
             }
@@ -138,7 +145,7 @@ private struct BreakPane: View {
             Text("This rest was earned")
                 .multilineTextAlignment(.center)
             DeterminateRing(progress: ringProgress(status))
-            Text(Format.clock(status.remaining ?? 0))
+            Text(Format.remainingClock(status.remaining ?? 0))
                 .font(.system(size: 28, weight: .light, design: .monospaced))
             if !status.isPaused {
                 Button("Skip") { controller.skip() }
@@ -166,7 +173,7 @@ private struct RecallPane: View {
                     .foregroundStyle(.secondary)
             }
             DeterminateRing(progress: ringProgress(status))
-            Text(Format.clock(status.remaining ?? 0))
+            Text(Format.remainingClock(status.remaining ?? 0))
                 .font(.system(size: 28, weight: .light, design: .monospaced))
             if !status.isPaused {
                 Button("Skip") { controller.skip() }
@@ -224,23 +231,17 @@ private struct EarnedStrip: View {
     var seconds: TimeInterval
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            GeometryReader { geo in
-                let cap: TimeInterval = 10 * 60
-                let fraction = min(1, max(0, seconds / cap))
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.primary.opacity(0.12))
-                    Capsule()
-                        .fill(Color.primary.opacity(0.7))
-                        .frame(width: max(3, geo.size.width * fraction))
-                }
+        VStack(spacing: 8) {
+            if seconds >= 1 {
+                Capsule()
+                    .fill(Color.primary.opacity(0.7))
+                    .frame(width: min(220, max(2, CGFloat(seconds / 60) * 28)), height: 4)
+                Text(Format.earned(seconds))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .frame(height: 4)
-            Text(Format.earned(seconds))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
         }
+        .frame(minHeight: 28)
     }
 }
 
