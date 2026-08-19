@@ -8,10 +8,16 @@ public struct Store: Sendable {
         if let override = ProcessInfo.processInfo.environment["FLOWMO_HOME"], !override.isEmpty {
             return Store(root: URL(fileURLWithPath: override, isDirectory: true))
         }
-        let home = ProcessInfo.processInfo.environment["HOME"].map {
-            URL(fileURLWithPath: $0, isDirectory: true)
-        } ?? FileManager.default.homeDirectoryForCurrentUser
-        return Store(root: home.appendingPathComponent(".flowmo", isDirectory: true))
+        if let home = ProcessInfo.processInfo.environment["HOME"], !home.isEmpty {
+            return Store(root: URL(fileURLWithPath: home, isDirectory: true).appendingPathComponent(".flowmo", isDirectory: true))
+        }
+        #if os(macOS)
+        return Store(root: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".flowmo", isDirectory: true))
+        #else
+        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return Store(root: support.appendingPathComponent("flowmo", isDirectory: true))
+        #endif
     }
 
     public init(root: URL) {

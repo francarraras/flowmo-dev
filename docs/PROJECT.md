@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-08-19  
 Owner: Fran Carrara  
-Status: brief locked; window, visual pass, Focus Guard, menu-bar glance, and `flowmo live` shipped. Phase cues stay on by default; mute is a window control. iPhone stays later.
+Status: brief locked; Mac shipped. iPhone slice signed ([`iphone-tasks.md`](iphone-tasks.md)). Widgets, history, theme packs, and iCloud stay after that.
 
 ---
 
@@ -138,8 +138,8 @@ Pause exists only as **recovery**:
 | **Menu bar** | Glance only (clock; click shows the window) | Still not the product |
 | **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
 | **CLI / JSON API** | For agents and scripts | Same verbs, same store as the window |
-| **iPhone** | Out | Same loop, same store schema, after Mac window is real |
-| **Widgets** | Out | Projection of the same session |
+| **iPhone** | Signed slice ([`iphone.md`](iphone.md)) | Same loop, local store; iCloud later |
+| **Widgets** | Out | After the iPhone app exists |
 
 ### CLI / agents (intent, not a command lifestyle)
 
@@ -253,8 +253,8 @@ Suggested first vertical slice when someone is told to build: **idle → type on
 
 - Visual identity / themes (beyond the signed compact pass)
 - Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
-- iPhone client
-- Widgets, Watch, iCloud
+- iPhone client (signed: [`iphone-tasks.md`](iphone-tasks.md); local, no iCloud)
+- Widgets, Watch, iCloud (after iPhone)
 - Flashcards, SM-2, consolidation, reflection
 - History browser
 - Learning anything other than break ratio

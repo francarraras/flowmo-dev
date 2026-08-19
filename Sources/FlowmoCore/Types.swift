@@ -465,3 +465,33 @@ public struct SessionStatus: Equatable, Sendable {
         self.ratio = ratio
     }
 }
+
+/// Local notification delay while the process is suspended. Nil for Focus or paused.
+public enum TimedNotice {
+    public static func remainingToSchedule(_ status: SessionStatus) -> TimeInterval? {
+        if status.isPaused { return nil }
+        switch status.phase {
+        case .prime, .onBreak, .recall:
+            let remaining = status.remaining ?? 0
+            return remaining > 0.05 ? remaining : nil
+        default:
+            return nil
+        }
+    }
+
+    public static func copy(for phase: SessionPhase?) -> (title: String, body: String) {
+        switch phase {
+        case .focus:
+            return ("Flowmo", "Prime ended.")
+        case .onBreak:
+            return ("Flowmo", "Focus stopped. Break earned.")
+        case .recall:
+            return ("Flowmo", "Break ended.")
+        case .closeBeat:
+            return ("Flowmo", "Recall ended.")
+        default:
+            return ("Flowmo", "Phase changed.")
+        }
+    }
+}
+

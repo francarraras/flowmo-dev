@@ -7,15 +7,18 @@ let package = Package(
     name: "flowmo",
     platforms: [
         .macOS(.v13),
+        .iOS(.v16),
     ],
     products: [
         .library(name: "FlowmoCore", targets: ["FlowmoCore"]),
         .library(name: "FlowmoWindow", targets: ["FlowmoWindow"]),
+        .library(name: "FlowmoPhone", targets: ["FlowmoPhone"]),
         .executable(name: "flowmo", targets: ["FlowmoApp"]),
     ],
     targets: [
         .target(name: "FlowmoCore"),
         .target(name: "FlowmoWindow", dependencies: ["FlowmoCore"]),
+        .target(name: "FlowmoPhone", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoCheck", dependencies: ["FlowmoCore"]),
         .executableTarget(

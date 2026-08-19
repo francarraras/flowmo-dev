@@ -505,6 +505,35 @@ do {
     Check.expect(false, "cues store threw \(error)")
 }
 
+
+do {
+    var engine = Engine()
+    Check.expect(TimedNotice.remainingToSchedule(engine.status(now: t0)) == nil, "idle has no timed notice")
+    try engine.apply(.start(intention: "x"), now: t0)
+    Check.expectNear(TimedNotice.remainingToSchedule(engine.status(now: t0)) ?? -1, 120, "prime schedules remaining")
+    try engine.apply(.pauseForRecovery, now: t0)
+    Check.expect(TimedNotice.remainingToSchedule(engine.status(now: t0)) == nil, "paused does not schedule")
+    try engine.apply(.`continue`, now: t0)
+    try engine.apply(.skip, now: t0)
+    Check.expect(TimedNotice.remainingToSchedule(engine.status(now: t0)) == nil, "focus has no end notice")
+} catch {
+    Check.expect(false, "timed notice threw \(error)")
+}
+
+do {
+    var engine = Engine()
+    try engine.apply(.start(intention: "x"), now: t0)
+    try engine.apply(.skip, now: t0)
+    Check.expect(engine.world.live?.isPaused == false, "focus unpaused")
+    engine.pauseUnpausedLiveOnProcessStart(now: t0.addingTimeInterval(10))
+    Check.expect(engine.world.live?.isPaused == true, "process start pauses live")
+    Check.expect(engine.world.live?.phase == .focus, "process start keeps phase")
+    engine.pauseUnpausedLiveOnProcessStart(now: t0.addingTimeInterval(20))
+    Check.expect(engine.world.live?.isPaused == true, "already paused stays paused")
+} catch {
+    Check.expect(false, "process start pause threw \(error)")
+}
+
     if Check.failed == 0 {
         print("ok")
         return 0

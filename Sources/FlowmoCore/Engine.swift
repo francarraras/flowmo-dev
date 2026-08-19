@@ -79,6 +79,12 @@ public struct Engine: Equatable, Sendable {
         }
     }
 
+    /// Cold launch on iPhone: freeze an unpaused live session before UI.
+    public mutating func pauseUnpausedLiveOnProcessStart(now: Date) {
+        guard world.live?.isPaused == false else { return }
+        try? apply(.pauseForRecovery, now: now)
+    }
+
     public func status(now: Date, calendar: Calendar = .current) -> SessionStatus {
         Self.sessionStatus(world, now: now, calendar: calendar)
     }
