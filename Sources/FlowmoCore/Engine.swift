@@ -44,6 +44,8 @@ public struct Engine: Equatable, Sendable {
             try setRecallText(text)
         case .cancel:
             try cancel()
+        case .configureFocusGuard(let config):
+            try configureFocusGuard(config)
         case .pauseForRecovery, .`continue`:
             break
         }
@@ -265,6 +267,13 @@ public struct Engine: Equatable, Sendable {
     private mutating func cancel() throws {
         guard world.live != nil else { throw EngineError.nothingRunning }
         world.live = nil
+    }
+
+    private mutating func configureFocusGuard(_ config: FocusGuardConfiguration) throws {
+        guard world.live == nil else { throw EngineError.notIdle }
+        var next = config
+        next.bundleIdentifiers = FocusGuard.normalize(config.bundleIdentifiers)
+        world.config.focusGuard = next
     }
 
     private mutating func capture(_ text: String, now: Date) throws {

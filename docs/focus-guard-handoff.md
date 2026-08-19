@@ -1,6 +1,6 @@
 # Flowmo Focus Guard — future handoff
 
-Status: researched product/engineering plan; **not part of signed v1 and not implementation authorization**  
+Status: researched product/engineering plan. Slice drafts: [`focus-guard.md`](focus-guard.md), [`focus-guard-design.md`](focus-guard-design.md), [`focus-guard-tasks.md`](focus-guard-tasks.md). **Not implementation authorization** until those are signed.  
 Decision date: 2026-08-19  
 Chosen scope: Mac apps only, best-effort soft guard
 

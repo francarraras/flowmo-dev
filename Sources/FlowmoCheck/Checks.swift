@@ -341,6 +341,111 @@ Check.expectEqual(Format.earned(90), "1.5m earned", "earned copy")
 Check.expectEqual(Format.minutes(0.2), "0s", "sub-second earned still formats as 0s")
 Check.expectEqual(Format.minutes(1), "1s", "1s earned is visible")
 
+
+do {
+    let json = Data("""
+    {"primeSeconds":120,"recallSeconds":300,"defaultBreakRatio":5}
+    """.utf8)
+    let config = try JSONDecoder.flowmo.decode(Config.self, from: json)
+    Check.expect(config.focusGuard == .default, "legacy config has guard off")
+    Check.expect(config.focusGuard.bundleIdentifiers.isEmpty, "legacy guard list empty")
+} catch {
+    Check.expect(false, "legacy config decode threw \(error)")
+}
+
+Check.expectEqual(
+    FocusGuard.normalize(["  com.apple.Safari ", "com.apple.Safari", "app.flowmo.mac", "", "com.apple.finder", "com.apple.Mail"]),
+    ["com.apple.Mail", "com.apple.Safari"],
+    "normalize sorts, uniques, drops forbidden"
+)
+
+do {
+    var engine = Engine()
+    try engine.apply(.configureFocusGuard(FocusGuardConfiguration(enabled: true, bundleIdentifiers: ["com.apple.Safari"])), now: t0)
+    Check.expect(engine.world.config.focusGuard.enabled, "idle can set guard")
+    Check.expectEqual(engine.world.config.focusGuard.bundleIdentifiers, ["com.apple.Safari"], "guard ids stored")
+    try engine.apply(.start(intention: "x"), now: t0)
+    var blocked = false
+    do {
+        try engine.apply(.configureFocusGuard(FocusGuardConfiguration(enabled: false, bundleIdentifiers: [])), now: t0)
+    } catch EngineError.notIdle {
+        blocked = true
+    }
+    Check.expect(blocked, "guard config idle-only")
+    Check.expect(FocusGuard.demand(world: engine.world) == .inactive, "prime is not guarded")
+    try engine.apply(.skip, now: t0)
+    if case .active(_, let ids) = FocusGuard.demand(world: engine.world) {
+        Check.expect(ids == ["com.apple.Safari"], "focus demand active")
+    } else {
+        Check.expect(false, "focus demand should be active")
+    }
+    try engine.apply(.pauseForRecovery, now: t0.addingTimeInterval(1))
+    Check.expect(FocusGuard.demand(world: engine.world) == .inactive, "paused focus not guarded")
+    try engine.apply(.`continue`, now: t0.addingTimeInterval(2))
+    Check.expect(FocusGuard.demand(world: engine.world) != .inactive, "continue restores demand")
+    try engine.apply(.stopFocus, now: t0.addingTimeInterval(3))
+    Check.expect(FocusGuard.demand(world: engine.world) == .inactive, "break not guarded")
+} catch {
+    Check.expect(false, "guard demand threw \(error)")
+}
+
+do {
+    var runtime = FocusGuardRuntime()
+    let sid = UUID()
+    runtime.setDemand(.active(sessionID: sid, bundleIdentifiers: ["com.apple.Safari"]))
+    Check.expectEqual(
+        runtime.activated(bundleID: "com.apple.Mail", processID: 1, displayName: "Mail", isSelf: false),
+        .ignore,
+        "unselected app ignored"
+    )
+    Check.expectEqual(
+        runtime.activated(bundleID: "com.apple.Safari", processID: 42, displayName: "Safari", isSelf: true),
+        .ignore,
+        "self ignored"
+    )
+    Check.expectEqual(
+        runtime.activated(bundleID: "com.apple.Safari", processID: 42, displayName: "Safari", isSelf: false),
+        .intercept,
+        "selected app intercepted"
+    )
+    Check.expect(runtime.interception?.processIdentifier == 42, "interception stored")
+    runtime.allowOnce()
+    Check.expect(runtime.interception == nil, "open once clears intercept")
+    Check.expectEqual(
+        runtime.activated(bundleID: "com.apple.Safari", processID: 42, displayName: "Safari", isSelf: false),
+        .allowedOnce,
+        "same pid allowed once"
+    )
+    runtime.deactivated(processID: 42)
+    Check.expectEqual(
+        runtime.activated(bundleID: "com.apple.Safari", processID: 42, displayName: "Safari", isSelf: false),
+        .intercept,
+        "after deactivate, next activation intercepted"
+    )
+    runtime.setDemand(.inactive)
+    Check.expect(runtime.interception == nil, "inactive clears intercept")
+    Check.expectEqual(
+        runtime.activated(bundleID: "com.apple.Safari", processID: 42, displayName: "Safari", isSelf: false),
+        .ignore,
+        "inactive ignores"
+    )
+}
+
+do {
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent("flowmo-guard-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    let store = Store(root: root)
+    _ = try store.update { engine in
+        try engine.apply(.configureFocusGuard(FocusGuardConfiguration(enabled: true, bundleIdentifiers: ["com.apple.Safari"])), now: t0)
+    }
+    let loaded = try store.load()
+    Check.expect(loaded.config.focusGuard.enabled, "store keeps guard on")
+    Check.expectEqual(loaded.config.focusGuard.bundleIdentifiers, ["com.apple.Safari"], "store keeps guard ids")
+} catch {
+    Check.expect(false, "guard store threw \(error)")
+}
+
     if Check.failed == 0 {
         print("ok")
         return 0

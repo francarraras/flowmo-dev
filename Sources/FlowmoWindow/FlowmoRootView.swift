@@ -1,3 +1,5 @@
+import AppKit
+import UniformTypeIdentifiers
 import SwiftUI
 import FlowmoCore
 
@@ -96,6 +98,7 @@ private struct IdlePane: View {
             Text("Today \(Format.clock(status.todayFocusSeconds))")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(Look.dim)
+            GuardConfig(controller: controller)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -124,6 +127,20 @@ private struct FocusPane: View {
         VStack(spacing: 10) {
             ScaledClock(Format.clock(status.elapsed), floor: 36, ceiling: 72)
             EarnedStrip(seconds: status.earnedBreakSeconds)
+            if let line = controller.guardStatusLine {
+                Text(line)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Look.dim)
+            }
+            if let hit = controller.focusGuard.runtime.interception, !status.isPaused {
+                Text("\(hit.displayName) is guarded during this Focus.")
+                    .font(.footnote.weight(.medium))
+                    .multilineTextAlignment(.center)
+                HStack(spacing: 12) {
+                    QuietButton("Stay focused") { controller.stayFocused() }
+                    AccentButton("Open once") { controller.openOnce() }
+                }
+            }
             if !status.isPaused {
                 if controller.showCapture {
                     DarkField("Park a thought", text: $controller.captureDraft)
@@ -461,6 +478,82 @@ private struct EarnedStrip: View {
 private func ringProgress(_ status: SessionStatus) -> Double {
     guard let duration = status.phaseDuration, duration > 0 else { return 0 }
     return min(1, max(0, status.elapsed / duration))
+}
+
+
+private struct GuardConfig: View {
+    @ObservedObject var controller: FlowmoSessionController
+
+    var body: some View {
+        let config = controller.world.config.focusGuard
+        VStack(spacing: 6) {
+            Button {
+                controller.showGuardConfig.toggle()
+            } label: {
+                Text(guardLabel(config))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Look.mute)
+            }
+            .buttonStyle(PressStyle())
+            if controller.showGuardConfig {
+                Toggle("On", isOn: Binding(
+                    get: { config.enabled },
+                    set: { controller.setGuardEnabled($0) }
+                ))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .tint(Look.accent)
+                ForEach(config.bundleIdentifiers, id: \.self) { id in
+                    HStack {
+                        Text(displayName(id))
+                            .font(.caption)
+                            .lineLimit(1)
+                        Spacer()
+                        Button("Remove") {
+                            controller.removeGuardedApp(bundleIdentifier: id)
+                        }
+                        .buttonStyle(PressStyle())
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Look.mute)
+                    }
+                }
+                QuietButton("Add app") { pickApp() }
+            }
+        }
+    }
+
+    private func guardLabel(_ config: FocusGuardConfiguration) -> String {
+        if !config.enabled || config.bundleIdentifiers.isEmpty {
+            return "Guard: Off"
+        }
+        let n = config.bundleIdentifiers.count
+        return n == 1 ? "Guard: 1 app" : "Guard: \(n) apps"
+    }
+
+    private func displayName(_ id: String) -> String {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id),
+           let name = Bundle(url: url)?.object(forInfoDictionaryKey: "CFBundleName") as? String {
+            return name
+        }
+        return id
+    }
+
+    private func pickApp() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [UTType.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.begin { result in
+            guard result == .OK else { return }
+            for url in panel.urls {
+                if let id = Bundle(url: url)?.bundleIdentifier {
+                    controller.addGuardedApp(bundleIdentifier: id)
+                }
+            }
+        }
+    }
 }
 
 private struct WindowPin: NSViewRepresentable {

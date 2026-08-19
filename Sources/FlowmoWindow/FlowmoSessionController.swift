@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 import FlowmoCore
@@ -11,31 +12,56 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public var recallDraft: String = ""
     @Published public var showCapture: Bool = false
     @Published public var isPinned: Bool = false
+    @Published public var showGuardConfig: Bool = false
 
     let store: Store
     let attention: AttentionAdapter
+    let focusGuard: FocusGuardAdapter
 
     private var timer: Timer?
     private var watcher: WorldWatcher?
     private var applying = false
+    private var cancellables = Set<AnyCancellable>()
 
     public var status: SessionStatus {
         Engine.sessionStatus(world, now: now)
     }
 
-    public init(store: Store = .default, attention: AttentionAdapter = AttentionAdapter()) {
+    public var guardStatusLine: String? {
+        if focusGuard.runtime.degraded {
+            return "Guard unavailable"
+        }
+        return FocusGuard.statusLine(world: world)
+    }
+
+    public init(
+        store: Store = .default,
+        attention: AttentionAdapter = AttentionAdapter(),
+        focusGuard: FocusGuardAdapter = FocusGuardAdapter()
+    ) {
         self.store = store
         self.attention = attention
+        self.focusGuard = focusGuard
         let loaded = (try? store.load()) ?? .empty
         self.world = loaded
         self.intentionDraft = loaded.profile.lastIntention
         if loaded.live?.phase == .recall {
             self.recallDraft = loaded.live?.recallText ?? ""
         }
+        focusGuard.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     public func startRunning() {
+        focusGuard.attach { [weak self] in
+            self?.attention.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
         reloadFromStore(cueIfChanged: false)
+        reconcileGuard()
         let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.tick()
@@ -88,6 +114,37 @@ public final class FlowmoSessionController: ObservableObject {
         apply(.skip)
     }
 
+    public func configureFocusGuard(_ config: FocusGuardConfiguration) {
+        apply(.configureFocusGuard(config))
+    }
+
+    public func addGuardedApp(bundleIdentifier: String) {
+        var config = world.config.focusGuard
+        config.bundleIdentifiers.append(bundleIdentifier)
+        config.enabled = true
+        apply(.configureFocusGuard(config))
+    }
+
+    public func removeGuardedApp(bundleIdentifier: String) {
+        var config = world.config.focusGuard
+        config.bundleIdentifiers.removeAll { $0 == bundleIdentifier }
+        apply(.configureFocusGuard(config))
+    }
+
+    public func setGuardEnabled(_ enabled: Bool) {
+        var config = world.config.focusGuard
+        config.enabled = enabled
+        apply(.configureFocusGuard(config))
+    }
+
+    public func stayFocused() {
+        focusGuard.stayFocused()
+    }
+
+    public func openOnce() {
+        focusGuard.openOnce()
+    }
+
     private func tick() {
         now = Date()
         var probe = Engine(world: world)
@@ -109,6 +166,7 @@ public final class FlowmoSessionController: ObservableObject {
             now = Date()
             attention.phaseChanged(from: before, to: world.live?.phase)
             refreshDraftsAfterChange()
+            reconcileGuard()
         } catch {
             var engine = Engine(world: world)
             engine.sync(now: Date())
@@ -128,6 +186,7 @@ public final class FlowmoSessionController: ObservableObject {
             now = Date()
             attention.phaseChanged(from: before, to: world.live?.phase)
             refreshDraftsAfterChange()
+            reconcileGuard()
         } catch {
             // Invalid for the current phase; leave the window as-is.
         }
@@ -152,6 +211,7 @@ public final class FlowmoSessionController: ObservableObject {
                 attention.phaseChanged(from: before, to: world.live?.phase)
             }
             refreshDraftsAfterChange()
+            reconcileGuard()
         } catch {
             return
         }
@@ -170,6 +230,12 @@ public final class FlowmoSessionController: ObservableObject {
             showCapture = false
             captureDraft = ""
             recallDraft = ""
+        } else {
+            showGuardConfig = false
         }
+    }
+
+    private func reconcileGuard() {
+        focusGuard.reconcile(world: world)
     }
 }
