@@ -1,24 +1,21 @@
 import SwiftUI
 import FlowmoCore
 
+private enum Look {
+    static let field = Color.black
+    static let ink = Color.white
+    static let mute = Color.white.opacity(0.72)
+    static let dim = Color.white.opacity(0.42)
+    static let accent = Color.cyan
+    static let well = Color.white.opacity(0.08)
+}
+
 struct FlowmoRootView: View {
     @ObservedObject var controller: FlowmoSessionController
 
     var body: some View {
         let status = controller.status
-        VStack(spacing: 18) {
-            HStack {
-                Spacer()
-                Button {
-                    controller.isPinned.toggle()
-                } label: {
-                    Image(systemName: controller.isPinned ? "pin.fill" : "pin")
-                }
-                .buttonStyle(.plain)
-                .help(controller.isPinned ? "Unpin" : "Pin on top")
-                .accessibilityLabel(controller.isPinned ? "Unpin" : "Pin on top")
-            }
-
+        VStack(spacing: 12) {
             Group {
                 if status.isIdle {
                     IdlePane(controller: controller, status: status)
@@ -27,17 +24,41 @@ struct FlowmoRootView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
             if status.isPaused {
-                Button("Continue") {
+                AccentButton("Continue") {
                     controller.continueSession()
                 }
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(20)
-        .frame(minWidth: 260, minHeight: 340)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
+        .padding(.top, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(Look.ink)
+        .background(Look.field)
+        .preferredColorScheme(.dark)
+        .overlay(alignment: .topTrailing) {
+            pinButton
+        }
         .background(WindowPin(pinned: controller.isPinned))
+    }
+
+    private var pinButton: some View {
+        Button {
+            controller.isPinned.toggle()
+        } label: {
+            Image(systemName: controller.isPinned ? "pin.fill" : "pin")
+                .font(.body.weight(.medium))
+                .foregroundStyle(controller.isPinned ? Look.accent : Look.mute)
+                .frame(width: 36, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .help(controller.isPinned ? "Unpin" : "Pin on top")
+        .accessibilityLabel(controller.isPinned ? "Unpin" : "Pin on top")
+        .padding(.top, 4)
+        .padding(.trailing, 8)
     }
 
     @ViewBuilder
@@ -64,20 +85,19 @@ private struct IdlePane: View {
     var status: SessionStatus
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text(Format.clock(0))
-                .font(.system(size: 44, weight: .light, design: .monospaced))
-            TextField("Intention", text: $controller.intentionDraft)
-                .textFieldStyle(.roundedBorder)
-            Button("Start") {
+        VStack(spacing: 12) {
+            ScaledClock(Format.clock(0), floor: 32, ceiling: 64)
+            DarkField("Intention", text: $controller.intentionDraft)
+            AccentButton("Start") {
                 controller.start()
             }
             .keyboardShortcut(.defaultAction)
             .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             Text("Today \(Format.clock(status.todayFocusSeconds))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(Look.dim)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -86,16 +106,12 @@ private struct PrimePane: View {
     var status: SessionStatus
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text(status.intention)
-                .multilineTextAlignment(.center)
-            DeterminateRing(progress: ringProgress(status))
-            Text(Format.remainingClock(status.remaining ?? 0))
-                .font(.system(size: 28, weight: .light, design: .monospaced))
-            if !status.isPaused {
-                Button("Skip") { controller.skip() }
-            }
-        }
+        TimedPane(
+            caption: status.intention,
+            progress: ringProgress(status),
+            clock: Format.remainingClock(status.remaining ?? 0),
+            skip: status.isPaused ? nil : { controller.skip() }
+        )
     }
 }
 
@@ -105,14 +121,12 @@ private struct FocusPane: View {
     @FocusState private var captureFocused: Bool
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text(Format.clock(status.elapsed))
-                .font(.system(size: 48, weight: .light, design: .monospaced))
+        VStack(spacing: 10) {
+            ScaledClock(Format.clock(status.elapsed), floor: 36, ceiling: 72)
             EarnedStrip(seconds: status.earnedBreakSeconds)
             if !status.isPaused {
                 if controller.showCapture {
-                    TextField("Park a thought", text: $controller.captureDraft)
-                        .textFieldStyle(.roundedBorder)
+                    DarkField("Park a thought", text: $controller.captureDraft)
                         .focused($captureFocused)
                         .onSubmit { controller.submitCapture() }
                         .onExitCommand {
@@ -125,14 +139,19 @@ private struct FocusPane: View {
                         controller.showCapture = true
                     } label: {
                         Image(systemName: "plus")
+                            .font(.title3.weight(.medium))
+                            .foregroundStyle(Look.accent)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressStyle())
                     .help("Park a thought")
                     .accessibilityLabel("Park a thought")
                 }
-                Button("Stop") { controller.stopFocus() }
+                QuietButton("Stop") { controller.stopFocus() }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -141,16 +160,13 @@ private struct BreakPane: View {
     var status: SessionStatus
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text("This rest was earned")
-                .multilineTextAlignment(.center)
-            DeterminateRing(progress: ringProgress(status))
-            Text(Format.remainingClock(status.remaining ?? 0))
-                .font(.system(size: 28, weight: .light, design: .monospaced))
-            if !status.isPaused {
-                Button("Skip") { controller.skip() }
-            }
-        }
+        TimedPane(
+            caption: "This rest was earned",
+            mutedCaption: true,
+            progress: ringProgress(status),
+            clock: Format.remainingClock(status.remaining ?? 0),
+            skip: status.isPaused ? nil : { controller.skip() }
+        )
     }
 }
 
@@ -159,24 +175,21 @@ private struct RecallPane: View {
     var status: SessionStatus
 
     var body: some View {
-        VStack(spacing: 14) {
-            Text("What did you just do?")
-                .multilineTextAlignment(.center)
+        TimedPane(
+            caption: "What did you just do?",
+            progress: ringProgress(status),
+            clock: Format.remainingClock(status.remaining ?? 0),
+            skip: status.isPaused ? nil : { controller.skip() }
+        ) {
             if !status.isPaused {
-                TextField("Optional", text: $controller.recallDraft)
-                    .textFieldStyle(.roundedBorder)
+                DarkField("Optional", text: $controller.recallDraft)
                     .onChange(of: controller.recallDraft) { _ in
                         controller.persistRecall()
                     }
             } else if !status.recallText.isEmpty {
                 Text(status.recallText)
-                    .foregroundStyle(.secondary)
-            }
-            DeterminateRing(progress: ringProgress(status))
-            Text(Format.remainingClock(status.remaining ?? 0))
-                .font(.system(size: 28, weight: .light, design: .monospaced))
-            if !status.isPaused {
-                Button("Skip") { controller.skip() }
+                    .foregroundStyle(Look.mute)
+                    .multilineTextAlignment(.center)
             }
         }
     }
@@ -188,19 +201,21 @@ private struct CloseBeatPane: View {
 
     var body: some View {
         let recall = status.recallText.trimmingCharacters(in: .whitespacesAndNewlines)
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Text("Focus \(Format.clock(status.focusSeconds))")
+                .font(.body.weight(.medium).monospacedDigit())
             Text("Break \(Format.clock(status.breakSeconds ?? 0))")
+                .font(.body.weight(.medium).monospacedDigit())
             if !recall.isEmpty {
                 Text(recall)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Look.mute)
                     .multilineTextAlignment(.center)
             }
             if !status.isPaused {
                 Text("Click to dismiss")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button("Skip") { controller.dismissCloseBeat() }
+                    .foregroundStyle(Look.dim)
+                QuietButton("Skip") { controller.dismissCloseBeat() }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -211,19 +226,217 @@ private struct CloseBeatPane: View {
     }
 }
 
+/// Timed beats: one hero (clock inside the ring). Caption and Skip stay outside.
+private struct TimedPane<Extra: View>: View {
+    var caption: String
+    var mutedCaption: Bool = false
+    var progress: Double
+    var clock: String
+    var skip: (() -> Void)?
+    var extra: Extra
+
+    init(
+        caption: String,
+        mutedCaption: Bool = false,
+        progress: Double,
+        clock: String,
+        skip: (() -> Void)?,
+        @ViewBuilder extra: () -> Extra
+    ) {
+        self.caption = caption
+        self.mutedCaption = mutedCaption
+        self.progress = progress
+        self.clock = clock
+        self.skip = skip
+        self.extra = extra()
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Text(caption)
+                .font(.body.weight(.medium))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .foregroundStyle(mutedCaption ? Look.mute : Look.ink)
+            extra
+            ClockInRing(progress: progress, clock: clock)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .layoutPriority(1)
+            if let skip {
+                QuietButton("Skip", action: skip)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+extension TimedPane where Extra == EmptyView {
+    init(
+        caption: String,
+        mutedCaption: Bool = false,
+        progress: Double,
+        clock: String,
+        skip: (() -> Void)?
+    ) {
+        self.init(
+            caption: caption,
+            mutedCaption: mutedCaption,
+            progress: progress,
+            clock: clock,
+            skip: skip,
+            extra: { EmptyView() }
+        )
+    }
+}
+
+private struct ClockInRing: View {
+    var progress: Double
+    var clock: String
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(220, max(72, min(geo.size.width, geo.size.height)))
+            ZStack {
+                DeterminateRing(progress: progress, lineWidth: max(4, side * 0.055))
+                ClockText(clock, size: min(36, max(18, side * 0.24)))
+            }
+            .frame(width: side, height: side)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
+private struct ScaledClock: View {
+    var text: String
+    var floor: CGFloat
+    var ceiling: CGFloat
+
+    init(_ text: String, floor: CGFloat, ceiling: CGFloat) {
+        self.text = text
+        self.floor = floor
+        self.ceiling = ceiling
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = min(ceiling, max(floor, min(geo.size.width * 0.22, geo.size.height * 0.72)))
+            ClockText(text, size: size)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .layoutPriority(1)
+    }
+}
+
+private struct ClockText: View {
+    var text: String
+    var size: CGFloat
+
+    init(_ text: String, size: CGFloat) {
+        self.text = text
+        self.size = size
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: size, weight: .light, design: .default))
+            .monospacedDigit()
+            .tracking(size >= 28 ? -0.8 : 0)
+            .minimumScaleFactor(0.6)
+            .lineLimit(1)
+    }
+}
+
+private struct DarkField: View {
+    var placeholder: String
+    @Binding var text: String
+
+    init(_ placeholder: String, text: Binding<String>) {
+        self.placeholder = placeholder
+        self._text = text
+    }
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .textFieldStyle(.plain)
+            .font(.body)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Look.well)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private struct PressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+private struct AccentButton: View {
+    var title: String
+    var action: () -> Void
+
+    init(_ title: String, action: @escaping () -> Void) {
+        self.title = title
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.body.weight(.semibold))
+                .frame(minWidth: 72)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(Look.accent)
+                .foregroundStyle(Look.field)
+                .clipShape(Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(PressStyle())
+    }
+}
+
+private struct QuietButton: View {
+    var title: String
+    var action: () -> Void
+
+    init(_ title: String, action: @escaping () -> Void) {
+        self.title = title
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.body.weight(.medium))
+                .foregroundStyle(Look.mute)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+    }
+}
+
 private struct DeterminateRing: View {
     var progress: Double
+    var lineWidth: CGFloat = 6
 
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color.primary.opacity(0.12), lineWidth: 8)
+                .stroke(Look.ink.opacity(0.14), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: min(1, max(0, progress)))
-                .stroke(Color.primary, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .stroke(Look.accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
-        .frame(width: 112, height: 112)
+        .padding(lineWidth / 2)
     }
 }
 
@@ -231,17 +444,17 @@ private struct EarnedStrip: View {
     var seconds: TimeInterval
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             if seconds >= 1 {
                 Capsule()
-                    .fill(Color.primary.opacity(0.7))
-                    .frame(width: min(220, max(2, CGFloat(seconds / 60) * 28)), height: 4)
+                    .fill(Look.accent)
+                    .frame(width: min(160, max(2, CGFloat(seconds / 60) * 28)), height: 3)
                 Text(Format.earned(seconds))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Look.mute)
             }
         }
-        .frame(minHeight: 28)
+        .frame(minHeight: 20)
     }
 }
 
@@ -261,5 +474,14 @@ private struct WindowPin: NSViewRepresentable {
         guard let window = nsView.window else { return }
         window.level = pinned ? .floating : .normal
         window.hidesOnDeactivate = false
+        window.backgroundColor = .black
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
+        window.isOpaque = true
+        window.appearance = NSAppearance(named: .darkAqua)
+        if !window.styleMask.contains(.fullSizeContentView) {
+            window.styleMask.insert(.fullSizeContentView)
+        }
     }
 }

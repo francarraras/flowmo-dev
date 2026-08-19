@@ -91,16 +91,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingView(rootView: FlowmoRootView(controller: controller))
+        hosting.sizingOptions = [.minSize]
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 420),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 300, height: 360),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Flowmo"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.backgroundColor = .black
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.isOpaque = true
         window.contentView = hosting
-        window.setContentSize(NSSize(width: 300, height: 420))
-        window.minSize = NSSize(width: 260, height: 340)
+        window.setContentSize(NSSize(width: 300, height: 300))
+        window.contentMinSize = NSSize(width: 260, height: 260)
+        window.contentMaxSize = NSSize(width: 400, height: 480)
         window.isReleasedWhenClosed = false
         window.center()
         window.level = .normal

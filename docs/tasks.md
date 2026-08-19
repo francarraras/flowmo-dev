@@ -7,7 +7,7 @@ Signed off by the captain on 2026-08-18. Implementation of this list is allowed.
 
 The first slice of this list shipped. The Dock `.app` wrap is `Apps/Flowmo.xcodeproj` (same `FlowmoWindow`); it is not a second engine.
 
-Do not start a second store. Do not add a brand, menu bar, living TUI, or pause-during-focus.
+Do not start a second store. Do not add a menu bar, living TUI, or pause-during-focus. Visual pass is [`visual.md`](visual.md), not a theme pack.
 
 ---
 

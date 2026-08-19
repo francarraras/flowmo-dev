@@ -29,7 +29,7 @@ Signed by the captain on 2026-08-18. Clarify, constraints, engineering Plan (`do
 
 ## Not frozen here
 
-Exact SwiftUI pixel look belongs in a later visual pass. Pin-on-top is one control, default off (see `docs/plan.md`). Do not treat brand as locked.
+Exact SwiftUI pixel look: this pass is signed in [`docs/visual.md`](docs/visual.md) (tighten, black + cyan reference, hide title keep traffic lights). Not a theme pack. Pin default off.
 
 ## Source of truth
 
