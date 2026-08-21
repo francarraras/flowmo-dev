@@ -11,14 +11,16 @@ let package = Package(
     ],
     products: [
         .library(name: "FlowmoCore", targets: ["FlowmoCore"]),
+        .library(name: "FlowmoLook", targets: ["FlowmoLook"]),
         .library(name: "FlowmoWindow", targets: ["FlowmoWindow"]),
         .library(name: "FlowmoPhone", targets: ["FlowmoPhone"]),
         .executable(name: "flowmo", targets: ["FlowmoApp"]),
     ],
     targets: [
         .target(name: "FlowmoCore"),
-        .target(name: "FlowmoWindow", dependencies: ["FlowmoCore"]),
-        .target(name: "FlowmoPhone", dependencies: ["FlowmoCore"]),
+        .target(name: "FlowmoLook"),
+        .target(name: "FlowmoWindow", dependencies: ["FlowmoCore", "FlowmoLook"]),
+        .target(name: "FlowmoPhone", dependencies: ["FlowmoCore", "FlowmoLook"]),
         .target(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoCheck", dependencies: ["FlowmoCore"]),
         .executableTarget(

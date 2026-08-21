@@ -2,15 +2,7 @@ import AppKit
 import UniformTypeIdentifiers
 import SwiftUI
 import FlowmoCore
-
-private enum Look {
-    static let field = Color.black
-    static let ink = Color.white
-    static let mute = Color.white.opacity(0.72)
-    static let dim = Color.white.opacity(0.42)
-    static let accent = Color.cyan
-    static let well = Color.white.opacity(0.08)
-}
+import FlowmoLook
 
 struct FlowmoRootView: View {
     @ObservedObject var controller: FlowmoSessionController
@@ -105,22 +97,98 @@ struct FlowmoRootView: View {
 private struct IdlePane: View {
     @ObservedObject var controller: FlowmoSessionController
     var status: SessionStatus
+    @State private var showingHistory = false
+    @State private var historySnapshot: [CompletedSession] = []
 
     var body: some View {
-        VStack(spacing: 12) {
-            ScaledClock(Format.clock(0), floor: 32, ceiling: 64)
-            DarkField("Intention", text: $controller.intentionDraft)
-            AccentButton("Start") {
-                controller.start()
+        Group {
+            if showingHistory {
+                HistoryPane(sessions: historySnapshot) {
+                    showingHistory = false
+                }
+            } else {
+                VStack(spacing: 14) {
+                    DarkField("Intention", text: $controller.intentionDraft)
+                    AccentButton("Start") {
+                        controller.start()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    ScaledClock(Format.clock(0), floor: 18, ceiling: 28)
+                        .foregroundStyle(Look.dim)
+                        .frame(maxHeight: 36)
+                        .layoutPriority(0)
+                    HStack(spacing: 16) {
+                        Text("Today \(Format.clock(status.todayFocusSeconds))")
+                            .foregroundStyle(Look.dim)
+                        Button("History") {
+                            historySnapshot = HistoryOrder.newestFirst(controller.world.history)
+                            showingHistory = true
+                        }
+                        .buttonStyle(PressStyle())
+                        .foregroundStyle(Look.mute)
+                    }
+                    .font(.caption.weight(.medium))
+                    GuardConfig(controller: controller)
+                }
             }
-            .keyboardShortcut(.defaultAction)
-            .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            Text("Today \(Format.clock(status.todayFocusSeconds))")
-                .font(.caption.weight(.medium))
-                .foregroundStyle(Look.dim)
-            GuardConfig(controller: controller)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct HistoryPane: View {
+    var sessions: [CompletedSession]
+    var dismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack {
+                QuietButton("Back", action: dismiss)
+                Spacer()
+                Text("History")
+                    .font(.headline)
+            }
+            if sessions.isEmpty {
+                Text("No completed sessions yet.")
+                    .font(.body)
+                    .foregroundStyle(Look.mute)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(sessions, id: \.id) { session in
+                            HistoryRow(session: session)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct HistoryRow: View {
+    var session: CompletedSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(session.intention.isEmpty ? "No intention" : session.intention)
+                    .font(.body.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(Format.clock(session.focusSeconds))
+                    .font(.body.weight(.medium).monospacedDigit())
+            }
+            Text(session.endedAt, format: .dateTime.month(.abbreviated).day().year())
+                .font(.caption)
+                .foregroundStyle(Look.dim)
+        }
+        .padding(10)
+        .background(Look.well)
+        .clipShape(RoundedRectangle(cornerRadius: Look.corner, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -131,6 +199,7 @@ private struct PrimePane: View {
     var body: some View {
         TimedPane(
             caption: status.intention,
+            mutedCaption: true,
             progress: ringProgress(status),
             clock: Format.remainingClock(status.remaining ?? 0),
             skip: status.isPaused ? nil : { controller.skip() }
@@ -145,7 +214,7 @@ private struct FocusPane: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            ScaledClock(Format.clock(status.elapsed), floor: 36, ceiling: 72)
+            ScaledClock(Format.clock(status.elapsed), floor: 44, ceiling: 88)
             EarnedStrip(seconds: status.earnedBreakSeconds)
             if let line = controller.guardStatusLine {
                 Text(line)
@@ -400,7 +469,7 @@ private struct DarkField: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(Look.well)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Look.corner, style: .continuous))
     }
 }
 
@@ -467,10 +536,10 @@ private struct DeterminateRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Look.ink.opacity(0.14), lineWidth: lineWidth)
+                .stroke(Look.ringTrack, lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: min(1, max(0, progress)))
-                .stroke(Look.accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(Look.time, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
         .padding(lineWidth / 2)

@@ -4,6 +4,8 @@ These rules define the shipped compact frame:
 
 - **Tighten.** Same compact window. Less vertical gap. Clock closer to the actions. No extra widgets.
 - **Surface.** Black field. One cyan accent for timed rings and Start. Old iPhone timer is reference, not a theme pack, Home, or scores.
+- **Tokens.** Shared `FlowmoLook` (`Look`): `field`, `ink`, `mute`, `dim`, `accent`/`action`/`time`, `well`, `ringTrack`, `corner`. Mac and iPhone import the same module.
+- **Phase atmosphere.** Idle recedes the clock; intention and Start lead. Prime is still (muted caption). Focus enlarges the count-up. Break and Recall keep the clock in the ring. Close stays a receipt.
 - **Chrome.** Hide the title. Keep traffic lights. Pin stays in the content, default off.
 
 Layout (this pass):

@@ -338,6 +338,17 @@ extension CompletedSession: Codable {
     }
 }
 
+public enum HistoryOrder {
+    public static func newestFirst(_ sessions: [CompletedSession]) -> [CompletedSession] {
+        sessions.sorted { lhs, rhs in
+            if lhs.endedAt != rhs.endedAt {
+                return lhs.endedAt > rhs.endedAt
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+    }
+}
+
 public struct World: Codable, Equatable, Sendable {
     public var live: SessionSnapshot?
     public var profile: Profile

@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-08-21
 Owner: Fran Carrara  
-Status: Mac, iPhone, and iPhone widget shipped.
+Status: Mac, iPhone, widget, and local history list shipped.
 
 ---
 
@@ -86,7 +86,7 @@ The Mac **window is the product**.
 
 | State | On screen | Actions |
 |---|---|---|
-| **Idle** | Clock at 00:00. Last intention already filled. **Start**. A small **today** total (focus time today only). | Edit the line or Start. |
+| **Idle** | Clock at 00:00. Last intention already filled. **Start**. Today total and **History**. | Edit the line, Start, or inspect completed sessions. |
 | **Prime (2:00)** | Same intention line. Stilling. Countdown + **determinate** ring. | Sit. Skip. |
 | **Focus** | **Big count-up clock** (the hero). Under it: **thin strip + “Xm earned”** growing as `elapsed / ratio`. A **+** that opens the capture line. Stop. | Work. Park a thought. Stop. |
 | **Break** | Countdown + determinate ring. Copy that this rest was earned. | Sit. Skip. |
@@ -244,7 +244,7 @@ When implementation begins, the shape that matches this brief:
 5. Persistence: a small local store (JSON or SQLite under `~/.flowmo/`). SwiftData is not required.
 6. Notifications and sound are adapters around phase transitions, not the engine.
 
-Suggested first vertical slice when someone is told to build: **idle → type once → prime → focus (clock + earned strip + + capture) → stop → break ring → recall → close beat → idle**, with hide-window-keeps-running and quit-returns-paused. No menu bar, no history list, no themes.
+The shipped loop remains **idle → prime → focus → break → recall → close beat → idle**, with recovery pause, supporting glances, and a local completed-session list.
 
 ---
 
@@ -255,7 +255,7 @@ Suggested first vertical slice when someone is told to build: **idle → type on
 - iPhone client shipped ([`iphone.md`](iphone.md)); local, no iCloud
 - iPhone widget shipped ([`widget.md`](widget.md)); iCloud and Watch later
 - Flashcards, SM-2, consolidation, reflection
-- History browser
+- History dashboard, scoring, or charts
 - Learning anything other than break ratio
 - Monetization, licensing, marketing (out of scope for this brief)
 
@@ -287,7 +287,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Window size | Compact; optional float on top |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
-| Idle | Last intention + Start + today total |
+| Idle | Last intention + Start + today total + History |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |
 | Close / hide window | Session keeps running |
@@ -295,7 +295,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Resume after quit / sleep | One **Continue**. Window appearing does not resume. |
 | Pause button | No |
 | After recall | Quiet close beat; **click to dismiss** (Skip = dismiss). Then idle |
-| History UI | Today line only |
+| History UI | Plain local list from Idle: intention, Focus duration, date |
 | Window delivery | SwiftPM launcher (`swift run`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
 

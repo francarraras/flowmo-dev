@@ -206,6 +206,34 @@ do {
 }
 
 do {
+    let olderID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+    let earlierTieID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+    let laterTieID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+    func completed(_ id: UUID, endedAt: Date) -> CompletedSession {
+        CompletedSession(
+            id: id,
+            intention: id.uuidString,
+            focusSeconds: 60,
+            breakSeconds: 12,
+            captureCount: 0,
+            recallText: nil,
+            endedAt: endedAt
+        )
+    }
+    let sameNewerDate = t0.addingTimeInterval(60)
+    let ordered = HistoryOrder.newestFirst([
+        completed(olderID, endedAt: t0),
+        completed(laterTieID, endedAt: sameNewerDate),
+        completed(earlierTieID, endedAt: sameNewerDate),
+    ])
+    Check.expectEqual(
+        ordered.map(\.id),
+        [earlierTieID, laterTieID, olderID],
+        "history sorts newest first with stable UUID ties"
+    )
+}
+
+do {
     var engine = Engine()
     try engine.apply(.start(intention: "code"), now: t0)
     try engine.apply(.skip, now: t0)
