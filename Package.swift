@@ -18,7 +18,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "FlowmoCore"),
-        .target(name: "FlowmoLook"),
+        .target(name: "FlowmoLook", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoWindow", dependencies: ["FlowmoCore", "FlowmoLook"]),
         .target(name: "FlowmoPhone", dependencies: ["FlowmoCore", "FlowmoLook"]),
         .target(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
