@@ -1,6 +1,6 @@
 # Flowmo — menu-bar glance
 
-Signed by the captain on 2026-08-19 (keep shipping). The window remains the product. This is the glance from [`PROJECT.md`](PROJECT.md): time visible when the window is hidden.
+The window remains the product. The status item shows the Core clock while the window is hidden.
 
 ## In
 

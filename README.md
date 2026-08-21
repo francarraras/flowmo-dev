@@ -2,7 +2,7 @@
 
 Stop counting down. Start flowing up.
 
-**Source of truth:** [`docs/PROJECT.md`](docs/PROJECT.md) — updated vision, locked v1, handoff.
+**Product behavior:** [`docs/PROJECT.md`](docs/PROJECT.md).
 
 The CLI in this folder is an early sketch. It is not how people use Flowmo.
 

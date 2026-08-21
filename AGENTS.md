@@ -1,58 +1,42 @@
-# Flowmo — standing contract
+# Flowmo repo rules
 
-This file is house law for every coding session. Product intent lives in [`docs/PROJECT.md`](docs/PROJECT.md). If they conflict, **this file and PROJECT.md win** over the sketch CLI in this folder, `~/Flowmo`, and chat memory.
+Product behavior lives in [`docs/PROJECT.md`](docs/PROJECT.md). If chat, old code, or the frozen `~/Flowmo` tree conflicts with this file or PROJECT.md, this file and PROJECT.md win.
 
-## Process (hybrid)
+## Product invariants
 
-Default is lean: this file + PROJECT.md, a human-reviewed plan, then implementation.
+- Flowmo is a Flowmodoro. Focus counts up until the user stops. It must not feel like a 25/5 countdown timer.
+- The Mac window is the main product. The menu bar, terminal, CLI, JSON, and widget are supporting views or integrations.
+- The intention is typed once at idle. Prime only displays it.
+- Prime, break, and recall may use a determinate ring. Focus must not.
+- There is one live session per local store. Clocks come from persisted timestamps, not UI timer ticks.
 
-When a slice will not fit in a short spec — more than one focused page of new behavior, or it would change the locked v1 loop — stop. Write specify → plan → tasks artifacts and get a human gate before code. Do not invent that machinery for a small change.
+## Do not add
 
-Signed by the captain on 2026-08-18. Clarify, constraints, engineering Plan (`docs/design.md`), and Tasks (`docs/tasks.md`) are signed. First slice may be implemented only as that task list.
+- Pause during Focus. Quit or sleep recovery returns paused with one Continue; showing a window never resumes by itself.
+- A 0–100% Focus ring or fixed Focus deadline.
+- Home, tabs, setup screens, scores, streaks, flashcards, or a history dashboard.
+- Accessibility control, process killing, or a helper for Focus Guard. If `hide()` fails, fail open.
+- Widgets, iCloud, Watch, Live Activities, or theme work beyond the behavior already documented in this repo unless the user asks for that feature.
+- Code copied from `~/Flowmo`. It is visual and formula reference only.
 
-## Always
+## Shipped behavior
 
-- Flowmo is a Flowmodoro: count **up**, the user stops. If it feels like a 25/5 countdown timer, it failed.
-- The Mac **window is the product**. CLI/JSON may talk to the same live session; they are not the daily UI.
-- The intention is typed **once**, at idle. Prime only displays it.
-- Timed phases (prime, break, recall) may use a determinate ring. Focus must not.
-
-## Never (without an explicit captain reopen)
-
-- Do not add a Pause button during focus. Quit or sleep restores paused with one Continue; that is recovery, not a flow control. Window appearing must not resume by itself.
-- Do not add a 0–100% progress ring during focus.
-- Do not add Home, tabs, setup screens, scores, streaks, or flashcards. A status-item glance is allowed ([`docs/menu-bar.md`](docs/menu-bar.md)); it is not the product.
-- Do not grow the sketch CLI in this repo into the app. Reuse store or reducer ideas if they still fit; throw away command-by-command UX.
-- Do not invent a visual brand or theme pack. Look is undecided; the old iPhone black + cyan is reference only.
-- Do not start from or extend `~/Flowmo`. Formula and old timer/break screens are reference only.
-- Do not add widgets, a history browser, or learning beyond the locked break-ratio rule, in v1. iPhone is the signed slice in [`docs/iphone-tasks.md`](docs/iphone-tasks.md); do not grow it into widgets, iCloud, or `~/Flowmo`.
-
-## Not frozen here
-
-Exact SwiftUI pixel look: signed in [`docs/visual.md`](docs/visual.md). Pin default off. Phase cues on by default; speaker control mutes the sound.
-
-Focus Guard is signed in [`docs/focus-guard-tasks.md`](docs/focus-guard-tasks.md). Do not escalate to Accessibility or a helper if hide() fails.
-
-Menu-bar glance: [`docs/menu-bar.md`](docs/menu-bar.md). Living terminal: [`docs/live.md`](docs/live.md). Window stays the product.
-
-iPhone is signed in [`docs/iphone-tasks.md`](docs/iphone-tasks.md). Background suspends; schedule timed-phase banners. v2 candidates: [`docs/v2.md`](docs/v2.md) — unsigned; no v2 code until a slice is signed.
-
-## Source of truth
-
-Read `docs/PROJECT.md` before changing product behavior. Checkable v1 lines: `docs/acceptance.md`. Constraints: `docs/plan.md`. Engineering plan: `docs/design.md`. First slice: `docs/tasks.md`. `docs/V1.md` is superseded.
+- Mac loop and visual rules: [`docs/PROJECT.md`](docs/PROJECT.md) and [`docs/visual.md`](docs/visual.md).
+- Focus Guard: [`docs/focus-guard.md`](docs/focus-guard.md).
+- Menu-bar clock: [`docs/menu-bar.md`](docs/menu-bar.md).
+- Living terminal: [`docs/live.md`](docs/live.md).
+- Local iPhone app: [`docs/iphone.md`](docs/iphone.md).
+- iPhone widget: [`docs/widget.md`](docs/widget.md). It is a glance over the phone App Group store, not a session controller.
+- Roadmap only: [`docs/v2.md`](docs/v2.md).
 
 ## Run
 
-- Window: `swift run` (product `flowmo`)
-- Dock app: `xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES` then open `Flowmo.app` (bundle `app.flowmo.mac`). Same `FlowmoWindow` / Core as `swift run`. Ad-hoc sign; no Apple Developer team.
-- iPhone: `xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES`. Bundle `app.flowmo.phone`. Local store, not `~/.flowmo`.
-- Same live session, side door: `swift run flowmo status --json` and the other verbs; living view: `swift run flowmo live`
+- Window: `swift run`
+- Dock app: `xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES`, then open `Flowmo.app` (`app.flowmo.mac`).
+- iPhone: `xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES` (`app.flowmo.phone`).
+- CLI side door: `swift run flowmo status --json`
+- Living view: `swift run flowmo live`
 - Core proofs: `swift run flowmo check`
-- Store: `~/.flowmo/world.json` (override with `FLOWMO_HOME`)
+- Mac store: `~/.flowmo/world.json`, overridden by `FLOWMO_HOME`
 
-## Maintaining this file
-
-Keep this file for knowledge useful to almost every future agent session in this project.
-Do not repeat what the codebase already shows; point to the authoritative file or command instead.
-Prefer rewriting or pruning existing entries over appending new ones.
-When updating this file, preserve this bar for all agents and keep entries concise.
+Keep this file short. Put product decisions in PROJECT.md. Do not add generated planning pages, approval rituals, or duplicate task documents.

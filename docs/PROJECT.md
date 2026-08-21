@@ -1,12 +1,12 @@
-# Flowmo — project handoff
+# Flowmo — product
 
 This is the source of truth for the **current** product. It replaces the iPhone MVP vision in `~/Flowmo` (January–April 2026) for all new work.
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-19  
+Last updated: 2026-08-21
 Owner: Fran Carrara  
-Status: brief locked; Mac shipped. iPhone slice signed ([`iphone-tasks.md`](iphone-tasks.md)). Widgets, history, theme packs, and iCloud stay after that.
+Status: Mac, iPhone, and iPhone widget shipped.
 
 ---
 
@@ -14,7 +14,7 @@ Status: brief locked; Mac shipped. iPhone slice signed ([`iphone-tasks.md`](ipho
 
 Flowmo is a Flowmodoro — a Pomodoro with the science left in — that gets more accurate to the person using it.
 
-You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and agents can read and tweak the same session; they do not *be* the session.
+You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and scripts can read and tweak the same local session; they do not replace the app.
 
 **Tagline (kept):** Stop counting down. Start flowing up.
 
@@ -50,10 +50,9 @@ Spaced repetition, flashcards, consolidation, written reflection, flow scores, a
 The product must stay:
 
 - **A — Lightweight and instant.** Compact window. One frame. Seconds to start.
-- **B — Easy, configurable if you want.** Defaults are enough. A file/API exists for people and agents who want knobs.
-- **C — Scriptable.** CLI/API so power users and the community can improve it. Not the daily UI.
-- **D — Agent-friendly.** An agent can start, read, and tweak the **same** live session the window shows.
-- **E — A real app for Mac (then iPhone).** Trendy, visual, “pomodoro on steroids.” The window is what strangers use.
+- **B — Easy, configurable if you want.** Defaults are enough. A file and CLI exist for people who want knobs.
+- **C — Scriptable.** CLI and JSON support integrations without becoming the daily UI.
+- **D — A real app for Mac and iPhone.** The native session frame is what people use.
 
 ---
 
@@ -137,15 +136,15 @@ Pause exists only as **recovery**:
 | **Mac window** | The product | Still the product |
 | **Menu bar** | Glance only (clock; click shows the window) | Still not the product |
 | **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
-| **CLI / JSON API** | For agents and scripts | Same verbs, same store as the window |
-| **iPhone** | Signed slice ([`iphone.md`](iphone.md)) | Same loop, local store; iCloud later |
-| **Widgets** | Out | After the iPhone app exists |
+| **CLI / JSON** | Scripts and integrations | Same verbs, same store as the window |
+| **iPhone** | Shipped ([`iphone.md`](iphone.md)) | Same loop; local store, iCloud later |
+| **Widgets** | Shipped ([`widget.md`](widget.md)) | Glance; not the product |
 
-### CLI / agents (intent, not a command lifestyle)
+### CLI and scripts
 
 Humans do not run a session by typing `start` → `status` → `skip` → `stop`. That was a mistake in an early sketch.
 
-Agents and scripts **may** fire verbs against a session the window (or a living TUI) is already showing:
+Scripts may fire verbs against the same session shown by the window or living terminal view:
 
 - start with a label  
 - stop focus  
@@ -169,7 +168,7 @@ After each completed session, record focus duration.
 
 Prime stays 2:00. Recall stays 5:00. Learning does **not** turn recall or prime on/off in v1.
 
-The profile should be inspectable (a file or `status` field) so an agent can see the current ratio and, later, a one-line reason. The idle window does not need a lecture about it.
+The profile stays inspectable through the file and `status` output, including the current ratio and its one-line reason. The idle window does not need a lecture about it.
 
 ---
 
@@ -239,8 +238,8 @@ Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may
 When implementation begins, the shape that matches this brief:
 
 1. **One session store** (timestamps + state). Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view.
-2. **One live session**, file lock if CLI/agents share the store.
-3. **Mac window first** (SwiftUI). Compact. States above. Then optional living terminal. Then agents. Then iPhone.
+2. **One live session**, with a file lock shared by the window and CLI.
+3. **Native session frames** on Mac and iPhone. Menu bar, terminal, CLI, and widget remain supporting views.
 4. Do **not** start by opening a new Xcode clone of `~/Flowmo`.
 5. Persistence: a small local store (JSON or SQLite under `~/.flowmo/`). SwiftData is not required.
 6. Notifications and sound are adapters around phase transitions, not the engine.
@@ -251,16 +250,16 @@ Suggested first vertical slice when someone is told to build: **idle → type on
 
 ## 12. Later (explicitly not v1)
 
-- Visual identity / themes (beyond the signed compact pass)
+- Visual identity / themes beyond the shipped compact pass
 - Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
-- iPhone client (signed: [`iphone-tasks.md`](iphone-tasks.md); local, no iCloud)
-- Widgets, Watch, iCloud (after iPhone)
+- iPhone client shipped ([`iphone.md`](iphone.md)); local, no iCloud
+- iPhone widget shipped ([`widget.md`](widget.md)); iCloud and Watch later
 - Flashcards, SM-2, consolidation, reflection
 - History browser
 - Learning anything other than break ratio
 - Monetization, licensing, marketing (out of scope for this brief)
 
-Unsigned next-version brief: [`v2.md`](v2.md). Not a license to code.
+Roadmap: [`v2.md`](v2.md).
 
 ---
 
@@ -302,9 +301,9 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 
 ---
 
-## 14. Handoff checklist
+## 14. Project checklist
 
-Someone picking this up cold should be able to:
+The repository should make these facts clear:
 
 1. Read this file and describe the loop and the window without looking at chat.
 2. Ignore `~/Flowmo` except for the formula and the old timer/break screens as visual reference.
@@ -313,4 +312,4 @@ Someone picking this up cold should be able to:
 5. Keep CLI/JSON as a side door to that same store.
 6. Not add Home, scores, flashcards, or a 25-minute countdown unless the owner reopens those decisions.
 
-When a formal visual/engineering design is wanted, start from **this** document, not from `FLOWMO_VISION.md` or `APP_STORE_MVP_LAUNCH_PLAN.md` in the old repo.
+For product behavior, start here rather than in the frozen old repo.

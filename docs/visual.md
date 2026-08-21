@@ -1,8 +1,6 @@
-# Flowmo — visual pass (signed 2026-08-19)
+# Flowmo — visual rules
 
-Loop and acceptance stay locked. This pass only fills the empty white frame.
-
-Captain choices:
+These rules define the shipped compact frame:
 
 - **Tighten.** Same compact window. Less vertical gap. Clock closer to the actions. No extra widgets.
 - **Surface.** Black field. One cyan accent for timed rings and Start. Old iPhone timer is reference, not a theme pack, Home, or scores.

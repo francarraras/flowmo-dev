@@ -1,8 +1,6 @@
-# Flowmo — Focus Guard (specify)
+# Flowmo — Focus Guard
 
-Clarify for the next slice. Locked v1 loop, recovery pause, and compact window stay in [`PROJECT.md`](PROJECT.md) and [`acceptance.md`](acceptance.md). This file only adds optional app friction during Focus.
-
-Signed by the captain on 2026-08-19. Research record: [`focus-guard-handoff.md`](focus-guard-handoff.md).
+Optional app friction during unpaused Focus. The loop and recovery behavior stay in [`PROJECT.md`](PROJECT.md).
 
 ---
 

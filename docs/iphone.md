@@ -1,8 +1,6 @@
-# Flowmo — iPhone (specify)
+# Flowmo — iPhone
 
-Clarify for the next slice. Locked loop stays in [`PROJECT.md`](PROJECT.md) and [`acceptance.md`](acceptance.md). The Mac window stays the Mac product. This file adds a **phone face of the same Core loop**.
-
-Signed by the captain on 2026-08-19. Implementation of [`iphone-tasks.md`](iphone-tasks.md) is allowed.
+The iPhone app runs the same Core loop in its own native frame. The Mac window remains the main Mac product. Product rules stay in [`PROJECT.md`](PROJECT.md).
 
 ---
 
