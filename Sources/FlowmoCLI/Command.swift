@@ -101,10 +101,7 @@ public enum FlowmoCLI {
 
     static func mutate(_ body: (inout Engine, Date) throws -> Void) throws {
         _ = try Store.default.update { engine in
-            let now = Date()
-            engine.sync(now: now)
-            try body(&engine, now)
-            engine.sync(now: now)
+            try body(&engine, Date())
         }
     }
 

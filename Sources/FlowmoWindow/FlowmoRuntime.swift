@@ -41,9 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        controller.pauseForRecovery()
+        controller.prepareForTermination()
         return .terminateNow
     }
+
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
@@ -79,14 +80,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
     }
 
-    /// `swift run` is often stopped with Ctrl+C; treat that as quit (recovery pause).
+    /// `swift run` is often stopped with Ctrl+C; route it through the same
+    /// termination owner as a normal app quit.
     private func watchTerminationSignals() {
         signal(SIGINT, SIG_IGN)
         signal(SIGTERM, SIG_IGN)
         for sig in [SIGINT, SIGTERM] {
             let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
-            source.setEventHandler { [weak self] in
-                self?.controller.pauseForRecovery()
+            source.setEventHandler {
                 NSApp.terminate(nil)
             }
             source.resume()

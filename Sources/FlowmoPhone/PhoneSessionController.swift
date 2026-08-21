@@ -1,6 +1,17 @@
 import Combine
 import Foundation
 import FlowmoCore
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
+
+public enum PhoneStoreConfigurationError: LocalizedError {
+    case missingSharedAppGroup
+
+    public var errorDescription: String? {
+        "Flowmo configuration failure: App Group \"\(Store.phoneAppGroupID)\" is unavailable."
+    }
+}
 
 @MainActor
 public final class PhoneSessionController: ObservableObject {
@@ -25,11 +36,13 @@ public final class PhoneSessionController: ObservableObject {
         self.store = store
         self.attention = attention
         var loaded = (try? store.load()) ?? .empty
+        var didRecover = false
         if loaded.live?.isPaused == false {
             do {
                 loaded = try store.update { engine in
                     engine.pauseUnpausedLiveOnProcessStart(now: Date())
                 }.world
+                didRecover = true
             } catch {
                 loaded = (try? store.load()) ?? loaded
             }
@@ -40,6 +53,9 @@ public final class PhoneSessionController: ObservableObject {
             self.recallDraft = loaded.live?.recallText ?? ""
         }
         attention.reconcile(status: Engine.sessionStatus(loaded, now: Date()), cuesEnabled: loaded.config.cuesEnabled)
+        if didRecover {
+            reloadGlance()
+        }
     }
 
     public func startRunning() {
@@ -112,6 +128,7 @@ public final class PhoneSessionController: ObservableObject {
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
+            reloadGlance()
         } catch {
             var engine = Engine(world: world)
             engine.sync(now: Date())
@@ -132,6 +149,7 @@ public final class PhoneSessionController: ObservableObject {
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
+            reloadGlance()
         } catch {
         }
     }
@@ -151,9 +169,29 @@ public final class PhoneSessionController: ObservableObject {
         }
     }
 
-    public static func containerStore() -> Store {
-        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        return Store(root: root.appendingPathComponent("flowmo", isDirectory: true))
+    private func reloadGlance() {
+        Self.reloadGlanceTimeline()
+    }
+
+    private static func reloadGlanceTimeline() {
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadTimelines(ofKind: GlanceKind.id)
+        #endif
+    }
+
+    public static func containerStore() throws -> Store {
+        guard let group = Store.phoneSharedRoot() else {
+            throw PhoneStoreConfigurationError.missingSharedAppGroup
+        }
+
+        if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let legacyRoot = support.appendingPathComponent("flowmo", isDirectory: true)
+            let didMigrate = try Store.migrateWorld(from: legacyRoot, to: group)
+            if didMigrate {
+                reloadGlanceTimeline()
+            }
+        }
+
+        return Store(root: group)
     }
 }

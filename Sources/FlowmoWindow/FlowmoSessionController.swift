@@ -17,6 +17,7 @@ public final class FlowmoSessionController: ObservableObject {
     let store: Store
     let attention: AttentionAdapter
     let focusGuard: FocusGuardAdapter
+    private let macRecovery: MacProcessRecoveryMarker
 
     private var timer: Timer?
     private var watcher: WorldWatcher?
@@ -42,6 +43,8 @@ public final class FlowmoSessionController: ObservableObject {
         self.store = store
         self.attention = attention
         self.focusGuard = focusGuard
+        self.macRecovery = MacProcessRecoveryMarker(store: store)
+
         let loaded = (try? store.load()) ?? .empty
         self.world = loaded
         self.intentionDraft = loaded.profile.lastIntention
@@ -60,6 +63,8 @@ public final class FlowmoSessionController: ObservableObject {
             self?.attention.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
+        beginMacProcessLifetime()
+
         reloadFromStore(cueIfChanged: false)
         reconcileGuard()
         let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
@@ -93,8 +98,14 @@ public final class FlowmoSessionController: ObservableObject {
         apply(.`continue`)
     }
 
-    public func pauseForRecovery() {
+    @discardableResult
+    public func pauseForRecovery() -> Bool {
         apply(.pauseForRecovery)
+    }
+
+    public func prepareForTermination() {
+        guard macRecovery.ownsLifecycle, pauseForRecovery() else { return }
+        macRecovery.finishNormally()
     }
 
     public func submitCapture() {
@@ -149,6 +160,25 @@ public final class FlowmoSessionController: ObservableObject {
         focusGuard.openOnce()
     }
 
+    /// Claims the Mac process marker and recovers only a session owned by a
+    /// dead Mac host. This runs before the window is constructed.
+    private func beginMacProcessLifetime() {
+        applying = true
+        defer { applying = false }
+        let timestamp = Date()
+        do {
+            let engine = try store.update { engine in
+                macRecovery.claim(&engine, now: timestamp)
+            }
+            world = engine.world
+            now = timestamp
+            refreshDraftsAfterChange()
+            reconcileGuard()
+        } catch {
+            return
+        }
+    }
+
     private func tick() {
         now = Date()
         var probe = Engine(world: world)
@@ -156,43 +186,64 @@ public final class FlowmoSessionController: ObservableObject {
         probe.sync(now: now)
         if probe.world != world {
             persistSync(cueFrom: before)
+        } else if world.live?.isPaused == false, macRecovery.needsHeartbeat(at: now) {
+            persistHeartbeat(at: now)
         }
     }
 
     private func persistSync(cueFrom before: SessionPhase?) {
         applying = true
         defer { applying = false }
+        let timestamp = Date()
         do {
             let engine = try store.update { engine in
-                engine.sync(now: Date())
+                engine.sync(now: timestamp)
+                macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
             }
             world = engine.world
-            now = Date()
+            now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
         } catch {
             var engine = Engine(world: world)
-            engine.sync(now: Date())
+            engine.sync(now: timestamp)
             world = engine.world
         }
     }
 
-    private func apply(_ event: Event) {
-        let before = world.live?.phase
+    private func persistHeartbeat(at timestamp: Date) {
         applying = true
         defer { applying = false }
         do {
+            _ = try store.update { engine in
+                macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+            }
+        } catch {
+            return
+        }
+    }
+
+    @discardableResult
+    private func apply(_ event: Event) -> Bool {
+        let before = world.live?.phase
+        applying = true
+        defer { applying = false }
+        let timestamp = Date()
+        do {
             let engine = try store.update { engine in
-                try engine.apply(event, now: Date())
+                try engine.apply(event, now: timestamp)
+                macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
             }
             world = engine.world
-            now = Date()
+            now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
+            return true
         } catch {
             // Invalid for the current phase; leave the window as-is.
+            return false
         }
     }
 
@@ -200,17 +251,21 @@ public final class FlowmoSessionController: ObservableObject {
         if applying { return }
         do {
             let loaded = try store.load()
+            let timestamp = Date()
             var engine = Engine(world: loaded)
             let before = world.live?.phase
-            engine.sync(now: Date())
-            if engine.world != loaded {
+            engine.sync(now: timestamp)
+            if engine.world != loaded || macRecovery.needsObservation(for: engine.world.live?.id) {
                 applying = true
                 defer { applying = false }
-                engine = try store.update { $0.sync(now: Date()) }
+                engine = try store.update { engine in
+                    engine.sync(now: timestamp)
+                    macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                }
             }
             let changed = engine.world != world
             world = engine.world
-            now = Date()
+            now = timestamp
             if cueIfChanged, changed {
                 attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             }

@@ -24,6 +24,39 @@ public struct Store: Sendable {
         self.root = root
     }
 
+    /// iPhone app + widget. Nil if the App Group is missing (spike failed).
+    public static let phoneAppGroupID = "group.app.flowmo.phone"
+
+    public static func phoneSharedRoot() -> URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: phoneAppGroupID)?
+            .appendingPathComponent("flowmo", isDirectory: true)
+    }
+
+    /// Migrate `world.json` once. Keep a valid destination; repair a corrupt one from a valid source.
+    @discardableResult
+    public static func migrateWorld(from oldRoot: URL, to newRoot: URL) throws -> Bool {
+        let fm = FileManager.default
+        let source = Store(root: oldRoot)
+        let destination = Store(root: newRoot)
+        let sourceExists = fm.fileExists(atPath: source.worldURL.path)
+
+        if fm.fileExists(atPath: destination.worldURL.path) {
+            do {
+                _ = try destination.load()
+                return false
+            } catch {
+                guard sourceExists else { throw error }
+            }
+        } else if !sourceExists {
+            return false
+        }
+
+        let world = try source.load()
+        try destination.save(world)
+        _ = try destination.load()
+        return true
+    }
+
     public func load() throws -> World {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let url = worldURL

@@ -28,8 +28,13 @@ public struct Engine: Equatable, Sendable {
         default:
             break
         }
+        let phaseBeforeSync = world.live?.phase
         if world.live?.isPaused != true {
             sync(now: now)
+        }
+        // A skip targets the observed phase, never one entered by this catch-up.
+        if case .skip = event, phaseBeforeSync != world.live?.phase {
+            return
         }
         switch event {
         case .start(let intention):
@@ -58,24 +63,37 @@ public struct Engine: Equatable, Sendable {
     public mutating func sync(now: Date) {
         guard var live = world.live, !live.isPaused else { return }
 
-        switch live.phase {
-        case .prime:
-            if now.timeIntervalSince(live.phaseStartedAt) >= live.primeDuration {
-                enterFocus(&live, now: now)
+        while true {
+            switch live.phase {
+            case .prime:
+                let deadline = live.phaseStartedAt.addingTimeInterval(live.primeDuration)
+                guard now >= deadline else {
+                    world.live = live
+                    return
+                }
+                enterFocus(&live, now: deadline)
+            case .onBreak:
+                guard let start = live.breakStartedAt, let duration = live.breakDuration else {
+                    world.live = live
+                    return
+                }
+                let deadline = start.addingTimeInterval(duration)
+                guard now >= deadline else {
+                    world.live = live
+                    return
+                }
+                enterRecall(&live, now: deadline)
+            case .recall:
+                let deadline = live.phaseStartedAt.addingTimeInterval(live.recallDuration)
+                guard now >= deadline else {
+                    world.live = live
+                    return
+                }
+                enterCloseBeat(&live, now: deadline)
+            case .focus, .closeBeat:
                 world.live = live
+                return
             }
-        case .onBreak:
-            if let start = live.breakStartedAt, let duration = live.breakDuration,
-               now.timeIntervalSince(start) >= duration {
-                enterRecall(&live, now: now)
-                world.live = live
-            }
-        case .recall:
-            if now.timeIntervalSince(live.phaseStartedAt) >= live.recallDuration {
-                enterCloseBeat(live, now: now)
-            }
-        case .focus, .closeBeat:
-            break
         }
     }
 
@@ -264,7 +282,8 @@ public struct Engine: Equatable, Sendable {
             enterRecall(&live, now: now)
             world.live = live
         case .recall:
-            enterCloseBeat(live, now: now)
+            enterCloseBeat(&live, now: now)
+            world.live = live
         case .focus:
             try stopFocus(now: now)
         case .closeBeat:
@@ -315,13 +334,11 @@ public struct Engine: Equatable, Sendable {
         Self.clearFreeze(&live)
     }
 
-    private mutating func enterCloseBeat(_ live: SessionSnapshot, now: Date) {
-        var next = live
-        next.phase = .closeBeat
-        next.phaseStartedAt = now
-        Self.clearFreeze(&next)
-        recordCompletion(next, now: now)
-        world.live = next
+    private mutating func enterCloseBeat(_ live: inout SessionSnapshot, now: Date) {
+        live.phase = .closeBeat
+        live.phaseStartedAt = now
+        Self.clearFreeze(&live)
+        recordCompletion(live, now: now)
     }
 
     private mutating func recordCompletion(_ live: SessionSnapshot, now: Date) {

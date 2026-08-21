@@ -9,11 +9,43 @@
 /* Begin PBXBuildFile section */
 		9F1A0B0C0D0E0F101112130B /* FlowmoPhone.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F1A0B0C0D0E0F101112130A /* FlowmoPhone.swift */; };
 		9F1A0B0C0D0E0F1011121312 /* FlowmoPhone in Frameworks */ = {isa = PBXBuildFile; productRef = 9F1A0B0C0D0E0F1011121311 /* FlowmoPhone */; };
+		A1B2C3D4E5F6071829304001 /* FlowmoGlance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304002 /* FlowmoGlance.swift */; };
+		A1B2C3D4E5F6071829304003 /* FlowmoCore in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6071829304004 /* FlowmoCore */; };
+		A1B2C3D4E5F6071829304005 /* FlowmoGlance.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6071829304006 /* FlowmoGlance.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A1B2C3D4E5F6071829304007 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9F1A0B0C0D0E0F1011121301 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1B2C3D4E5F6071829304008;
+			remoteInfo = FlowmoGlance;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A1B2C3D4E5F6071829304009 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A1B2C3D4E5F6071829304005 /* FlowmoGlance.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		9F1A0B0C0D0E0F1011121309 /* Flowmo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Flowmo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F1A0B0C0D0E0F101112130A /* FlowmoPhone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowmoPhone.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6071829304002 /* FlowmoGlance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowmoGlance.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6071829304006 /* FlowmoGlance.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FlowmoGlance.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F607182930400A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D4E5F607182930400B /* FlowmoGlance.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FlowmoGlance.entitlements; sourceTree = "<group>"; };
+		A1B2C3D4E5F607182930400C /* Flowmo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Flowmo.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -25,6 +57,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B2C3D4E5F607182930400D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6071829304003 /* FlowmoCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -32,6 +72,8 @@
 			isa = PBXGroup;
 			children = (
 				9F1A0B0C0D0E0F101112130A /* FlowmoPhone.swift */,
+				A1B2C3D4E5F607182930400C /* Flowmo.entitlements */,
+				A1B2C3D4E5F607182930400E /* FlowmoGlance */,
 				9F1A0B0C0D0E0F101112130F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -40,8 +82,19 @@
 			isa = PBXGroup;
 			children = (
 				9F1A0B0C0D0E0F1011121309 /* Flowmo.app */,
+				A1B2C3D4E5F6071829304006 /* FlowmoGlance.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F607182930400E /* FlowmoGlance */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6071829304002 /* FlowmoGlance.swift */,
+				A1B2C3D4E5F607182930400A /* Info.plist */,
+				A1B2C3D4E5F607182930400B /* FlowmoGlance.entitlements */,
+			);
+			path = FlowmoGlance;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -54,11 +107,13 @@
 				9F1A0B0C0D0E0F101112130C /* Sources */,
 				9F1A0B0C0D0E0F101112130D /* Frameworks */,
 				9F1A0B0C0D0E0F101112130E /* Resources */,
+				A1B2C3D4E5F6071829304009 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				9F1A0B0C0D0E0F1011121314 /* PBXTargetDependency */,
+				A1B2C3D4E5F607182930400F /* PBXTargetDependency */,
 			);
 			name = Flowmo;
 			packageProductDependencies = (
@@ -67,6 +122,27 @@
 			productName = Flowmo;
 			productReference = 9F1A0B0C0D0E0F1011121309 /* Flowmo.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A1B2C3D4E5F6071829304008 /* FlowmoGlance */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F6071829304010 /* Build configuration list for PBXNativeTarget "FlowmoGlance" */;
+			buildPhases = (
+				A1B2C3D4E5F6071829304011 /* Sources */,
+				A1B2C3D4E5F607182930400D /* Frameworks */,
+				A1B2C3D4E5F6071829304012 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3D4E5F6071829304013 /* PBXTargetDependency */,
+			);
+			name = FlowmoGlance;
+			packageProductDependencies = (
+				A1B2C3D4E5F6071829304004 /* FlowmoCore */,
+			);
+			productName = FlowmoGlance;
+			productReference = A1B2C3D4E5F6071829304006 /* FlowmoGlance.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -79,6 +155,9 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					9F1A0B0C0D0E0F1011121308 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A1B2C3D4E5F6071829304008 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
@@ -100,12 +179,20 @@
 			projectRoot = "";
 			targets = (
 				9F1A0B0C0D0E0F1011121308 /* Flowmo */,
+				A1B2C3D4E5F6071829304008 /* FlowmoGlance */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		9F1A0B0C0D0E0F101112130E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F6071829304012 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -123,12 +210,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B2C3D4E5F6071829304011 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6071829304001 /* FlowmoGlance.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		9F1A0B0C0D0E0F1011121314 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 9F1A0B0C0D0E0F1011121311 /* FlowmoPhone */;
+		};
+		A1B2C3D4E5F607182930400F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1B2C3D4E5F6071829304008 /* FlowmoGlance */;
+			targetProxy = A1B2C3D4E5F6071829304007 /* PBXContainerItemProxy */;
+		};
+		A1B2C3D4E5F6071829304013 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = A1B2C3D4E5F6071829304004 /* FlowmoCore */;
 		};
 /* End PBXTargetDependency section */
 
@@ -177,6 +281,7 @@
 			buildSettings = {
 				AD_HOC_CODE_SIGNING_ALLOWED = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Flowmo.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -209,6 +314,7 @@
 			buildSettings = {
 				AD_HOC_CODE_SIGNING_ALLOWED = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Flowmo.entitlements;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
@@ -236,6 +342,64 @@
 			};
 			name = Release;
 		};
+		A1B2C3D4E5F6071829304014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AD_HOC_CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_ENTITLEMENTS = FlowmoGlance/FlowmoGlance.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FlowmoGlance/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Flowmo;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.flowmo.phone.widget;
+				PRODUCT_NAME = FlowmoGlance;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F6071829304015 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AD_HOC_CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGN_ENTITLEMENTS = FlowmoGlance/FlowmoGlance.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FlowmoGlance/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Flowmo;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.flowmo.phone.widget;
+				PRODUCT_NAME = FlowmoGlance;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -257,6 +421,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A1B2C3D4E5F6071829304010 /* Build configuration list for PBXNativeTarget "FlowmoGlance" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F6071829304014 /* Debug */,
+				A1B2C3D4E5F6071829304015 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -271,6 +444,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9F1A0B0C0D0E0F1011121313 /* XCLocalSwiftPackageReference ".." */;
 			productName = FlowmoPhone;
+		};
+		A1B2C3D4E5F6071829304004 /* FlowmoCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9F1A0B0C0D0E0F1011121313 /* XCLocalSwiftPackageReference ".." */;
+			productName = FlowmoCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

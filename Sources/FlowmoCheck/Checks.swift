@@ -220,6 +220,46 @@ do {
 
 do {
     var engine = Engine()
+    try engine.apply(.start(intention: "late prime"), now: t0)
+    engine.sync(now: t0.addingTimeInterval(180))
+    Check.expect(engine.world.live?.phase == .focus, "late prime catch-up enters focus")
+    Check.expectEqual(engine.world.live?.focusStartedAt, t0.addingTimeInterval(120), "late prime preserves deadline")
+    Check.expectNear(engine.status(now: t0.addingTimeInterval(180)).elapsed, 60, "late prime preserves focus elapsed")
+} catch {
+    Check.expect(false, "late prime catch-up threw \(error)")
+}
+
+do {
+    var engine = Engine()
+    try engine.apply(.start(intention: "late break"), now: t0)
+    try engine.apply(.skip, now: t0)
+    try engine.apply(.stopFocus, now: t0.addingTimeInterval(600))
+    engine.sync(now: t0.addingTimeInterval(1_021))
+    Check.expect(engine.world.live?.phase == .closeBeat, "one sync catches up break and recall")
+    Check.expectEqual(engine.world.live?.phaseStartedAt, t0.addingTimeInterval(1_020), "catch-up close beat uses recall deadline")
+    Check.expect(engine.world.history.count == 1, "catch-up records completion once")
+    engine.sync(now: t0.addingTimeInterval(2_000))
+    Check.expect(engine.world.history.count == 1, "later sync does not double-record catch-up")
+} catch {
+    Check.expect(false, "multi-phase catch-up threw \(error)")
+}
+
+do {
+    var engine = Engine()
+    try engine.apply(.start(intention: "stale skip"), now: t0)
+    try engine.apply(.skip, now: t0)
+    try engine.apply(.stopFocus, now: t0.addingTimeInterval(600))
+    try engine.apply(.skip, now: t0.addingTimeInterval(721))
+    Check.expect(engine.world.live?.phase == .recall, "stale break skip does not skip recall")
+    Check.expectEqual(engine.world.live?.phaseStartedAt, t0.addingTimeInterval(720), "stale skip keeps automatic boundary")
+    Check.expectNear(engine.status(now: t0.addingTimeInterval(721)).remaining ?? -1, 299, "stale skip leaves recall running")
+    Check.expect(engine.world.history.isEmpty, "stale skip does not complete session")
+} catch {
+    Check.expect(false, "stale skip catch-up threw \(error)")
+}
+
+do {
+    var engine = Engine()
     try engine.apply(.start(intention: "a"), now: t0)
     var blocked = false
     do { try engine.apply(.start(intention: "b"), now: t0) } catch EngineError.alreadyRunning { blocked = true }
@@ -537,6 +577,35 @@ do {
     Check.expect(engine.world.live?.isPaused == true, "already paused stays paused")
 } catch {
     Check.expect(false, "process start pause threw \(error)")
+}
+
+do {
+    let fm = FileManager.default
+    let old = fm.temporaryDirectory.appendingPathComponent("flowmo-mig-old-\(UUID().uuidString)", isDirectory: true)
+    let neu = fm.temporaryDirectory.appendingPathComponent("flowmo-mig-new-\(UUID().uuidString)", isDirectory: true)
+    defer {
+        try? fm.removeItem(at: old)
+        try? fm.removeItem(at: neu)
+    }
+    let source = Store(root: old)
+    _ = try source.update { engine in
+        try engine.apply(.setCuesEnabled(false), now: t0)
+    }
+    try Store.migrateWorld(from: old, to: neu)
+    let loaded = try Store(root: neu).load()
+    Check.expect(!loaded.config.cuesEnabled, "migrate copies world")
+    _ = try source.update { engine in
+        try engine.apply(.setCuesEnabled(true), now: t0)
+    }
+    try Store.migrateWorld(from: old, to: neu)
+    let again = try Store(root: neu).load()
+    Check.expect(!again.config.cuesEnabled, "migrate does not overwrite")
+    try Data("broken".utf8).write(to: Store(root: neu).worldURL, options: .atomic)
+    try Store.migrateWorld(from: old, to: neu)
+    let repaired = try Store(root: neu).load()
+    Check.expect(repaired.config.cuesEnabled, "migrate repairs corrupt destination")
+} catch {
+    Check.expect(false, "migrate threw \(error)")
 }
 
     if Check.failed == 0 {
