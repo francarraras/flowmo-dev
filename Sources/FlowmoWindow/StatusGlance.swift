@@ -1,6 +1,8 @@
 import AppKit
 import Combine
 import FlowmoCore
+import FlowmoLook
+import SwiftUI
 
 /// Menu-bar clock. The window stays the product; this is a glance when it is hidden.
 @MainActor
@@ -14,7 +16,6 @@ final class StatusGlance {
     func attach(controller: FlowmoSessionController, showWindow: @escaping () -> Void) {
         self.controller = controller
         self.showWindow = showWindow
-        item.button?.font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.target = self
         item.button?.action = #selector(clicked)
         item.button?.toolTip = "Flowmo"
@@ -32,7 +33,17 @@ final class StatusGlance {
 
     func refresh() {
         guard let controller else { return }
-        item.button?.title = Format.glance(controller.status)
+        let status = controller.status
+        let atmo = Atmosphere.of(status)
+        let ink: Color = status.isPaused ? atmo.faint : (status.isIdle ? atmo.mute : atmo.ink)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        item.button?.attributedTitle = NSAttributedString(
+            string: Format.glance(status),
+            attributes: [
+                .font: font,
+                .foregroundColor: NSColor(ink),
+            ]
+        )
     }
 
     @objc private func clicked() {

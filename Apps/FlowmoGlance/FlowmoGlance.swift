@@ -1,6 +1,7 @@
 import SwiftUI
 import WidgetKit
 import FlowmoCore
+import FlowmoLook
 
 private enum GlanceContent {
     case text(String, accessibility: String?)
@@ -11,13 +12,15 @@ private enum GlanceContent {
 private struct GlanceEntry: TimelineEntry {
     let date: Date
     let content: GlanceContent
+    let phase: SessionPhase?
+    let isPaused: Bool
 }
 
 private struct Provider: TimelineProvider {
     private static let maximumTimelineEntries = 4
 
     func placeholder(in context: Context) -> GlanceEntry {
-        GlanceEntry(date: Date(), content: .text("Flowmo", accessibility: nil))
+        GlanceEntry(date: Date(), content: .text("Flowmo", accessibility: nil), phase: nil, isPaused: false)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (GlanceEntry) -> Void) {
@@ -74,16 +77,24 @@ private struct Provider: TimelineProvider {
         var engine = Engine(world: world)
         engine.sync(now: date)
         let status = engine.status(now: date)
+        let phase = status.phase
 
         guard let live = engine.world.live else {
-            return GlanceEntry(date: date, content: .text("Flowmo", accessibility: nil))
+            return GlanceEntry(
+                date: date,
+                content: .text("Flowmo", accessibility: nil),
+                phase: nil,
+                isPaused: false
+            )
         }
         if status.isPaused {
             let text = Format.glance(status)
             let clock = text.hasPrefix("· ") ? String(text.dropFirst(2)) : text
             return GlanceEntry(
                 date: date,
-                content: .text(text, accessibility: "Paused, \(clock)")
+                content: .text(text, accessibility: "Paused, \(clock)"),
+                phase: phase,
+                isPaused: true
             )
         }
 
@@ -92,38 +103,56 @@ private struct Provider: TimelineProvider {
             return countdownEntry(
                 date: date,
                 start: live.phaseStartedAt,
-                duration: live.primeDuration
+                duration: live.primeDuration,
+                phase: .prime
             )
         case .focus:
             return GlanceEntry(
                 date: date,
-                content: .elapsed(since: live.focusStartedAt ?? live.phaseStartedAt)
+                content: .elapsed(since: live.focusStartedAt ?? live.phaseStartedAt),
+                phase: .focus,
+                isPaused: false
             )
         case .onBreak:
             guard let start = live.breakStartedAt, let duration = live.breakDuration else {
                 return GlanceEntry(
                     date: date,
-                    content: .text(Format.glance(status), accessibility: nil)
+                    content: .text(Format.glance(status), accessibility: nil),
+                    phase: .onBreak,
+                    isPaused: false
                 )
             }
-            return countdownEntry(date: date, start: start, duration: duration)
+            return countdownEntry(date: date, start: start, duration: duration, phase: .onBreak)
         case .recall:
             return countdownEntry(
                 date: date,
                 start: live.phaseStartedAt,
-                duration: live.recallDuration
+                duration: live.recallDuration,
+                phase: .recall
             )
         case .closeBeat:
             return GlanceEntry(
                 date: date,
-                content: .text(Format.glance(status), accessibility: nil)
+                content: .text(Format.glance(status), accessibility: nil),
+                phase: .closeBeat,
+                isPaused: false
             )
         }
     }
 
-    private func countdownEntry(date: Date, start: Date, duration: TimeInterval) -> GlanceEntry {
+    private func countdownEntry(
+        date: Date,
+        start: Date,
+        duration: TimeInterval,
+        phase: SessionPhase
+    ) -> GlanceEntry {
         let end = start.addingTimeInterval(max(0, duration))
-        return GlanceEntry(date: date, content: .countdown(start...max(start, end)))
+        return GlanceEntry(
+            date: date,
+            content: .countdown(start...max(start, end)),
+            phase: phase,
+            isPaused: false
+        )
     }
 
     private func loadWorld() -> World {
@@ -140,16 +169,20 @@ private struct GlanceView: View {
         family == .systemMedium ? 44 : 34
     }
 
+    private var atmo: Atmosphere {
+        Atmosphere.of(entry.phase)
+    }
+
     var body: some View {
         clock
-            .font(.system(size: clockSize, weight: .light, design: .default))
+            .font(.system(size: clockSize, weight: .ultraLight, design: .default))
             .monospacedDigit()
             .tracking(-0.8)
-            .foregroundStyle(Color.white)
+            .foregroundStyle(entry.isPaused ? atmo.faint : (entry.phase == nil ? atmo.mute : atmo.ink))
             .minimumScaleFactor(0.6)
             .lineLimit(1)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .flowmoContainerBackground()
+            .flowmoContainerBackground(atmo.field)
     }
 
     @ViewBuilder
@@ -168,13 +201,13 @@ private struct GlanceView: View {
 
 private extension View {
     @ViewBuilder
-    func flowmoContainerBackground() -> some View {
+    func flowmoContainerBackground(_ field: Color) -> some View {
         if #available(iOS 17.0, *) {
             containerBackground(for: .widget) {
-                Color.black
+                field
             }
         } else {
-            background(Color.black)
+            background(field)
         }
     }
 }

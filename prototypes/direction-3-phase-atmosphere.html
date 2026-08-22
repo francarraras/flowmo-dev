@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flowmo · Direction 3 — Phase atmosphere</title>
+<style>
+/* ================= Phase atmosphere =================
+   Same compact frame; material and contrast shift with the loop.
+   Idle: dry neutral. Prime: dim, still, slow. Focus: high contrast,
+   near-silence — earned strip is the only moving color. Break: soft.
+   Recall: editorial. Close: receipt. */
+* { margin:0; box-sizing:border-box; }
+body { background:#0F1012; font-family:-apple-system,"SF Pro Display","SF Pro Text",Helvetica,Arial,sans-serif;
+  padding:36px 24px 60px; color:#E9EAEC;
+  /* atmosphere variables — these transition per phase */
+}
+header { max-width:1180px; margin:0 auto 26px; display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; }
+header h1 { font-size:14px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#7C828B; }
+header .sub { font-size:12px; color:#4A4F57; }
+.controls { display:flex; gap:8px; flex-wrap:wrap; }
+button.ctl { font:inherit; font-size:12px; padding:7px 14px; border-radius:999px; cursor:pointer;
+  background:transparent; color:#7C828B; border:1px solid #23262C; }
+button.ctl:hover{color:#E9EAEC;border-color:#3A4048;}
+button.ctl.on { background:#E9EAEC; color:#101114; border-color:#E9EAEC; font-weight:600; }
+.stage { max-width:1180px; margin:0 auto; display:flex; gap:56px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+
+.mac { width:400px; }
+.macbar { height:28px; border-radius:11px 11px 0 0; display:flex; align-items:center; padding:0 12px; gap:7px;
+  background:var(--bar); transition:background 1.2s ease; }
+.tl { width:12px; height:12px; border-radius:50%; } .tl.r{background:#FF5F57}.tl.y{background:#FEBC2E}.tl.g{background:#28C840}
+.mactitle { flex:1; text-align:center; font-size:11px; color:var(--faint); transition:color 1.2s; font-weight:500; }
+.window {
+  background:var(--bg); border-radius:0 0 11px 11px; min-height:470px; padding:22px 24px 20px; position:relative;
+  display:flex; flex-direction:column;
+  --bg:#0A0B0D; --bar:#141519; --hi:#E9EAEC; --mid:#6E747D; --faint:#3A3F47; --line:#1B1E23;
+  --accent:#C8A24B; --atmo:none;
+  transition:background 1.6s ease;
+}
+.overlayctl { position:absolute; top:14px; right:16px; display:flex; gap:10px; z-index:5; opacity:var(--chrome,1); transition:opacity 1.2s; }
+.octl { width:26px; height:26px; border-radius:50%; border:1px solid var(--line); color:var(--faint);
+  font-size:12px; line-height:24px; text-align:center; cursor:pointer; user-select:none; }
+.octl.on { color:var(--mid); border-color:var(--faint); }
+
+.body { flex:1; display:flex; flex-direction:column; justify-content:center; text-align:center; position:relative;
+  animation:atmo 8s ease infinite alternate; }
+.kicker { font-size:10px; letter-spacing:.26em; text-transform:uppercase; color:var(--faint); margin-bottom:18px; min-height:13px; transition:color 1.2s; }
+.intention input {
+  width:100%; background:transparent; border:none; outline:none; text-align:left;
+  color:var(--hi); font-family:inherit; font-size:20px; font-weight:500; letter-spacing:-.01em;
+  padding:8px 2px 12px; border-bottom:1px solid var(--line); transition:border-color 1.2s;
+}
+.intention input:focus { border-bottom-color:var(--mid); }
+.intention input::placeholder { color:var(--faint); }
+.clock { font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1; transition:font-size .9s cubic-bezier(.5,0,.2,1), color 1.2s, letter-spacing 1.2s; }
+.clock.dim   { font-size:40px; font-weight:200; color:var(--faint); margin:8px 0 28px; }
+.clock.hero  { font-size:104px; font-weight:100; color:var(--hi); margin:12px 0 6px; }
+.clock.mid   { font-size:54px; font-weight:150; color:var(--mid); margin:16px 0; }
+/* prime ring: present but dim, motion slow */
+.ringwrap { width:170px; height:170px; margin:0 auto 24px; position:relative; opacity:.55; filter:saturate(.4); }
+@keyframes breathe { from { transform:scale(.995);} to { transform:scale(1.005);} }
+.ringwrap svg { transform:rotate(-90deg); animation:breathe 7s ease-in-out infinite alternate; }
+.ringbg { stroke:var(--line); fill:none; stroke-width:1.5; }
+.ringfg { stroke:var(--mid); fill:none; stroke-width:1.5; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+.ringclock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:29px; font-weight:200; font-variant-numeric:tabular-nums; color:var(--hi); letter-spacing:.02em; }
+/* focus: no ring; earned strip is the only moving color */
+.strip { height:2px; background:var(--line); border-radius:1px; margin:30px auto 10px; width:76%; overflow:hidden; }
+.strip i { display:block; height:100%; width:0%; background:var(--accent); transition:width .3s linear; }
+.striplabel { font-size:11px; color:var(--mid); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+.actions { display:flex; justify-content:center; align-items:center; gap:14px; margin-top:auto; padding-top:22px; min-height:64px; }
+.btn-primary { font:inherit; font-size:14px; font-weight:600; padding:11px 34px; border-radius:999px; border:none; cursor:pointer; }
+.btn-hi { background:var(--hi); color:#101114; }
+.btn-ghost { background:transparent; color:var(--mid); border:1px solid var(--line); font-size:13px; padding:10px 24px; border-radius:999px; cursor:pointer; }
+.btn-faint { background:transparent; color:var(--faint); border:none; font-size:13px; cursor:pointer; }
+.btn-faint:hover{color:var(--mid);}
+.footerline { display:flex; justify-content:space-between; padding-top:14px; border-top:1px solid var(--line);
+  font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; opacity:var(--chrome,1); transition:opacity 1.2s,border-color 1.2s; }
+.footerline b { color:var(--mid); font-weight:500; }
+.parked { margin-top:16px; text-align:left; font-size:12px; color:var(--mid); opacity:.8; }
+.parked div { padding:4px 0 4px 14px; border-left:1px solid rgba(200,162,75,.5); margin-bottom:4px; }
+.receipt { text-align:left; margin:0 auto; width:84%; font-size:13px; }
+.receipt .row { display:flex; justify-content:space-between; padding:10px 2px; border-bottom:1px solid var(--line); color:var(--mid); }
+.receipt .row b { color:var(--hi); font-weight:500; font-variant-numeric:tabular-nums; }
+textarea.recallfield {
+  width:88%; background:transparent; border:none; outline:none; resize:none; color:var(--hi);
+  font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:17px; line-height:1.9; margin-top:6px;
+  background-image:repeating-linear-gradient(transparent,transparent 27px,var(--line) 28px);
+}
+
+/* ---- phase atmospheres ---- */
+.atmo-idle   { --bg:#0A0B0D; --hi:#DDDEE1; --mid:#6E747D; --faint:#3A3F47; --line:#1B1E23; --chrome:1; }
+.atmo-prime  { --bg:#08090C; --hi:#9BA0A8; --mid:#4A4F57; --faint:#2A2E35; --line:#16181D; --chrome:.45; } /* still, low contrast */
+.atmo-focus  { --bg:#000000; --hi:#FFFFFF; --mid:#585D66; --faint:#2A2E35; --line:#15171B; --chrome:.25; } /* high contrast cave */
+.atmo-break  { --bg:#12100C; --hi:#D9CFC0; --mid:#77705F; --faint:#44403A; --line:#211E18; --chrome:.8; } /* softer, warm */
+.atmo-recall { --bg:#0C0D10; --hi:#E9EAEC; --mid:#7C828B; --faint:#3A3F47; --line:#1D2026; --chrome:1; }
+.atmo-close  { --bg:#0A0B0D; --hi:#DDDEE1; --mid:#6E747D; --faint:#3A3F47; --line:#1B1E23; --chrome:1; }
+
+/* iPhone */
+.phonecol { display:flex; flex-direction:column; gap:14px; align-items:center; }
+.iphone { width:280px; height:580px; background:#000; border-radius:44px; padding:10px; border:1px solid #23262c; box-shadow:0 24px 60px rgba(0,0,0,.55); }
+.screen { border-radius:35px; height:100%; overflow:hidden; position:relative; display:flex; flex-direction:column; padding:52px 24px 26px;
+  background:var(--bg); transition:background 1.6s ease; }
+.notch { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:86px; height:24px; background:#000; border-radius:14px; z-index:4; }
+.p-status { display:flex; justify-content:space-between; font-size:12px; color:var(--mid); font-variant-numeric:tabular-nums; position:absolute; top:14px; left:28px; right:28px; transition:color 1.2s; }
+.p-kicker { font-size:10px; letter-spacing:.26em; text-transform:uppercase; color:var(--faint); text-align:center; margin-bottom:16px; transition:color 1.2s; }
+.p-clock-hero { font-size:78px; font-weight:100; text-align:center; font-variant-numeric:tabular-nums; letter-spacing:-.03em; margin:8px 0; color:var(--hi); transition:all 1.2s; }
+.p-intention input { width:100%; background:transparent; border:none; outline:none; text-align:center; color:var(--hi);
+  font-family:inherit; font-size:17px; font-weight:500; padding:6px 0 12px; }
+.p-ring { width:142px; height:142px; margin:8px auto 18px; position:relative; opacity:.55; }
+.p-ring svg{transform:rotate(-90deg);animation:breathe 7s ease-in-out infinite alternate;}
+.p-ringclock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:200;color:var(--hi);font-variant-numeric:tabular-nums;}
+.p-strip { height:2px; background:var(--line); border-radius:1px; margin:20px 8px 8px; overflow:hidden; }
+.p-strip i { display:block; height:100%; width:0%; background:var(--accent); }
+.p-actions { margin-top:auto; display:flex; flex-direction:column; gap:12px; }
+.btn-skip-thumb { font:inherit; font-size:15px; font-weight:600; padding:15px; border-radius:999px; border:none; cursor:pointer; background:var(--hi); color:#101114; }
+.homebar { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:110px; height:4px; border-radius:2px; background:#2A2F35; }
+.note { max-width:1180px; margin:34px auto 0; font-size:12px; line-height:1.7; color:#4A4F57; }
+.note b { color:#7C828B; font-weight:600; }
+a.back { color:#4A4F57; font-size:12px; text-decoration:none; } a.back:hover { color:#7C828B; }
+.atmoline { max-width:1180px; margin:0 auto 20px; text-align:center; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#4A4F57; transition:color 1.2s; }
+.atmoline b { color:#C8A24B; font-weight:600; }
+</style>
+</head>
+<body class="atmo-idle">
+<header>
+  <h1>Flowmo · 03 Phase atmosphere</h1>
+  <span class="sub">one frame · material shifts with the loop</span>
+  <div style="flex:1"></div>
+  <div class="controls" id="phases"></div>
+  <button class="ctl" id="speed">×20 demo speed</button>
+  <a class="back" href="index.html">← all directions</a>
+</header>
+
+<div class="stage">
+  <!-- MAC -->
+  <div class="mac">
+    <div class="macbar"><span class="tl r"></span><span class="tl y"></span><span class="tl g"></span><span class="mactitle">Flowmo</span><span style="width:54px"></span></div>
+    <div class="window atmo-idle" id="win">
+      <div class="overlayctl">
+        <div class="octl" id="pin">◎</div>
+        <div class="octl on" id="mute">♪</div>
+      </div>
+      <div class="body" id="macBody"></div>
+      <div class="footerline"><span>Today <b>1h 05m</b></span><span id="phaseTag">Idle</span></div>
+    </div>
+  </div>
+
+  <!-- IPHONE -->
+  <div class="phonecol">
+    <div class="iphone"><div class="screen atmo-idle" id="pscreen">
+      <div class="notch"></div>
+      <div class="p-status"><span>9:41</span><span>Flowmo</span></div>
+      <div id="pBody" style="display:flex;flex-direction:column;flex:1"></div>
+      <div class="homebar"></div>
+    </div></div>
+    <span style="font-size:11px;color:#4A4F57;font-family:-apple-system">iPhone — same atmosphere, thumb Skip</span>
+  </div>
+</div>
+
+<p style="text-align:center" class="atmoline" id="atmoline">Atmosphere · <b id="atmoname">idle — dry, neutral</b></p>
+<p class="note"><b>The rule:</b> nothing is added between phases — the same elements change temperature. Focus chrome fades to 25%, the room goes black, and the amber earned strip becomes the only warm thing on screen.</p>
+
+<script>
+const RATIO=5, PRIME=120, RECALL=300;
+let S={ phase:'idle', t:0, focusSec:0, intention:'Finish the type system spec', parked:[], recall:'', speed:20 };
+const fmt=s=>{s=Math.max(0,Math.floor(s));const m=Math.floor(s/60),r=s%60;
+  return m>=60?`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}:${String(r).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;};
+function startPrime(){S.phase='prime';S.t=PRIME;render();}
+function startFocus(){S.phase='focus';S.focusSec=0;S.parked=[];render();}
+function stopFocus(){ if(S.focusSec<5){S.phase='idle';render();return;} S.phase='break'; S.t=Math.max(60,S.focusSec/RATIO); render(); }
+function startRecall(){S.phase='recall';S.t=RECALL;render();}
+function closeBeat(){S.phase='close';render();setTimeout(()=>{if(S.phase==='close'){S.phase='idle';S.focusSec=0;render();}},60000/S.speed);}
+setInterval(()=>{
+  if(S.phase==='prime'){S.t-=S.speed/10;if(S.t<=0)startFocus();}
+  else if(S.phase==='focus'){S.focusSec+=S.speed/10;}
+  else if(S.phase==='break'){S.t-=S.speed/10;if(S.t<=0)startRecall();}
+  else if(S.phase==='recall'){S.t-=S.speed/10;if(S.t<=0)closeBeat();}
+  render();
+},100);
+
+const CIRC=2*Math.PI*81, CIRCP=2*Math.PI*67;
+const ATMOS={ idle:['idle — dry, neutral'], prime:['prime — still, low contrast'], focus:['focus — black room, one moving color'],
+  break:['break — softer, warmer'], recall:['recall — editorial'], close:['close — receipt'] };
+function setAtmo(p){
+  const cls='atmo-'+p;
+  document.body.className=cls; document.getElementById('win').className='window '+cls; document.getElementById('pscreen').className='screen '+cls;
+  document.getElementById('atmoname').textContent=ATMOS[p][0];
+}
+
+const PHASES=['idle','prime','focus','break','recall','close'];
+function render(){
+  document.querySelectorAll('#phases button').forEach(b=>b.classList.toggle('on',b.dataset.p===S.phase));
+  setAtmo(S.phase);
+  mac(); phone();
+}
+
+function mac(){
+  const B=document.getElementById('macBody');
+  document.getElementById('phaseTag').textContent=S.phase[0].toUpperCase()+S.phase.slice(1);
+  if(S.phase==='idle'){
+    B.innerHTML=`<div class="kicker"></div>
+      <div class="intention"><input id="mi" value="${S.intention}" placeholder="What are you doing?" style="text-align:center"></div>
+      <div class="clock dim">00:00</div>
+      <div class="actions"><button class="btn-primary btn-hi" onclick="startPrime()">Start</button>
+        <button class="btn-faint" style="margin-left:6px">History</button></div>`;
+    document.getElementById('mi').addEventListener('change',e=>S.intention=e.target.value);
+  }
+  else if(S.phase==='prime'){
+    B.innerHTML=`<div class="kicker">${S.intention}</div>
+      <div class="ringwrap"><svg width="170" height="170"><circle class="ringbg" cx="85" cy="85" r="81"/>
+        <circle class="ringfg" cx="85" cy="85" r="81" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC*(1-S.t/PRIME)}"/></svg>
+        <div class="ringclock">${fmt(S.t)}</div></div>
+      <div class="actions"><button class="btn-ghost" onclick="startFocus()">Skip</button></div>`;
+  }
+  else if(S.phase==='focus'){
+    const earned=S.focusSec/RATIO;
+    B.innerHTML=`<div class="kicker" style="letter-spacing:.34em">${S.intention}</div>
+      <div class="clock hero">${fmt(S.focusSec)}</div>
+      <div class="strip"><i style="width:${(earned%10)/10*100}%"></i></div>
+      <div class="striplabel">${fmt(earned)} earned</div>
+      <div class="parked">${S.parked.map(p=>`<div>${p}</div>`).join('')}</div>
+      <div class="capture" id="cap" style="display:none;margin-top:14px"><input id="capIn"
+        style="width:100%;background:transparent;border:none;outline:none;border-bottom:1px solid var(--accent);color:var(--hi);font-size:15px;padding:6px 2px;font-family:inherit"
+        placeholder="Park a thought — Enter to keep it"></div>
+      <div class="actions">
+        <button class="btn-faint" onclick="toggleCap()">＋</button>
+        <button class="btn-ghost" onclick="stopFocus()">Stop</button>
+      </div>`;
+    const ci=document.getElementById('capIn');
+    ci&&ci.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){S.parked.unshift(e.target.value.trim());toggleCap();render();}});
+  }
+  else if(S.phase==='break'){
+    const total=S.focusSec/RATIO;
+    B.innerHTML=`<div class="kicker">This rest was earned</div>
+      <div class="ringwrap" style="filter:saturate(1);opacity:.85"><svg width="170" height="170"><circle class="ringbg" cx="85" cy="85" r="81"/>
+        <circle cx="85" cy="85" r="81" fill="none" stroke="#C8A24B" stroke-width="1.5" stroke-linecap="round"
+          stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC*(1-S.t/total)}"/></svg>
+        <div class="ringclock" style="font-size:31px;color:var(--hi)">${fmt(S.t)}</div></div>
+      <div class="striplabel" style="margin-top:-4px">${fmt(S.focusSec)} of focus → ${fmt(total)} of rest</div>
+      <div class="actions"><button class="btn-ghost" onclick="startRecall()">Skip</button></div>`;
+  }
+  else if(S.phase==='recall'){
+    B.innerHTML=`<div class="kicker">${fmt(Math.max(0,S.t))}</div>
+      <div style="font-family:Georgia,serif;font-style:italic;font-size:23px;margin-bottom:8px">What did you just do?</div>
+      <textarea class="recallfield" rows="3" placeholder="One line is enough." onchange="S.recall=this.value">${S.recall}</textarea>
+      <div class="actions"><button class="btn-ghost" onclick="closeBeat()">Skip</button></div>`;
+  }
+  else if(S.phase==='close'){
+    B.innerHTML=`<div class="kicker">Session</div>
+      <div class="receipt">
+        <div class="row"><span>Intention</span><b style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.intention}</b></div>
+        <div class="row"><span>Focus</span><b>${fmt(S.focusSec)}</b></div>
+        <div class="row"><span>Rest taken</span><b>${fmt(S.focusSec/RATIO)}</b></div>
+        ${S.parked.length?`<div class="row"><span>Parked</span><b>${S.parked.length}</b></div>`:''}
+      </div>
+      <div class="actions"><button class="btn-primary btn-hi" onclick="S.phase='idle';S.focusSec=0;render()">Done</button></div>`;
+  }
+}
+function toggleCap(){const c=document.getElementById('cap');c.style.display=c.style.display==='block'?'none':'block';c.querySelector('input').focus();}
+
+function phone(){
+  const P=document.getElementById('pBody');
+  if(S.phase==='idle'){
+    P.innerHTML=`<div class="p-kicker">&nbsp;</div>
+      <div class="p-intention"><input value="${S.intention}" onchange="S.intention=this.value" placeholder="Intention"></div>
+      <div class="p-clock-hero" style="color:var(--faint)">00:00</div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startPrime()">Start</button></div>`;
+  } else if(S.phase==='prime'){
+    P.innerHTML=`<div class="p-kicker">${S.intention}</div>
+      <div class="p-ring"><svg width="142" height="142"><circle cx="71" cy="71" r="67" stroke="#1B1E23" stroke-width="1.5" fill="none"/><circle cx="71" cy="71" r="67" stroke="#6E747D" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="${CIRCP}" stroke-dashoffset="${CIRCP*(1-S.t/PRIME)}"/></svg><div class="p-ringclock">${fmt(S.t)}</div></div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startFocus()">Skip</button></div>`;
+  } else if(S.phase==='focus'){
+    P.innerHTML=`<div class="p-kicker">${S.intention}</div>
+      <div class="p-clock-hero">${fmt(S.focusSec)}</div>
+      <div class="p-strip"><i style="width:${(S.focusSec/RATIO%10)/10*100}%"></i></div>
+      <div class="striplabel" style="text-align:center">${fmt(S.focusSec/RATIO)} earned</div>
+      <div class="p-actions">
+        <button class="btn-skip-thumb" onclick="stopFocus()">Stop</button>
+        <button class="btn-faint" onclick="alert('capture line')">＋ park a thought</button>
+      </div>`;
+  } else if(S.phase==='break'){
+    const total=S.focusSec/RATIO;
+    P.innerHTML=`<div class="p-kicker">This rest was earned</div>
+      <div class="p-ring" style="opacity:.85"><svg width="142" height="142"><circle cx="71" cy="71" r="67" stroke="#211E18" stroke-width="1.5" fill="none"/><circle cx="71" cy="71" r="67" stroke="#C8A24B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="${CIRCP}" stroke-dashoffset="${CIRCP*(1-S.t/total)}"/></svg><div class="p-ringclock">${fmt(S.t)}</div></div>
+      <div class="striplabel" style="text-align:center">${fmt(S.focusSec)} of focus → ${fmt(total)} rest</div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startRecall()">Skip</button></div>`;
+  } else if(S.phase==='recall'){
+    P.innerHTML=`<div class="p-kicker">${fmt(Math.max(0,S.t))}</div>
+      <div style="font-family:Georgia,serif;font-style:italic;font-size:20px;text-align:center;margin-bottom:6px">What did you just do?</div>
+      <textarea class="recallfield" rows="3" style="width:100%" placeholder="One line is enough." onchange="S.recall=this.value"></textarea>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="closeBeat()">Skip</button></div>`;
+  } else if(S.phase==='close'){
+    P.innerHTML=`<div class="p-kicker">Session</div>
+      <div class="receipt" style="width:100%">
+        <div class="row"><span>Intention</span><b style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.intention}</b></div>
+        <div class="row"><span>Focus</span><b>${fmt(S.focusSec)}</b></div>
+        <div class="row"><span>Rest taken</span><b>${fmt(S.focusSec/RATIO)}</b></div>
+      </div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="S.phase='idle';S.focusSec=0;render()">Done</button></div>`;
+  }
+}
+
+const pc=document.getElementById('phases');
+PHASES.forEach(p=>{const b=document.createElement('button');b.className='ctl';b.textContent=p[0].toUpperCase()+p.slice(1);b.dataset.p=p;b.onclick=()=>jump(p);pc.appendChild(b);});
+function jump(p){
+  if(p==='idle'){S.phase='idle';S.focusSec=0;render();}
+  if(p==='prime')startPrime();
+  if(p==='focus'){S.phase='focus';S.focusSec=Math.max(S.focusSec,1423);render();}
+  if(p==='break'){S.focusSec=S.focusSec||1500;S.phase='break';S.t=S.focusSec/RATIO;render();}
+  if(p==='recall')startRecall();
+  if(p==='close'){S.focusSec=S.focusSec||1500;S.parked=['the room remembers'];closeBeat();}
+}
+document.getElementById('speed').onclick=e=>{S.speed=S.speed===20?1:20;e.target.textContent=S.speed===20?'×20 demo speed':'real speed';};
+document.getElementById('pin').onclick=e=>e.target.classList.toggle('on');
+document.getElementById('mute').onclick=e=>e.target.classList.toggle('on');
+render();
+</script>
+</body>
+</html>

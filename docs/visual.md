@@ -31,6 +31,6 @@ Layout (this pass):
 - Resize scales the hero (clock / ring) with leftover space. Kickers, footnotes, and Skip stay compact. `NSHostingView` only publishes min-size so the content can fill the window.
 - Craft, not a theme pack: SF, size-specific tracking on the clock, press-down feedback, content clears the traffic lights. Rooms cross-fade over ~0.9s; nothing else animates. No generic glassmorphism.
 
-Out of this pass: menu bar, widget restyle, custom fonts, illustrations.
+Menu bar and widget follow the same atmosphere ink and field. Out of this pass: custom fonts, illustrations.
 
 Done means Idle, Prime, Focus, Break, Recall, and Close read as different atmospheres, and the locked loop is unchanged.

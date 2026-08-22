@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flowmo · Direction 2 — Warm paper</title>
+<style>
+/* ================= Warm paper =================
+   Off-white page, dark ink, one dried-ink/terracotta mark.
+   Idle: hairline intention field; Start is an ink pill.
+   Break: graphite ring on a paper disk; “This rest was earned” caption.
+   Focus: oversized ink count-up; earned rest = growing hairline, never a ring.
+   Recall: editorial question, lined field; Close: small typeset receipt. */
+* { margin:0; box-sizing:border-box; }
+:root {
+  --paper:#F6F1E7; --paper-2:#EFE8DA; --ink:#2B241C; --ink-mid:#6E6355;
+  --ink-faint:#B9AE9D; --hairline:#D9CFBE; --terracotta:#B4552D;
+}
+body { background:#DDD4C4; color:var(--ink); font-family:Georgia,'Times New Roman',serif; padding:36px 24px 60px; }
+header { max-width:1180px; margin:0 auto 26px; display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; }
+header h1 { font-size:14px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-mid); }
+header .sub { font-size:12px; font-style:italic; color:var(--ink-faint); }
+.controls { display:flex; gap:8px; flex-wrap:wrap; }
+button.ctl { font:inherit; font-size:12px; padding:6px 13px; border-radius:999px; cursor:pointer;
+  background:transparent; color:var(--ink-mid); border:1px solid var(--hairline); }
+button.ctl:hover { border-color:var(--ink-faint); color:var(--ink); }
+button.ctl.on { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+.stage { max-width:1180px; margin:0 auto; display:flex; gap:56px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+
+/* ---- Mac window (paper tile) ---- */
+.mac { width:400px; }
+.macbar { height:28px; background:var(--paper-2); border-radius:11px 11px 0 0; display:flex; align-items:center; padding:0 12px; gap:7px; border-bottom:1px solid #E2DACB; }
+.tl { width:12px; height:12px; border-radius:50%; } .tl.r{background:#F0B0AA}.tl.y{background:#F2CE93}.tl.g{background:#A9CBA4}
+.mactitle { flex:1; text-align:center; font-size:11px; color:var(--ink-faint); font-style:italic; }
+.window {
+  background:var(--paper); border-radius:0 0 11px 11px; border:1px solid #E2DACB; border-top:none;
+  min-height:470px; padding:24px 28px 20px; position:relative; display:flex; flex-direction:column;
+}
+.overlayctl { position:absolute; top:16px; right:18px; display:flex; gap:10px; z-index:5; }
+.octl { width:25px; height:25px; border-radius:50%; border:1px solid var(--hairline); color:var(--ink-faint);
+  font-size:11px; line-height:23px; text-align:center; cursor:pointer; user-select:none; background:transparent; }
+.octl.on { color:var(--terracotta); border-color:#DBB49F; }
+
+.body { flex:1; display:flex; flex-direction:column; justify-content:center; text-align:center; position:relative; }
+.kicker { font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-faint);
+  margin-bottom:20px; min-height:14px; font-family:-apple-system,sans-serif; }
+.intention input {
+  width:100%; background:transparent; border:none; outline:none; text-align:left;
+  color:var(--ink); font-family:Georgia,serif; font-size:21px; font-style:italic; padding:6px 2px 10px;
+  border-bottom:1px solid var(--hairline);
+}
+.intention input:focus { border-bottom-color:var(--terracotta); }
+.intention input::placeholder { color:var(--ink-faint); }
+.clock { font-variant-numeric:tabular-nums; line-height:1; letter-spacing:-.01em; }
+.clock.dim { font-size:38px; font-weight:400; color:var(--ink-faint); margin:30px 0 34px; }
+.clock.hero { font-size:92px; color:var(--ink); margin:14px 0 4px; font-weight:400; }
+.clock.mid { font-size:46px; color:var(--ink); margin:16px 0; }
+.actions { display:flex; justify-content:center; align-items:center; gap:14px; margin-top:auto; padding-top:24px; }
+.btn-primary { font-family:-apple-system,sans-serif; font-size:13.5px; font-weight:600; padding:11px 36px; border-radius:999px; border:none; cursor:pointer; }
+.btn-ink { background:var(--ink); color:var(--paper); }
+.btn-ghost { background:transparent; color:var(--ink-mid); border:1px solid var(--hairline); font-size:13px;
+  padding:9px 22px; border-radius:999px; cursor:pointer; font-family:-apple-system,sans-serif; }
+.btn-faint { background:transparent; color:var(--ink-faint); border:none; font-size:13px; cursor:pointer; font-family:-apple-system,sans-serif; }
+.btn-faint:hover { color:var(--ink-mid); }
+.footerline { display:flex; justify-content:space-between; padding-top:16px; border-top:1px solid var(--hairline);
+  font-size:11px; color:var(--ink-faint); font-variant-numeric:tabular-nums; font-family:-apple-system,sans-serif; }
+.footerline b { color:var(--ink-mid); font-weight:500; }
+/* graphite ring on paper disk */
+.ringwrap { width:170px; height:170px; margin:0 auto 24px; position:relative; }
+.paperdisk { position:absolute; inset:0; border-radius:50%; background:radial-gradient(circle at 42% 36%, #FBF7EF, var(--paper) 70%); box-shadow:inset 0 0 0 1px #EBE3D3, 0 1px 4px rgba(90,75,55,.08); }
+.ringwrap svg { transform:rotate(-90deg); position:relative; }
+.ringbg { stroke:var(--hairline); fill:none; stroke-width:1.5; }
+.ringfg { stroke:var(--ink); fill:none; stroke-width:1.5; transition:stroke-dashoffset .15s linear; }
+.ringclock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:29px; font-variant-numeric:tabular-nums; color:var(--ink); }
+.caption { font-style:italic; color:var(--ink-mid); font-size:14.5px; margin-top:4px; }
+.caption b { color:var(--terracotta); font-weight:normal; font-style:normal; font-variant-numeric:tabular-nums; }
+/* earned hairline — never a ring */
+.hairgrow { margin:30px auto 8px; width:80%; height:14px; position:relative; }
+.hairgrow i { position:absolute; left:0; top:6px; height:1.5px; background:var(--terracotta); width:0%;
+  box-shadow:0 0 0 .5px rgba(180,85,45,.15); transition:width .3s linear; }
+.hairlabel { font-size:12px; color:var(--ink-mid); font-style:italic; font-variant-numeric:tabular-nums; }
+.parked { margin-top:16px; text-align:left; font-size:13px; font-style:italic; color:var(--ink-mid); }
+.parked div { padding:4px 0 4px 16px; border-left:1.5px solid var(--terracotta); margin-bottom:4px; opacity:.85; }
+.receipt { text-align:left; margin:0 auto; width:84%; font-size:13.5px; }
+.receipt .row { display:flex; justify-content:space-between; padding:10px 2px; border-bottom:1px dotted var(--hairline); color:var(--ink-mid); }
+.receipt .row b { color:var(--ink); font-weight:normal; font-variant-numeric:tabular-nums; }
+.receipt .head { text-align:center; font-size:10.5px; letter-spacing:.26em; text-transform:uppercase; color:var(--ink-faint); padding-bottom:12px; border-bottom:1px solid var(--hairline); font-family:-apple-system,sans-serif; }
+textarea.recallfield {
+  width:88%; background:transparent; border:none; outline:none; resize:none; color:var(--ink);
+  font-family:Georgia,serif; font-style:italic; font-size:16px; line-height:2; margin-top:8px;
+  background-image:repeating-linear-gradient(transparent,transparent 31px,var(--hairline) 32px);
+}
+
+/* ---- iPhone full sheet ---- */
+.phonecol { display:flex; flex-direction:column; gap:14px; align-items:center; }
+.iphone { width:280px; height:580px; background:var(--ink); border-radius:44px; padding:10px; box-shadow:0 24px 60px rgba(70,58,40,.35); }
+.screen { background:var(--paper); border-radius:35px; height:100%; overflow:hidden; position:relative; display:flex; flex-direction:column; padding:52px 24px 26px; }
+.notch { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:86px; height:24px; background:var(--ink); border-radius:14px; }
+.p-status { display:flex; justify-content:space-between; font-size:12px; color:var(--ink-mid); font-variant-numeric:tabular-nums; position:absolute; top:14px; left:28px; right:28px; font-family:-apple-system,sans-serif;}
+.p-kicker { font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-faint); text-align:center; margin-bottom:16px; font-family:-apple-system,sans-serif;}
+.p-clock-hero { font-size:72px; text-align:center; font-variant-numeric:tabular-nums; margin:10px 0 2px; }
+.p-intention input { width:100%; background:transparent; border:none; outline:none; text-align:center; color:var(--ink);
+  font-family:Georgia,serif; font-style:italic; font-size:18px; padding:6px 0 12px; border-bottom:1px solid var(--hairline);}
+.p-ring { width:150px; height:150px; margin:10px auto 18px; position:relative; }
+.p-ring svg{transform:rotate(-90deg);} 
+.p-ringclock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-variant-numeric:tabular-nums;color:var(--ink);}
+.p-hair { margin:20px 10px 6px; height:14px; position:relative; }
+.p-hair i { position:absolute; left:0; top:6px; height:1.5px; background:var(--terracotta); width:0%; }
+.p-actions { margin-top:auto; display:flex; flex-direction:column; gap:12px; }
+.btn-skip-thumb { font-family:-apple-system,sans-serif; font-size:15px; font-weight:600; padding:15px; border-radius:999px; border:none; cursor:pointer; background:var(--ink); color:var(--paper); }
+.p-receipt { text-align:left; font-size:13.5px; }
+.p-receipt .row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dotted var(--hairline); color:var(--ink-mid); }
+.p-receipt .row b { color:var(--ink); font-weight:normal; font-variant-numeric:tabular-nums; }
+.homebar { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:110px; height:4px; border-radius:2px; background:#D8CFBF; }
+.note { max-width:1180px; margin:34px auto 0; font-size:13px; line-height:1.8; color:var(--ink-mid); font-style:italic; }
+.note b { font-style:normal; font-family:-apple-system,sans-serif; font-size:12px; color:var(--ink); }
+a.back { color:var(--ink-faint); font-size:12px; text-decoration:none; font-family:-apple-system,sans-serif; } a.back:hover { color:var(--ink-mid); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Flowmo · 02 Warm paper</h1>
+  <span class="sub">off-white page · dark ink · one dried-ink mark</span>
+  <div style="flex:1"></div>
+  <div class="controls" id="phases"></div>
+  <button class="ctl" id="speed">×20 demo speed</button>
+  <a class="back" href="index.html">← all directions</a>
+</header>
+
+<div class="stage">
+  <!-- MAC -->
+  <div class="mac">
+    <div class="macbar"><span class="tl r"></span><span class="tl y"></span><span class="tl g"></span><span class="mactitle">Flowmo</span><span style="width:54px"></span></div>
+    <div class="window">
+      <div class="overlayctl">
+        <div class="octl" id="pin" title="Pin on top">◎</div>
+        <div class="octl on" id="mute" title="Sound on">♪</div>
+      </div>
+      <div class="body" id="macBody"></div>
+      <div class="footerline"><span>Today <b id="todayMac">1h 05m</b></span><span id="phaseTag">Idle</span></div>
+    </div>
+  </div>
+
+  <!-- IPHONE -->
+  <div class="phonecol">
+    <div class="iphone"><div class="screen">
+      <div class="notch"></div>
+      <div class="p-status"><span>9:41</span><span>Flowmo</span></div>
+      <div id="pBody" style="display:flex;flex-direction:column;flex:1"></div>
+      <div class="homebar"></div>
+    </div></div>
+    <span style="font-size:11px;color:#8d8271;font-family:-apple-system">iPhone as a full sheet, same type roles</span>
+  </div>
+</div>
+
+<p class="note"><b>Ink rules:</b> terracotta appears once per phase at most — the growing earned hairline in Focus, the disk shadow in Break. Everything else is graphite ink on paper. No neon anywhere.</p>
+
+<script>
+const RATIO=5, PRIME=120, RECALL=300;
+let S={ phase:'idle', t:0, focusSec:0, intention:'Finish the type system spec', parked:[], recall:'', speed:20 };
+const fmt=s=>{s=Math.max(0,Math.floor(s));const m=Math.floor(s/60),r=s%60;
+  return m>=60?`${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}:${String(r).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;};
+function startPrime(){S.phase='prime';S.t=PRIME;render();}
+function startFocus(){S.phase='focus';S.focusSec=0;S.parked=[];render();}
+function stopFocus(){ if(S.focusSec<5){S.phase='idle';render();return;} S.phase='break'; S.t=Math.max(60,S.focusSec/RATIO); render(); }
+function startRecall(){S.phase='recall';S.t=RECALL;render();}
+function closeBeat(){S.phase='close';render();setTimeout(()=>{if(S.phase==='close'){S.phase='idle';S.focusSec=0;render();}},60000/S.speed);}
+setInterval(()=>{
+  if(S.phase==='prime'){S.t-=S.speed/10;if(S.t<=0)startFocus();}
+  else if(S.phase==='focus'){S.focusSec+=S.speed/10;}
+  else if(S.phase==='break'){S.t-=S.speed/10;if(S.t<=0)startRecall();}
+  else if(S.phase==='recall'){S.t-=S.speed/10;if(S.t<=0)closeBeat();}
+  render();
+},100);
+
+const CIRC=2*Math.PI*81, CIRCP=2*Math.PI*71;
+function ring(label,frac){
+  return `<div class="ringwrap"><div class="paperdisk"></div>
+    <svg width="170" height="170">
+      <circle class="ringbg" cx="85" cy="85" r="81"/>
+      <circle class="ringfg" cx="85" cy="85" r="81" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC*(1-frac)}"/>
+    </svg><div class="ringclock">${label}</div></div>`;
+}
+
+const PHASES=['idle','prime','focus','break','recall','close'];
+function render(){
+  document.querySelectorAll('#phases button').forEach(b=>b.classList.toggle('on',b.dataset.p===S.phase));
+  mac(); phone();
+}
+
+function mac(){
+  const B=document.getElementById('macBody');
+  document.getElementById('phaseTag').textContent={idle:'Idle',prime:'Prime',focus:'Focus',break:'Break',recall:'Recall',close:'Close'}[S.phase];
+  if(S.phase==='idle'){
+    B.innerHTML=`<div class="kicker"></div>
+      <div class="intention"><input id="mi" value="${S.intention}" placeholder="What are you doing?"></div>
+      <div class="clock dim">00:00</div>
+      <div class="actions"><button class="btn-primary btn-ink" onclick="startPrime()">Start</button>
+        <button class="btn-faint" style="margin-left:6px">History</button></div>`;
+    document.getElementById('mi').addEventListener('change',e=>S.intention=e.target.value);
+  }
+  else if(S.phase==='prime'){
+    B.innerHTML=`<div class="kicker">Get still</div>${ring(fmt(S.t),S.t/PRIME)}
+      <div class="caption">“${S.intention}”</div>
+      <div class="actions"><button class="btn-ghost" onclick="startFocus()">Skip</button></div>`;
+  }
+  else if(S.phase==='focus'){
+    const earned=S.focusSec/RATIO;
+    B.innerHTML=`<div class="kicker">${S.intention}</div>
+      <div class="clock hero">${fmt(S.focusSec)}</div>
+      <div class="hairgrow"><i style="width:${(earned%10)/10*100}%"></i></div>
+      <div class="hairlabel">${fmt(earned)} of rest earned so far</div>
+      <div class="parked">${S.parked.map(p=>`<div>${p}</div>`).join('')}</div>
+      <div class="capture" id="cap" style="display:none;margin-top:14px"><input id="capIn" placeholder="Park a thought — Enter to keep it"
+        style="width:100%;background:transparent;border:none;outline:none;border-bottom:1px solid var(--terracotta);color:var(--ink);font-family:Georgia;font-style:italic;font-size:15px;padding:6px 2px"></div>
+      <div class="actions">
+        <button class="btn-faint" onclick="toggleCap()">＋ park</button>
+        <button class="btn-primary btn-ink" onclick="stopFocus()">Stop</button>
+      </div>`;
+    const ci=document.getElementById('capIn');
+    ci&&ci.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){S.parked.unshift(e.target.value.trim());toggleCap();render();}});
+  }
+  else if(S.phase==='break'){
+    const total=S.focusSec/RATIO;
+    B.innerHTML=`<div class="kicker">Rest</div>${ring(fmt(S.t),S.t/total)}
+      <div class="caption">This rest was <b>earned</b> — ${fmt(S.focusSec)} of focus.</div>
+      <div class="actions"><button class="btn-ghost" onclick="startRecall()">Skip</button></div>`;
+  }
+  else if(S.phase==='recall'){
+    B.innerHTML=`<div class="kicker">${fmt(Math.max(0,S.t))}</div>
+      <div style="font-size:22px;font-style:italic;margin-bottom:8px">What did you just do?</div>
+      <textarea class="recallfield" rows="3" placeholder="One line is enough." onchange="S.recall=this.value">${S.recall}</textarea>
+      <div class="actions"><button class="btn-ghost" onclick="closeBeat()">Skip</button></div>`;
+  }
+  else if(S.phase==='close'){
+    B.innerHTML=`<div class="kicker"></div>
+      <div class="receipt"><div class="head">Session receipt</div>
+        <div class="row"><span>Intention</span><b style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.intention}</b></div>
+        <div class="row"><span>Focus</span><b>${fmt(S.focusSec)}</b></div>
+        <div class="row"><span>Rest taken</span><b>${fmt(S.focusSec/RATIO)}</b></div>
+        ${S.parked.length?`<div class="row"><span>Parked thoughts</span><b>${S.parked.length}</b></div>`:''}
+        ${S.recall.trim()?`<div class="row"><span>Recalled</span><b>✓</b></div>`:''}
+      </div>
+      <div class="actions"><button class="btn-primary btn-ink" onclick="S.phase='idle';S.focusSec=0;render()">Done</button></div>`;
+  }
+}
+function toggleCap(){const c=document.getElementById('cap');c.style.display=c.style.display==='block'?'none':'block';c.querySelector('input').focus();}
+
+function phone(){
+  const P=document.getElementById('pBody');
+  if(S.phase==='idle'){
+    P.innerHTML=`<div class="p-kicker">&nbsp;</div>
+      <div class="p-intention"><input value="${S.intention}" onchange="S.intention=this.value" placeholder="Intention"></div>
+      <div class="p-clock-hero" style="color:var(--ink-faint)">00:00</div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startPrime()">Start</button></div>`;
+  } else if(S.phase==='prime'){
+    P.innerHTML=`<div class="p-kicker">Get still</div>
+      <div class="p-ring"><div class="paperdisk"></div><svg width="150" height="150"><circle cx="75" cy="75" r="71" stroke="#D9CFBE" stroke-width="1.5" fill="none"/><circle cx="75" cy="75" r="71" stroke="#2B241C" stroke-width="1.5" fill="none" stroke-dasharray="${CIRCP}" stroke-dashoffset="${CIRCP*(1-S.t/PRIME)}"/></svg><div class="p-ringclock">${fmt(S.t)}</div></div>
+      <div class="caption" style="text-align:center">“${S.intention}”</div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startFocus()">Skip</button></div>`;
+  } else if(S.phase==='focus'){
+    P.innerHTML=`<div class="p-kicker">${S.intention}</div>
+      <div class="p-clock-hero">${fmt(S.focusSec)}</div>
+      <div class="p-hair"><i style="width:${(S.focusSec/RATIO%10)/10*100}%"></i></div>
+      <div class="hairlabel" style="text-align:center">${fmt(S.focusSec/RATIO)} of rest earned</div>
+      <div class="p-actions">
+        <button class="btn-skip-thumb" onclick="stopFocus()">Stop</button>
+        <button class="btn-faint" onclick="alert('capture line')">＋ park a thought</button>
+      </div>`;
+  } else if(S.phase==='break'){
+    const total=S.focusSec/RATIO;
+    P.innerHTML=`<div class="p-kicker">Rest</div>
+      <div class="p-ring"><div class="paperdisk"></div><svg width="150" height="150"><circle cx="75" cy="75" r="71" stroke="#D9CFBE" stroke-width="1.5" fill="none"/><circle cx="75" cy="75" r="71" stroke="#2B241C" stroke-width="1.5" fill="none" stroke-dasharray="${CIRCP}" stroke-dashoffset="${CIRCP*(1-S.t/total)}"/></svg><div class="p-ringclock">${fmt(S.t)}</div></div>
+      <div class="caption" style="text-align:center">Earned by ${fmt(S.focusSec)} of focus.</div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startRecall()">Skip</button></div>`;
+  } else if(S.phase==='recall'){
+    P.innerHTML=`<div class="p-kicker">${fmt(Math.max(0,S.t))}</div>
+      <div style="font-size:19px;font-style:italic;text-align:center;margin-bottom:6px">What did you just do?</div>
+      <textarea class="recallfield" rows="3" style="width:100%" placeholder="One line is enough." onchange="S.recall=this.value"></textarea>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="closeBeat()">Skip</button></div>`;
+  } else if(S.phase==='close'){
+    P.innerHTML=`<div class="p-kicker">Receipt</div>
+      <div class="p-receipt">
+        <div class="row"><span>Intention</span><b style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.intention}</b></div>
+        <div class="row"><span>Focus</span><b>${fmt(S.focusSec)}</b></div>
+        <div class="row"><span>Rest taken</span><b>${fmt(S.focusSec/RATIO)}</b></div>
+      </div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="S.phase='idle';S.focusSec=0;render()">Done</button></div>`;
+  }
+}
+
+const pc=document.getElementById('phases');
+PHASES.forEach(p=>{const b=document.createElement('button');b.className='ctl';b.textContent=p[0].toUpperCase()+p.slice(1);b.dataset.p=p;b.onclick=()=>jump(p);pc.appendChild(b);});
+function jump(p){
+  if(p==='idle'){S.phase='idle';S.focusSec=0;render();}
+  if(p==='prime')startPrime();
+  if(p==='focus'){S.phase='focus';S.focusSec=Math.max(S.focusSec,1423);render();}
+  if(p==='break'){S.focusSec=S.focusSec||1500;S.phase='break';S.t=S.focusSec/RATIO;render();}
+  if(p==='recall')startRecall();
+  if(p==='close'){S.focusSec=S.focusSec||1500;S.parked=['the strip grows like a ruled line'];closeBeat();}
+}
+document.getElementById('speed').onclick=e=>{S.speed=S.speed===20?1:20;e.target.textContent=S.speed===20?'×20 demo speed':'real speed';};
+document.getElementById('pin').onclick=e=>e.target.classList.toggle('on');
+document.getElementById('mute').onclick=e=>e.target.classList.toggle('on');
+render();
+</script>
+</body>
+</html>

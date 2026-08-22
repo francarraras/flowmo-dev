@@ -21,7 +21,7 @@ Copy does not claim productivity, well-being, or flow.
 - One WidgetKit extension on `Apps/FlowmoPhone.xcodeproj`. Bundle family under `app.flowmo.phone`.
 - Same `world.json` the phone already writes, via an **App Group** so the extension can read it. Core `Store(root:)` and Engine timestamps. No second clock, no second engine.
 - The phone reloads the timeline after store writes. Timeline entries cover timed phase boundaries. SwiftUI timer text renders live count-up/countdown from Core timestamps; there is no 1-second app timer.
-- Small / medium is enough. Black field, white clock, cyan only if a timed ring is shown; **Focus has no progress ring**.
+- Small / medium is enough. Field and clock ink follow `Atmosphere.of(phase)`. **Focus has no progress ring.** Gold rest is not on the glance.
 - Same recovery rule as the app: a paused session shows the frozen clock and `·`. Opening from the widget still does not Continue.
 
 ## Out

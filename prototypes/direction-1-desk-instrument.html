@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flowmo · Direction 1 — Desk instrument</title>
+<style>
+/* ================= Desk instrument =================
+   Black field. SF. Cyan rationed to moving time + one primary action.
+   Idle: intention hero, 00:00 recedes, Start is only cyan.
+   Prime/Break: clock inside a precise ring, Skip quiet.
+   Focus: largest lightest numerals; earned strip only other mark; + and Stop recede.
+   Recall/Close: question or receipt leads; ring/clock shrinks. */
+* { margin:0; box-sizing:border-box; }
+:root {
+  --field:#08090B; --panel:#0E1013; --line:#1D2126;
+  --ink-hi:#F2F4F6; --ink-mid:#9AA1AA; --ink-low:#3A4048;
+  --cyan:#2AD4E8;
+}
+body { background:#131417; color:var(--ink-hi); font-family:-apple-system,"SF Pro Display","SF Pro Text",Helvetica,Arial,sans-serif; padding:36px 24px 60px; }
+header { max-width:1180px; margin:0 auto 26px; display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; }
+header h1 { font-size:14px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-mid); }
+header .sub { font-size:12px; color:var(--ink-low); }
+.controls { display:flex; gap:8px; flex-wrap:wrap; }
+button.ctl {
+  font:inherit; font-size:12px; padding:7px 14px; border-radius:999px; cursor:pointer;
+  background:transparent; color:var(--ink-mid); border:1px solid var(--line);
+}
+button.ctl:hover { color:var(--ink-hi); border-color:#3A4048; }
+button.ctl.on { color:#08090B; background:var(--cyan); border-color:var(--cyan); font-weight:600; }
+.stage { max-width:1180px; margin:0 auto; display:flex; gap:56px; justify-content:center; align-items:flex-start; flex-wrap:wrap; }
+
+/* ---- Mac window ---- */
+.mac { width:400px; }
+.macbar { height:28px; background:#17191d; border-radius:11px 11px 0 0; display:flex; align-items:center; padding:0 12px; gap:7px; border-bottom:1px solid #000; }
+.tl { width:12px; height:12px; border-radius:50%; } .tl.r{background:#FF5F57}.tl.y{background:#FEBC2E}.tl.g{background:#28C840}
+.mactitle { flex:1; text-align:center; font-size:11px; color:#5A6068; font-weight:500; }
+.window {
+  background:var(--field); border-radius:0 0 11px 11px; border:1px solid #000; border-top:none;
+  min-height:470px; padding:22px 24px 20px; position:relative;
+  display:flex; flex-direction:column; transition:background .5s;
+}
+.overlayctl { position:absolute; top:14px; right:16px; display:flex; gap:10px; z-index:5; }
+.octl { width:26px; height:26px; border-radius:50%; border:1px solid var(--line); background:rgba(255,255,255,.02);
+  color:var(--ink-low); font-size:12px; line-height:24px; text-align:center; cursor:pointer; user-select:none; }
+.octl.on { color:var(--cyan); border-color:rgba(42,212,232,.45); }
+.octl:hover { color:var(--ink-mid); }
+
+/* phase body */
+.body { flex:1; display:flex; flex-direction:column; justify-content:center; text-align:center; position:relative; }
+.kicker { font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-low); margin-bottom:18px; min-height:13px; }
+.intention { width:100%; }
+.intention input {
+  width:100%; background:transparent; border:none; outline:none; text-align:center;
+  color:var(--ink-hi); font-family:inherit; font-size:19px; font-weight:600; letter-spacing:-.01em;
+  padding:8px 0 14px; border-bottom:1px solid transparent;
+}
+.intention input:focus { border-bottom-color:var(--line); }
+.intention input::placeholder { color:var(--ink-low); font-weight:500; }
+.clock { font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1; }
+.clock.dim { font-size:44px; font-weight:200; color:var(--ink-low); margin:6px 0 26px; }
+.clock.hero { font-size:96px; font-weight:100; color:var(--ink-hi); margin:10px 0 8px; }
+.clock.mid { font-size:58px; font-weight:150; color:var(--ink-hi); margin:14px 0; }
+.clock.cy { color:var(--cyan); font-weight:200; }
+/* precise ring */
+.ringwrap { width:168px; height:168px; margin:0 auto 22px; position:relative; }
+.ringwrap svg { transform:rotate(-90deg); }
+.ringbg { stroke:var(--line); fill:none; stroke-width:2; }
+.ringfg { stroke:var(--cyan); fill:none; stroke-width:2; stroke-linecap:round; transition:stroke-dashoffset .15s linear; }
+.ringclock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:30px; font-weight:250; font-variant-numeric:tabular-nums; letter-spacing:-.02em; color:var(--ink-hi); }
+/* earned strip */
+.strip { height:3px; background:var(--line); border-radius:2px; margin:26px auto 8px; width:78%; overflow:hidden; }
+.strip i { display:block; height:100%; width:0%; background:var(--cyan); border-radius:2px; transition:width .3s linear; }
+.striplabel { font-size:11px; color:var(--ink-mid); font-variant-numeric:tabular-nums; }
+/* actions */
+.actions { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:auto; padding-top:22px; min-height:64px; }
+.btn-primary { font:inherit; font-size:14px; font-weight:600; padding:11px 34px; border-radius:999px; border:none; cursor:pointer; }
+.btn-cyan { background:var(--cyan); color:#04252B; }
+.btn-ghost { background:transparent; color:var(--ink-mid); border:1px solid var(--line); font-size:13px; padding:10px 22px; border-radius:999px; cursor:pointer; }
+.btn-faint { background:transparent; color:var(--ink-low); border:none; font-size:13px; cursor:pointer; }
+.btn-faint:hover { color:var(--ink-mid); }
+.btn-ghost:hover { color:var(--ink-hi); border-color:#3A4048; }
+.footerline { display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid var(--line); font-size:11px; color:var(--ink-low); font-variant-numeric:tabular-nums; }
+.footerline b { color:var(--ink-mid); font-weight:500; }
+.capture { display:none; margin-top:16px; }
+.capture input { width:100%; background:transparent; border:none; outline:none; border-bottom:1px solid var(--cyan);
+  color:var(--ink-hi); font-size:15px; padding:6px 2px; font-family:inherit; }
+.parked { margin-top:14px; text-align:left; font-size:12px; color:var(--ink-mid); }
+.parked div { padding:5px 0 5px 14px; border-left:2px solid rgba(42,212,232,.35); margin-bottom:4px; }
+.receipt { text-align:left; margin:0 auto; width:82%; font-size:13px; }
+.receipt .row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); color:var(--ink-mid); }
+.receipt .row b { color:var(--ink-hi); font-weight:500; font-variant-numeric:tabular-nums; }
+.receipt .row.q b { color:var(--cyan); }
+textarea.recallfield {
+  width:88%; background:transparent; border:none; outline:none; resize:none; color:var(--ink-hi);
+  font-family:inherit; font-size:16px; line-height:1.9; margin-top:6px;
+  background-image:repeating-linear-gradient(transparent,transparent 27px,var(--line) 28px);
+}
+
+/* ---- iPhone ---- */
+.phonecol { display:flex; flex-direction:column; gap:14px; align-items:center; }
+.iphone { width:280px; height:580px; background:#000; border-radius:44px; padding:10px; border:1px solid #26292e; box-shadow:0 24px 60px rgba(0,0,0,.5); }
+.screen { background:var(--field); border-radius:35px; height:100%; overflow:hidden; position:relative; display:flex; flex-direction:column; padding:52px 24px 26px; }
+.notch { position:absolute; top:12px; left:50%; transform:translateX(-50%); width:86px; height:24px; background:#000; border-radius:14px; }
+.p-status { display:flex; justify-content:space-between; font-size:12px; color:var(--ink-mid); font-variant-numeric:tabular-nums; position:absolute; top:14px; left:26px; right:26px; }
+.p-kicker { font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-low); text-align:center; margin-bottom:14px; }
+.p-clock-hero { font-size:76px; font-weight:100; text-align:center; font-variant-numeric:tabular-nums; letter-spacing:-.03em; margin:8px 0; }
+.p-intention input { width:100%; background:transparent; border:none; outline:none; text-align:center; color:var(--ink-hi);
+  font-family:inherit; font-size:17px; font-weight:600; padding:6px 0 12px; }
+.p-ring { width:140px; height:140px; margin:6px auto 14px; position:relative; }
+.p-ring svg { transform:rotate(-90deg);} .p-ringclock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:250;font-variant-numeric:tabular-nums;}
+.p-strip { height:3px; background:var(--line); border-radius:2px; margin:18px 8px 6px; overflow:hidden; }
+.p-strip i { display:block; height:100%; width:0%; background:var(--cyan); }
+.p-striplabel { text-align:center; font-size:11px; color:var(--ink-mid); }
+.p-actions { margin-top:auto; display:flex; flex-direction:column; gap:12px; align-items:stretch; }
+.btn-skip-thumb { font:inherit; font-size:15px; font-weight:600; padding:15px; border-radius:999px; border:none; cursor:pointer; background:var(--cyan); color:#04252B; }
+.p-receipt { text-align:left; font-size:13px; }
+.p-receipt .row { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); color:var(--ink-mid);}
+.p-receipt .row b{color:var(--ink-hi);font-weight:500;font-variant-numeric:tabular-nums;}
+.homebar { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:110px; height:4px; border-radius:2px; background:#2A2F35; }
+.note { max-width:1180px; margin:34px auto 0; font-size:12px; line-height:1.7; color:var(--ink-low); }
+.note b{color:var(--ink-mid);font-weight:600;}
+a.back { color:var(--ink-low); font-size:12px; text-decoration:none; } a.back:hover{color:var(--ink-mid);}
+</style>
+</head>
+<body>
+<header>
+  <h1>Flowmo · 01 Desk instrument</h1>
+  <span class="sub">black field · SF · cyan rationed to moving time + one action</span>
+  <div style="flex:1"></div>
+  <div class="controls" id="phases"></div>
+  <button class="ctl" id="speed">×20 demo speed</button>
+  <a class="back" href="index.html">← all directions</a>
+</header>
+
+<div class="stage">
+  <!-- MAC -->
+  <div class="mac">
+    <div class="macbar"><span class="tl r"></span><span class="tl y"></span><span class="tl g"></span><span class="mactitle">Flowmo</span><span style="width:54px"></span></div>
+    <div class="window">
+      <div class="overlayctl">
+        <div class="octl" id="pin" title="Pin on top">◎</div>
+        <div class="octl on" id="mute" title="Sound on">♪</div>
+      </div>
+      <div class="body" id="macBody"></div>
+      <div class="footerline"><span>Today <b id="todayMac">1h 05m</b></span><span id="phaseTag">Idle</span></div>
+    </div>
+  </div>
+
+  <!-- IPHONE -->
+  <div class="phonecol">
+    <div class="iphone"><div class="screen">
+      <div class="notch"></div>
+      <div class="p-status"><span>9:41</span><span>Flowmo</span></div>
+      <div class="body" id="pBody" style="display:flex;flex-direction:column;flex:1"></div>
+      <div class="homebar"></div>
+    </div></div>
+    <span style="font-size:11px;color:#3A4048">iPhone — same ink, larger mute zone, thumb Skip</span>
+  </div>
+</div>
+
+<p class="note"><b>Rationing rules:</b> cyan appears only on (a) moving time and (b) exactly one primary action per phase. Everything else is graphite. The focus clock is the largest, lightest object on the desk; the earned strip is its only companion mark.</p>
+
+<script>
+/* ---------- engine (mirrors the locked loop) ---------- */
+const RATIO = 5, PRIME = 120, RECALL = 300;
+let S = { phase:'idle', t:0, focusSec:0, intention:'Finish the type system spec', parked:[], recall:'', speed:20 };
+const fmt = s => { s=Math.max(0,Math.floor(s)); const m=Math.floor(s/60), r=s%60;
+  return m>=60 ? `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}:${String(r).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`; };
+
+function startPrime(){ S.phase='prime'; S.t=PRIME; render(); }
+function startFocus(){ S.phase='focus'; S.focusSec=0; S.parked=[]; render(); }
+function stopFocus(){ if(S.focusSec<5){S.phase='idle';render();return;} S.phase='break'; S.t=Math.max(60,S.focusSec/RATIO); render(); }
+function startRecall(){ S.phase='recall'; S.t=RECALL; render(); }
+function closeBeat(){ S.phase='close'; render(); setTimeout(()=>{ if(S.phase==='close'){S.phase='idle';S.focusSec=0;render();} }, 60000/S.speed); }
+
+setInterval(()=>{
+  if(S.phase==='prime'){ S.t-=S.speed/10; if(S.t<=0) startFocus(); }
+  else if(S.phase==='focus'){ S.focusSec+=S.speed/10; }
+  else if(S.phase==='break'){ S.t-=S.speed/10; if(S.t<=0) startRecall(); }
+  else if(S.phase==='recall'){ S.t-=S.speed/10; if(S.t<=0) closeBeat(); }
+  render();
+},100);
+
+/* ---------- ring geometry ---------- */
+const CIRC = 2*Math.PI*80;
+
+/* ---------- render ---------- */
+const PHASES=['idle','prime','focus','break','recall','close'];
+function render(){
+  document.querySelectorAll('#phases button').forEach(b=>b.classList.toggle('on',b.dataset.p===S.phase));
+  mac(); phone();
+}
+
+function ring(cls,label){
+  const frac = cls==='prime'||cls==='break' ? Math.max(0,S.t)/(cls==='prime'?PRIME:S.t+0.0001||1) : 1;
+  return `<div class="ringwrap">
+    <svg width="168" height="168">
+      <circle class="ringbg" cx="84" cy="84" r="80"/>
+      <circle class="ringfg" cx="84" cy="84" r="80" stroke-dasharray="${CIRC}"
+        stroke-dashoffset="${CIRC*(1-frac)}"/>
+    </svg>
+    <div class="ringclock">${label}</div>
+  </div>`;
+}
+
+function mac(){
+  const B=document.getElementById('macBody');
+  const tag={idle:'Idle',prime:'Prime',focus:'Focus',break:'Break',recall:'Recall',close:'Close'}[S.phase];
+  document.getElementById('phaseTag').textContent=tag;
+
+  if(S.phase==='idle'){
+    B.innerHTML=`<div class="kicker"></div>
+      <div class="intention"><input id="mi" value="${S.intention}" placeholder="What are you doing?"></div>
+      <div class="clock dim cy" style="color:var(--ink-low)">00:00</div>
+      <div class="actions"><button class="btn-primary btn-cyan" onclick="startPrime()">Start</button>
+        <button class="btn-faint" style="margin-left:8px">History</button></div>`;
+    document.getElementById('mi').addEventListener('change',e=>S.intention=e.target.value);
+  }
+  else if(S.phase==='prime'){
+    B.innerHTML=`<div class="kicker">Get still — ${S.intention}</div>
+      ${ring('prime',fmt(S.t))}
+      <div class="actions"><button class="btn-ghost" onclick="startFocus()">Skip</button></div>`;
+  }
+  else if(S.phase==='focus'){
+    const earned=S.focusSec/RATIO;
+    B.innerHTML=`<div class="kicker">${S.intention}</div>
+      <div class="clock hero">${fmt(S.focusSec)}</div>
+      <div class="strip"><i style="width:${Math.min(100,(earned%10)/10*100)}%"></i></div>
+      <div class="striplabel">${fmt(earned)} earned</div>
+      <div class="parked">${S.parked.map(p=>`<div>${p}</div>`).join('')}</div>
+      <div class="capture" id="cap"><input placeholder="Park a thought — Enter to keep it" id="capIn"></div>
+      <div class="actions">
+        <button class="btn-faint" onclick="toggleCap()">＋</button>
+        <button class="btn-ghost" onclick="stopFocus()">Stop</button>
+      </div>`;
+    const ci=document.getElementById('capIn');
+    ci&&ci.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()){ S.parked.unshift(e.target.value.trim()); toggleCap(); render(); }});
+  }
+  else if(S.phase==='break'){
+    B.innerHTML=`<div class="kicker">This rest was earned</div>
+      ${ring('break',fmt(S.t))}
+      <div class="striplabel" style="margin-top:-6px">${fmt(S.focusSec)} of focus → ${fmt(S.focusSec/RATIO)} of rest</div>
+      <div class="actions"><button class="btn-ghost" onclick="startRecall()">Skip</button></div>`;
+  }
+  else if(S.phase==='recall'){
+    B.innerHTML=`<div class="kicker">${fmt(Math.max(0,S.t))}</div>
+      <div style="font-size:21px;font-weight:650;letter-spacing:-.01em;margin-bottom:10px">What did you just do?</div>
+      <textarea class="recallfield" rows="3" placeholder="One line is enough." onchange="S.recall=this.value">${S.recall}</textarea>
+      <div class="actions"><button class="btn-ghost" onclick="closeBeat()">Skip</button></div>`;
+  }
+  else if(S.phase==='close'){
+    B.innerHTML=`<div class="kicker">Session</div>
+      <div class="receipt">
+        <div class="row"><span>Intention</span><b>${S.intention}</b></div>
+        <div class="row"><span>Focus</span><b>${fmt(S.focusSec)}</b></div>
+        <div class="row"><span>Rest taken</span><b>${fmt(S.focusSec/RATIO)}</b></div>
+        <div class="row q"><span>Captured</span><b>${S.parked.length+S.recall.split(/\S+/).filter(Boolean).length>0?'✓':''} ✓</b></div>
+      </div>
+      <div class="actions"><button class="btn-primary btn-cyan" onclick="S.phase='idle';S.focusSec=0;render()">Done</button></div>`;
+  }
+}
+function toggleCap(){ const c=document.getElementById('cap'); c.style.display=c.style.display==='block'?'none':'block'; c.querySelector('input').focus(); }
+
+/* ---------- iPhone ---------- */
+function phone(){
+  const P=document.getElementById('pBody');
+  if(S.phase==='idle'){
+    P.innerHTML=`<div class="p-kicker">&nbsp;</div>
+      <div class="p-intention"><input value="${S.intention}" placeholder="Intention" onchange="S.intention=this.value"></div>
+      <div class="p-clock-hero" style="color:var(--ink-low)">00:00</div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startPrime()">Start</button></div>`;
+  } else if(S.phase==='prime'){
+    P.innerHTML=`<div class="p-kicker">Still — ${S.intention}</div>
+      <div class="p-ring"><svg width="140" height="140"><circle cx="70" cy="70" r="66" stroke="#1D2126" stroke-width="2" fill="none"/><circle cx="70" cy="70" r="66" stroke="#2AD4E8" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="${CIRC*66/80}" stroke-dashoffset="${CIRC*66/80*(1-S.t/PRIME)}"/></svg><div class="p-ringclock">${fmt(S.t)}</div></div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startFocus()">Skip</button></div>`;
+  } else if(S.phase==='focus'){
+    P.innerHTML=`<div class="p-kicker">${S.intention}</div>
+      <div class="p-clock-hero">${fmt(S.focusSec)}</div>
+      <div class="p-strip"><i style="width:${Math.min(100,(S.focusSec/RATIO%10)/10*100)}%"></i></div>
+      <div class="p-striplabel">${fmt(S.focusSec/RATIO)} earned</div>
+      <div class="p-actions">
+        <button class="btn-skip-thumb" onclick="stopFocus()">Stop</button>
+        <button class="btn-faint" onclick="alert('capture line')">＋ Park a thought</button>
+      </div>`;
+  } else if(S.phase==='break'){
+    P.innerHTML=`<div class="p-kicker">This rest was earned</div>
+      <div class="p-ring"><svg width="140" height="140"><circle cx="70" cy="70" r="66" stroke="#1D2126" stroke-width="2" fill="none"/><circle cx="70" cy="70" r="66" stroke="#2AD4E8" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="${CIRC*66/80}" stroke-dashoffset="${CIRC*66/80*(1-S.t/(S.focusSec/RATIO))}"/></svg><div class="p-ringclock">${fmt(S.t)}</div></div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="startRecall()">Skip</button></div>`;
+  } else if(S.phase==='recall'){
+    P.innerHTML=`<div class="p-kicker">${fmt(Math.max(0,S.t))}</div>
+      <div style="font-size:19px;font-weight:650;text-align:center;margin-bottom:8px">What did you just do?</div>
+      <textarea class="recallfield" rows="3" style="width:100%" placeholder="One line is enough." onchange="S.recall=this.value"></textarea>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="closeBeat()">Skip</button></div>`;
+  } else if(S.phase==='close'){
+    P.innerHTML=`<div class="p-kicker">Session</div>
+      <div class="p-receipt">
+        <div class="row"><span>Intention</span><b style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${S.intention}</b></div>
+        <div class="row"><span>Focus</span><b>${fmt(S.focusSec)}</b></div>
+        <div class="row"><span>Rest taken</span><b>${fmt(S.focusSec/RATIO)}</b></div>
+      </div>
+      <div class="p-actions"><button class="btn-skip-thumb" onclick="S.phase='idle';S.focusSec=0;render()">Done</button></div>`;
+  }
+}
+
+/* ---------- controls ---------- */
+const pc=document.getElementById('phases');
+PHASES.forEach(p=>{
+  const b=document.createElement('button'); b.className='ctl'; b.textContent=p[0].toUpperCase()+p.slice(1); b.dataset.p=p;
+  b.onclick=()=>jump(p); pc.appendChild(b);
+});
+function jump(p){
+  if(p==='idle'){S.phase='idle';S.focusSec=0;render();}
+  if(p==='prime'){startPrime();}
+  if(p==='focus'){S.phase='focus';S.focusSec=Math.max(S.focusSec,1423);render();}
+  if(p==='break'){S.focusSec=S.focusSec||1500;S.phase='break';S.t=S.focusSec/RATIO;render();}
+  if(p==='recall'){startRecall();}
+  if(p==='close'){S.focusSec=S.focusSec||1500;S.parked=S.parked.length?S.parked:['the ring should stay quiet'];closeBeat();}
+}
+document.getElementById('speed').onclick=e=>{
+  S.speed=S.speed===20?1:20; e.target.textContent=S.speed===20?'×20 demo speed':'real speed';
+};
+document.getElementById('pin').onclick=e=>e.target.classList.toggle('on');
+document.getElementById('mute').onclick=e=>{e.target.classList.toggle('on');e.target.textContent=e.target.classList.contains('on')?'♪':'✕';};
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flowmo — Three Directions</title>
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; box-sizing:border-box; }
+  body {
+    background:#101114; color:#E8E8E6;
+    font-family:-apple-system,"SF Pro Text",Helvetica,Arial,sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:48px 24px;
+  }
+  .wrap { max-width:1060px; width:100%; }
+  h1 { font-size:15px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:#8A8F98; margin-bottom:6px; }
+  p.lede { color:#565B64; font-size:13px; line-height:1.6; margin-bottom:44px; max-width:60ch; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  a.card {
+    display:block; text-decoration:none; color:inherit; border:1px solid #23262C; border-radius:14px;
+    padding:26px 24px 24px; background:#15171B; transition:border-color .2s, transform .2s;
+    position:relative; overflow:hidden; min-height:340px;
+  }
+  a.card:hover { border-color:#3A3F47; transform:translateY(-2px); }
+  .swatch { height:86px; border-radius:8px; margin-bottom:20px; position:relative; overflow:hidden; }
+  .s1 { background:#08090B; } .s1 i { position:absolute; inset:auto 18px 18px auto; bottom:16px; left:18px; width:56%; height:10px; border-radius:5px; background:#2AD4E8; }
+  .s1 b { position:absolute; top:14px; right:18px; width:34px; height:34px; border-radius:50%; border:1.5px solid rgba(42,212,232,.35); }
+  .s2 { background:#F6F1E7; } .s2 i { position:absolute; bottom:16px; left:18px; width:52%; height:12px; border-radius:12px; background:#B4552D; }
+  .s2 b { position:absolute; top:14px; left:18px; right:18px; height:1px; background:rgba(43,36,28,.25); }
+  .s3 { background:#0B0C0E; }
+  .s3 u { position:absolute; inset:0; background:linear-gradient(115deg,#0B0C0E 30%,#1C2027 50%,#0B0C0E 70%); opacity:.9; }
+  .s3 i { position:absolute; bottom:0; left:0; height:4px; width:62%; background:#C8A24B; }
+  h2 { font-size:17px; font-weight:700; letter-spacing:-.01em; margin-bottom:8px; }
+  .card p { font-size:13px; line-height:1.55; color:#8A8F98; }
+  .num { font-size:11px; color:#565B64; letter-spacing:.18em; margin-bottom:14px; display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Flowmo · Design Directions</h1>
+  <p class="lede">Three philosophies, not three accent swatches. Each prototype runs the full locked loop — Idle → Prime → Focus (count-up, no ring) → Break (earned) → Recall → Close — on both the Mac window and iPhone. Use the phase stepper to jump around; use ×20 to see time move.</p>
+  <div class="grid">
+    <a class="card" href="direction-1-desk-instrument.html">
+      <span class="num">01</span>
+      <div class="swatch s1"><b></b><i></i></div>
+      <h2>Desk instrument</h2>
+      <p>Black field. SF. Cyan rationed to moving time and one primary action. Intention is the hero at idle; numerals are the hero at focus.</p>
+    </a>
+    <a class="card" href="direction-2-warm-paper.html">
+      <span class="num">02</span>
+      <div class="swatch s2"><b></b><i></i></div>
+      <h2>Warm paper</h2>
+      <p>Off-white page, dark ink, one dried-ink mark. Rest and writing feel like paper; focus feels like a pen on a page, not a cave.</p>
+    </a>
+    <a class="card" href="direction-3-phase-atmosphere.html">
+      <span class="num">03</span>
+      <div class="swatch s3"><u></u><i></i></div>
+      <h2>Phase atmosphere</h2>
+      <p>Same compact frame, but material and contrast shift with the loop: dry idle, still prime, near-silent focus, soft break, editorial recall.</p>
+    </a>
+  </div>
+</div>
+</body>
+</html>
