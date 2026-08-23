@@ -3,6 +3,20 @@ import Combine
 import Foundation
 import FlowmoCore
 
+/// Window presentation. Both modes are fixed-size; the window never
+/// resizes freely, because every pane is laid out against these bounds.
+public enum DisplayMode: String, CaseIterable {
+    case classic
+    case mini
+
+    public var windowContentSize: CGSize {
+        switch self {
+        case .classic: CGSize(width: 320, height: 460)
+        case .mini: CGSize(width: 168, height: 176)
+        }
+    }
+}
+
 @MainActor
 public final class FlowmoSessionController: ObservableObject {
     @Published public private(set) var world: World
@@ -13,6 +27,7 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public var showCapture: Bool = false
     @Published public var isPinned: Bool = false
     @Published public var showGuardConfig: Bool = false
+    @Published public private(set) var displayMode: DisplayMode
 
     let store: Store
     let attention: AttentionAdapter
@@ -48,6 +63,9 @@ public final class FlowmoSessionController: ObservableObject {
         let loaded = (try? store.load()) ?? .empty
         self.world = loaded
         self.intentionDraft = loaded.profile.lastIntention
+        self.displayMode = DisplayMode(
+            rawValue: UserDefaults.standard.string(forKey: "FlowmoDisplayMode") ?? ""
+        ) ?? .classic
         if loaded.live?.phase == .recall {
             self.recallDraft = loaded.live?.recallText ?? ""
         }
@@ -56,6 +74,12 @@ public final class FlowmoSessionController: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+    }
+
+    public func setDisplayMode(_ mode: DisplayMode) {
+        guard mode != displayMode else { return }
+        displayMode = mode
+        UserDefaults.standard.set(mode.rawValue, forKey: "FlowmoDisplayMode")
     }
 
     public func startRunning() {
@@ -109,7 +133,9 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func submitCapture() {
-        apply(.capture(captureDraft))
+        let trimmed = captureDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard apply(.capture(trimmed)) else { return }
         captureDraft = ""
         showCapture = false
     }
@@ -127,6 +153,16 @@ public final class FlowmoSessionController: ObservableObject {
 
     public func configureFocusGuard(_ config: FocusGuardConfiguration) {
         apply(.configureFocusGuard(config))
+    }
+
+    public func discardCapture() {
+        captureDraft = ""
+        showCapture = false
+    }
+
+    public func clearIntention() {
+        intentionDraft = ""
+        apply(.setLastIntention(""))
     }
 
     public func setCuesEnabled(_ enabled: Bool) {

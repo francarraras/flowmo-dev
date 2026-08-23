@@ -10,11 +10,16 @@ public struct Config: Equatable, Sendable {
 
     public static let `default` = Config(
         primeSeconds: 2 * 60,
-        recallSeconds: 5 * 60,
+        recallSeconds: 3 * 60,
         defaultBreakRatio: 5,
         focusGuard: .default,
         cuesEnabled: true
     )
+
+    /// 5:00 was the old default. Reflection is three minutes.
+    public static func migratedRecall(_ stored: TimeInterval) -> TimeInterval {
+        stored == 5 * 60 ? 3 * 60 : stored
+    }
 
     public init(
         primeSeconds: TimeInterval,
@@ -39,7 +44,7 @@ extension Config: Codable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         primeSeconds = try c.decode(TimeInterval.self, forKey: .primeSeconds)
-        recallSeconds = try c.decode(TimeInterval.self, forKey: .recallSeconds)
+        recallSeconds = Config.migratedRecall(try c.decode(TimeInterval.self, forKey: .recallSeconds))
         defaultBreakRatio = try c.decode(Double.self, forKey: .defaultBreakRatio)
         focusGuard = try c.decodeIfPresent(FocusGuardConfiguration.self, forKey: .focusGuard) ?? .default
         cuesEnabled = try c.decodeIfPresent(Bool.self, forKey: .cuesEnabled) ?? true
@@ -221,7 +226,7 @@ extension SessionSnapshot: Codable {
         breakDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .breakDuration)
         captures = try c.decodeIfPresent([CaptureItem].self, forKey: .captures) ?? []
         primeDuration = try c.decode(TimeInterval.self, forKey: .primeDuration)
-        recallDuration = try c.decode(TimeInterval.self, forKey: .recallDuration)
+        recallDuration = Config.migratedRecall(try c.decode(TimeInterval.self, forKey: .recallDuration))
         recallText = try c.decodeIfPresent(String.self, forKey: .recallText) ?? ""
         pausedAt = try c.decodeIfPresent(Date.self, forKey: .pausedAt)
         frozenElapsed = try c.decodeIfPresent(TimeInterval.self, forKey: .frozenElapsed)
@@ -286,6 +291,7 @@ public struct CompletedSession: Equatable, Sendable {
     public var focusSeconds: TimeInterval
     public var breakSeconds: TimeInterval
     public var captureCount: Int
+    public var captures: [CaptureItem]
     public var recallText: String?
     public var endedAt: Date
 
@@ -296,13 +302,15 @@ public struct CompletedSession: Equatable, Sendable {
         breakSeconds: TimeInterval,
         captureCount: Int,
         recallText: String?,
-        endedAt: Date
+        endedAt: Date,
+        captures: [CaptureItem] = []
     ) {
         self.id = id
         self.intention = intention
         self.focusSeconds = focusSeconds
         self.breakSeconds = breakSeconds
         self.captureCount = captureCount
+        self.captures = captures
         self.recallText = recallText
         self.endedAt = endedAt
     }
@@ -310,7 +318,7 @@ public struct CompletedSession: Equatable, Sendable {
 
 extension CompletedSession: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, intention, label, focusSeconds, breakSeconds, captureCount, recallText, endedAt
+        case id, intention, label, focusSeconds, breakSeconds, captureCount, captures, recallText, endedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -321,7 +329,8 @@ extension CompletedSession: Codable {
             ?? ""
         focusSeconds = try c.decode(TimeInterval.self, forKey: .focusSeconds)
         breakSeconds = try c.decode(TimeInterval.self, forKey: .breakSeconds)
-        captureCount = try c.decodeIfPresent(Int.self, forKey: .captureCount) ?? 0
+        captures = try c.decodeIfPresent([CaptureItem].self, forKey: .captures) ?? []
+        captureCount = try c.decodeIfPresent(Int.self, forKey: .captureCount) ?? captures.count
         recallText = try c.decodeIfPresent(String.self, forKey: .recallText)
         endedAt = try c.decode(Date.self, forKey: .endedAt)
     }
@@ -333,6 +342,7 @@ extension CompletedSession: Codable {
         try c.encode(focusSeconds, forKey: .focusSeconds)
         try c.encode(breakSeconds, forKey: .breakSeconds)
         try c.encode(captureCount, forKey: .captureCount)
+        try c.encode(captures, forKey: .captures)
         try c.encodeIfPresent(recallText, forKey: .recallText)
         try c.encode(endedAt, forKey: .endedAt)
     }
@@ -388,6 +398,7 @@ public enum Event: Equatable, Sendable {
     case cancel
     case configureFocusGuard(FocusGuardConfiguration)
     case setCuesEnabled(Bool)
+    case setLastIntention(String)
 }
 
 public enum EngineError: Error, Equatable, CustomStringConvertible {
@@ -499,7 +510,7 @@ public enum TimedNotice {
         case .recall:
             return ("Flowmo", "Break ended.")
         case .closeBeat:
-            return ("Flowmo", "Recall ended.")
+            return ("Flowmo", "Reflection ended.")
         default:
             return ("Flowmo", "Phase changed.")
         }

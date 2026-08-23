@@ -7,9 +7,13 @@ public enum Format {
 
     /// Countdowns stay on 00:01 until the phase is actually over.
     public static func remainingClock(_ interval: TimeInterval) -> String {
+        render(remainingSeconds(interval))
+    }
+
+    public static func remainingSeconds(_ interval: TimeInterval) -> Int {
         let clamped = max(0, interval)
-        if clamped == 0 { return render(0) }
-        return render(Int(ceil(clamped - 1e-9)))
+        if clamped == 0 { return 0 }
+        return Int(ceil(clamped - 1e-9))
     }
 
     public static func minutes(_ interval: TimeInterval) -> String {
@@ -73,7 +77,7 @@ public enum Format {
             """
         case .recall:
             return """
-            Flowmo  recall\(paused)  \(view.intention)
+            Flowmo  reflection\(paused)  \(view.intention)
             What did you just do?
             \(remainingClock(view.remaining ?? 0)) remaining
             """
@@ -85,6 +89,9 @@ public enum Format {
                 "break \(clock(view.breakSeconds ?? 0))",
             ]
             if !recall.isEmpty { lines.append(recall) }
+            for item in view.captures {
+                lines.append(item.text)
+            }
             return lines.joined(separator: "\n")
         }
     }
@@ -97,5 +104,23 @@ public enum Format {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+/// Focus count-up marks. A short grow fires the first time elapsed crosses each.
+public enum ClockMarks {
+    public static let minutes: [Int] = [5, 10, 15, 30, 45, 60]
+
+    /// Highest mark in `(from, to]`. Nil if none, or if time went backwards.
+    public static func crossing(from old: TimeInterval, to new: TimeInterval) -> Int? {
+        guard new > old else { return nil }
+        var hit: Int?
+        for mark in minutes {
+            let edge = TimeInterval(mark * 60)
+            if old < edge, new >= edge {
+                hit = mark
+            }
+        }
+        return hit
     }
 }

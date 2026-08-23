@@ -40,6 +40,7 @@ do {
     Check.expect(engine.world.live?.phase == .prime, "start begins prime")
     Check.expect(engine.world.live?.intention == "writing", "intention stored")
     Check.expect(engine.world.profile.lastIntention == "writing", "lastIntention stored")
+    Check.expectEqual(engine.world.live?.recallDuration ?? -1, 180, "reflection is 3:00")
     Check.expect(engine.world.live?.breakRatio == 5, "default ratio")
     Check.expectNear(engine.status(now: t0).remaining ?? -1, 120, "prime remaining")
     Check.expect(engine.status(now: t0).phase == .prime, "status phase prime")
@@ -155,7 +156,7 @@ do {
     try engine.apply(.skip, now: t0.addingTimeInterval(101))
     try engine.apply(.pauseForRecovery, now: t0.addingTimeInterval(151))
     Check.expect(engine.world.live?.phase == .recall, "pause during recall")
-    Check.expectNear(engine.status(now: t0.addingTimeInterval(800)).remaining ?? -1, 250, "recall remaining frozen")
+    Check.expectNear(engine.status(now: t0.addingTimeInterval(800)).remaining ?? -1, 130, "recall remaining frozen")
     try engine.apply(.`continue`, now: t0.addingTimeInterval(800))
     Check.expect(engine.world.live?.phase == .recall, "continue stays recall")
 } catch {
@@ -186,6 +187,10 @@ do {
     try engine.apply(.pauseForRecovery, now: t0.addingTimeInterval(6))
     try engine.apply(.capture("while frozen"), now: t0.addingTimeInterval(7))
     Check.expect(engine.world.live?.captures.map(\.text) == ["email the accountant", "while frozen"], "capture while paused focus")
+    try engine.apply(.stopFocus, now: t0.addingTimeInterval(8))
+    try engine.apply(.skip, now: t0.addingTimeInterval(9))
+    try engine.apply(.skip, now: t0.addingTimeInterval(10))
+    Check.expect(engine.world.history[0].captures.map(\.text) == ["email the accountant", "while frozen"], "history keeps parked lines")
 } catch {
     Check.expect(false, "capture threw \(error)")
 }
@@ -240,7 +245,7 @@ do {
     try engine.apply(.stopFocus, now: t0.addingTimeInterval(600))
     engine.sync(now: t0.addingTimeInterval(720))
     Check.expect(engine.world.live?.phase == .recall, "break expires into recall")
-    engine.sync(now: t0.addingTimeInterval(720 + 300))
+    engine.sync(now: t0.addingTimeInterval(720 + 180))
     Check.expect(engine.world.live?.phase == .closeBeat, "recall expires into close beat")
 } catch {
     Check.expect(false, "timed expire threw \(error)")
@@ -262,9 +267,9 @@ do {
     try engine.apply(.start(intention: "late break"), now: t0)
     try engine.apply(.skip, now: t0)
     try engine.apply(.stopFocus, now: t0.addingTimeInterval(600))
-    engine.sync(now: t0.addingTimeInterval(1_021))
+    engine.sync(now: t0.addingTimeInterval(901))
     Check.expect(engine.world.live?.phase == .closeBeat, "one sync catches up break and recall")
-    Check.expectEqual(engine.world.live?.phaseStartedAt, t0.addingTimeInterval(1_020), "catch-up close beat uses recall deadline")
+    Check.expectEqual(engine.world.live?.phaseStartedAt, t0.addingTimeInterval(900), "catch-up close beat uses recall deadline")
     Check.expect(engine.world.history.count == 1, "catch-up records completion once")
     engine.sync(now: t0.addingTimeInterval(2_000))
     Check.expect(engine.world.history.count == 1, "later sync does not double-record catch-up")
@@ -280,7 +285,7 @@ do {
     try engine.apply(.skip, now: t0.addingTimeInterval(721))
     Check.expect(engine.world.live?.phase == .recall, "stale break skip does not skip recall")
     Check.expectEqual(engine.world.live?.phaseStartedAt, t0.addingTimeInterval(720), "stale skip keeps automatic boundary")
-    Check.expectNear(engine.status(now: t0.addingTimeInterval(721)).remaining ?? -1, 299, "stale skip leaves recall running")
+    Check.expectNear(engine.status(now: t0.addingTimeInterval(721)).remaining ?? -1, 179, "stale skip leaves recall running")
     Check.expect(engine.world.history.isEmpty, "stale skip does not complete session")
 } catch {
     Check.expect(false, "stale skip catch-up threw \(error)")
@@ -419,6 +424,39 @@ do {
     Check.expect(config.focusGuard.bundleIdentifiers.isEmpty, "legacy guard list empty")
 } catch {
     Check.expect(false, "legacy config decode threw \(error)")
+}
+
+do {
+    let live = SessionSnapshot(
+        id: UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!,
+        intention: "x",
+        phase: .recall,
+        breakRatio: 5,
+        startedAt: t0,
+        phaseStartedAt: t0,
+        focusStartedAt: t0,
+        focusEndedAt: t0,
+        breakStartedAt: t0,
+        breakDuration: 12,
+        captures: [],
+        primeDuration: 120,
+        recallDuration: 300
+    )
+    let decoded = try JSONDecoder.flowmo.decode(SessionSnapshot.self, from: try JSONEncoder.flowmo.encode(live))
+    Check.expectEqual(decoded.recallDuration, 180, "legacy live reflection is 3:00")
+} catch {
+    Check.expect(false, "legacy live snapshot decode threw \(error)")
+}
+
+do {
+    let json = Data("""
+    {"id":"11111111-1111-1111-1111-111111111111","intention":"x","focusSeconds":60,"breakSeconds":12,"captureCount":2,"endedAt":"2024-01-01T00:00:00.000Z"}
+    """.utf8)
+    let session = try JSONDecoder.flowmo.decode(CompletedSession.self, from: json)
+    Check.expect(session.captures.isEmpty, "legacy history has no parked texts")
+    Check.expect(session.captureCount == 2, "legacy history keeps parked count")
+} catch {
+    Check.expect(false, "legacy history decode threw \(error)")
 }
 
 Check.expectEqual(
@@ -587,7 +625,7 @@ do {
     try engine.apply(.stopFocus, now: t0.addingTimeInterval(50))
     Check.expectNear(TimedNotice.remainingToSchedule(engine.status(now: t0.addingTimeInterval(50))) ?? -1, 10, "break schedules remaining")
     try engine.apply(.skip, now: t0.addingTimeInterval(51))
-    Check.expectNear(TimedNotice.remainingToSchedule(engine.status(now: t0.addingTimeInterval(51))) ?? -1, 300, "skip break schedules recall")
+    Check.expectNear(TimedNotice.remainingToSchedule(engine.status(now: t0.addingTimeInterval(51))) ?? -1, 180, "skip break schedules reflection")
 } catch {
     Check.expect(false, "timed notice threw \(error)")
 }
@@ -634,6 +672,40 @@ do {
     Check.expect(repaired.config.cuesEnabled, "migrate repairs corrupt destination")
 } catch {
     Check.expect(false, "migrate threw \(error)")
+}
+
+
+do {
+    Check.expect(ClockMarks.crossing(from: 299, to: 300) == 5, "cross 5:00")
+    Check.expect(ClockMarks.crossing(from: 300, to: 301) == nil, "no second fire at 5:01")
+    Check.expect(ClockMarks.crossing(from: 599, to: 600) == 10, "cross 10:00")
+    Check.expect(ClockMarks.crossing(from: 899, to: 900) == 15, "cross 15:00")
+    Check.expect(ClockMarks.crossing(from: 1799, to: 1800) == 30, "cross 30:00")
+    Check.expect(ClockMarks.crossing(from: 2699, to: 2700) == 45, "cross 45:00")
+    Check.expect(ClockMarks.crossing(from: 3599, to: 3600) == 60, "cross 60:00")
+    Check.expect(ClockMarks.crossing(from: 290, to: 910) == 15, "jump keeps the highest mark")
+    Check.expect(ClockMarks.crossing(from: 720, to: 720) == nil, "restore mid-mark is quiet")
+    Check.expect(ClockMarks.crossing(from: 400, to: 200) == nil, "time going backwards is quiet")
+    Check.expectEqual(Format.remainingSeconds(10.0), 10, "race window opens at 10.0")
+    Check.expectEqual(Format.remainingSeconds(9.2), 10, "remaining clock holds the second")
+    Check.expectEqual(Format.remainingSeconds(0), 0, "remaining zero")
+}
+
+do {
+    var engine = Engine()
+    try engine.apply(.start(intention: "old line"), now: t0)
+    engine.world.live = nil
+    try engine.apply(.setLastIntention(""), now: t0.addingTimeInterval(1))
+    Check.expectEqual(engine.world.profile.lastIntention, "", "clear last intention")
+    do {
+        try engine.apply(.start(intention: "busy"), now: t0.addingTimeInterval(2))
+        try engine.apply(.setLastIntention(""), now: t0.addingTimeInterval(3))
+        Check.expect(false, "clear while running should fail")
+    } catch let error as EngineError {
+        Check.expect(error == .notIdle, "clear while running is notIdle")
+    }
+} catch {
+    Check.expect(false, "setLastIntention threw \(error)")
 }
 
     if Check.failed == 0 {

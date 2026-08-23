@@ -34,7 +34,7 @@ final class StatusGlance {
     func refresh() {
         guard let controller else { return }
         let status = controller.status
-        let atmo = Atmosphere.of(status)
+        let atmo = Atmosphere.canvas
         let ink: Color = status.isPaused ? atmo.faint : (status.isIdle ? atmo.mute : atmo.ink)
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.attributedTitle = NSAttributedString(

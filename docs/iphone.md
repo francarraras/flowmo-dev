@@ -18,7 +18,7 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 
 One iPhone app that runs:
 
-idle → type once → prime (2:00) → focus (count up, you stop) → earned break → recall (5:00) → close beat → idle.
+idle → type once → prime (2:00) → focus (count up, you stop) → earned break → reflection (3:00) → close beat → idle.
 
 Kill the app → paused + one **Continue**. Opening the app does not Continue by itself.
 

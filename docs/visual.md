@@ -1,36 +1,28 @@
 # Flowmo — visual rules
 
-Direction **3 — Phase atmosphere**. Same compact frame. The room changes with the loop.
+One charcoal square. One circular aperture that does not move. Phase is what the aperture holds. Gold is earned rest only.
 
-- **Tighten.** Same compact window. Less vertical gap. Clock closer to the actions. No extra widgets.
-- **Tokens.** Shared `FlowmoLook`: `Atmosphere.of(status)` gives `field`, `ink`, `mute`, `faint`, `line`, `well`, `chrome`. Each root sets `\.atmosphere` once; every pane reads it. Idle aliases stay on `Look` for surfaces with no phase.
-- **Accent.** Gold `#C8A24B` is earned rest only — the 2pt strip under the Focus clock, nowhere else. Start and Continue are ink on field. Timed rings use atmosphere `line`/`mute`, not cyan. There is no brand color.
-- **Phase atmosphere.** Idle dry charcoal; Prime still and low-contrast; Focus a black room with an oversized count-up, the gold strip, and chrome nearly gone; Break warm; Recall editorial; Close a receipt, back in the idle room.
-- **Chrome.** Hide the title. Keep traffic lights. Pin stays in the content, default off. Mute/pin opacity follows `chrome`.
+- **Field** `#090A0C` with a warm radial well. **Ink** `#F3F1EA`. Mute/faint stay of that ink.
+- **Type.** SF Rounded on clock, captions, and fields. No serif. No italic as identity.
+- **Aperture.** Fixed circle, matched across phases. 5pt track, inner highlight, gold glow on Break. The hole is a lunar face: surface turns, light stays. Maria stay charcoal. Idle breathes unless Reduce Motion. Reduce Motion freezes the face.
+- **Grid.** Every phase uses the same slots: 44pt caption, aperture, verb (36 Mac / 44 phone), then reserved idle chrome (Today / History / New, Guard on Mac). Live phases keep that chrome empty so Start → Prime does not grow the hole into the verbs. Skip/Continue/Start sit on the same baseline. Close keeps the intention in the caption and an empty verb so the circle does not jump.
+- **Idle.** Field placeholder: **Intention**. Lunar aperture. Start in the verb slot. Footer: Today, History, **New** (clears the last line). History keeps parked lines and the reflection. Mini idle is the aperture plus Start; tap the tile to expand and type.
+- **Prime.** Intention in the caption, cue **Prepare**. Clock in a graphite ring. Skip as text.
+- **Focus.** Intention in the caption, cue **Focus**. No ring. Numerals fill the hole. Gold accrual with **no end cap**. `+` and Stop share the verb slot. Capture replaces that row with **Park** / **Discard**.
+- **Break.** Caption: **Time to recharge**. Same ring geometry; progress is gold.
+- **Reflection — 3:00.** Writing lives in the caption slot (same field as Intention), not inside the circle. Clock fills the hole like Prime. Skip stays in the verb slot. Return ends the beat.
+- **Close.** Intention in the caption. Two named figures in the hole — **Focused** and **Rested**. Tap the frame to leave. No receipt. No “click to dismiss.”
+- **Paused.** Aperture frozen. Continue occupies the verb slot. No Paused banner.
+- **Chrome.** Hidden title, traffic lights. Classic: mute, pin, shrink on the right. Mini: mute + pin on the left (clear of the traffic lights), expand on the right. Focus chrome opacity 0.35 on Classic; Mini chrome stays at 1. The wall does not fade.
+- **Buttons.** Start/Continue: one ink chip that brightens and glows on hover. Skip/Stop/History/Guard/New: mute until hover — ink, a capsule well, and a 1pt ink stroke around the capsule. No underline. Chrome icons: ink + circular well. No grow-as-affordance.
+- **Clock.** SF Rounded `.medium`, tabular. Timed ~36–40pt; Focus ~52–56pt.
+- **Motion.** Phase: the circle stays put. Ring and hole assemble in place — four arcs click together, contents implode, nothing flies off or slides into the verbs. Captions and verbs ease (0.28s). Clock: numericText. Ring trim eases. No wallpaper fade. Lunar face turns in 96s (light fixed). Focus count grows once at **5 / 10 / 15 / 30 / 45 / 60**. Break last **10s** pulse each second (gold glow only — the circle does not move). Reduce Motion fades the assemble and skips grow, race, and the turn.
 
-Palettes:
+**Modes.** Two fixed sizes; the window does not resize freely.
 
-| Phase | field | ink | mute | faint | line | chrome |
-| --- | --- | --- | --- | --- | --- | --- |
-| Idle | `#0A0B0D` | `#DDDEE1` | `#6E747D` | `#3A3F47` | `#1B1E23` | 1 |
-| Prime | `#08090C` | `#9BA0A8` | `#4A4F57` | `#2A2E35` | `#16181D` | 0.45 |
-| Focus | `#000000` | `#FFFFFF` | `#585D66` | `#2A2E35` | `#15171B` | 0.25 |
-| Break | `#12100C` | `#D9CFC0` | `#77705F` | `#44403A` | `#211E18` | 0.8 |
-| Recall | `#0C0D10` | `#E9EAEC` | `#7C828B` | `#3A3F47` | `#1D2026` | 1 |
-| Close | idle | | | | | |
+- **Classic — 320×460.** The full instrument: caption, aperture, verb, idle chrome (Today, History, Guard). Fields are `FlowField`: delayed autofocus; a single hairline marks the slot, and it brightens and blooms on focus. No key legend. Intention Return starts; capture **Park** / **Discard** (Return / Esc still work); recall Return skips (text already saved as you type).
+- **Mini — 168×176.** Aperture owns the tile. Clock (and gold accrual on Focus) in the hole; verb on the lower arc. Mute and pin sit left; expand sits right. No fields. Typing (intention, capture, recall) expands to Classic. Tap the Mini tile on idle or reflection to expand. `+` in Mini Focus opens capture in Classic.
 
-Layout (this pass):
+Shared tokens live in `FlowmoLook` (`Atmosphere.canvas`, `Aperture`, `ApertureRing`, `PhaseColumn`, `InstrumentClock`, `Accrual`, `InkButton`, `QuietButton`). Mac fields live in `FlowField`. Menu bar and widget use the same field and ink. Idle glance is mute; paused is faint.
 
-- Default **300×300**. Resizable, capped **260–400 × 260–480**. Not a portrait document.
-- Pin overlays the chrome. It does not own a row.
-- Every phase opens with a tracked uppercase kicker: intention on Prime and Focus, the earned line on Break, the countdown on Recall, `Session` on Close.
-- Text entry is a hairline under the text, not a filled well. Recall is the one written line of the loop, so it is serif italic.
-- Timed phases: **clock lives in a 1.5pt ring**. Skip stays visible while unpaused. Focus stays a count-up with no ring.
-- Close is a receipt: Intention, Focus, Rest taken, Parked, Recall — label mute, value ink, hairline rules.
-- Paused shows a `Paused` kicker over Continue, in whatever room the session stopped in.
-- Resize scales the hero (clock / ring) with leftover space. Kickers, footnotes, and Skip stay compact. `NSHostingView` only publishes min-size so the content can fill the window.
-- Craft, not a theme pack: SF, size-specific tracking on the clock, press-down feedback, content clears the traffic lights. Rooms cross-fade over ~0.9s; nothing else animates. No generic glassmorphism.
-
-Menu bar and widget follow the same atmosphere ink and field. Out of this pass: custom fonts, illustrations.
-
-Done means Idle, Prime, Focus, Break, Recall, and Close read as different atmospheres, and the locked loop is unchanged.
+Out: theme packs, glass as identity, Focus progress ring, uppercase kickers as a system, serif inside the hole.

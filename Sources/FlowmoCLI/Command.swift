@@ -116,7 +116,7 @@ public enum FlowmoCLI {
             case .prime: return "Session running."
             case .focus: return "Focusing."
             case .onBreak: return "Break started."
-            case .recall: return "Recall: what did you just do?"
+            case .recall: return "Reflection: what did you just do?"
             case .closeBeat: return "Close beat."
             }
         } catch {

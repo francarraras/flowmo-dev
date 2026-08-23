@@ -170,12 +170,12 @@ private struct GlanceView: View {
     }
 
     private var atmo: Atmosphere {
-        Atmosphere.of(entry.phase)
+        Atmosphere.canvas
     }
 
     var body: some View {
         clock
-            .font(.system(size: clockSize, weight: .ultraLight, design: .default))
+            .font(.system(size: clockSize, weight: .medium, design: .rounded))
             .monospacedDigit()
             .tracking(-0.8)
             .foregroundStyle(entry.isPaused ? atmo.faint : (entry.phase == nil ? atmo.mute : atmo.ink))

@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Darwin
 import SwiftUI
 
@@ -23,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var window: NSWindow?
     private let glance = StatusGlance()
     private var signalSources: [DispatchSourceSignal] = []
+    private var modeCancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller.startRunning()
@@ -34,6 +36,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
+        controller.$displayMode
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                self?.applyWindowMode()
+            }
+            .store(in: &modeCancellables)
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         watchSleep()
@@ -95,29 +104,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    /// Both modes are fixed-size. Free resizing is gone on purpose: every
+    /// pane is laid out against these exact bounds.
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingView(rootView: FlowmoRootView(controller: controller))
-        hosting.sizingOptions = [.minSize]
+        let size = controller.displayMode.windowContentSize
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 360),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Flowmo"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
-        window.backgroundColor = .black
+        window.backgroundColor = NSColor(red: 10 / 255, green: 11 / 255, blue: 13 / 255, alpha: 1)
         window.appearance = NSAppearance(named: .darkAqua)
         window.isOpaque = true
         window.contentView = hosting
-        window.setContentSize(NSSize(width: 300, height: 300))
-        window.contentMinSize = NSSize(width: 260, height: 260)
-        window.contentMaxSize = NSSize(width: 400, height: 480)
+        window.setContentSize(size)
+        window.contentMinSize = size
+        window.contentMaxSize = size
         window.isReleasedWhenClosed = false
         window.center()
         window.level = .normal
         window.hidesOnDeactivate = false
         return window
+    }
+
+    /// Switches size without offering a resize grip. Equal min/max while
+    /// `.resizable` is off makes AppKit ignore size changes, so unlock, size,
+    /// lock. Top-left stays put.
+    private func applyWindowMode() {
+        guard let window else { return }
+        let size = controller.displayMode.windowContentSize
+        let pinnedTopLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
+        window.contentMinSize = NSSize(width: 1, height: 1)
+        window.contentMaxSize = NSSize(width: 10_000, height: 10_000)
+        var mask = window.styleMask
+        mask.insert(.resizable)
+        window.styleMask = mask
+        window.setContentSize(size)
+        let frame = window.frame
+        window.setFrameOrigin(NSPoint(x: pinnedTopLeft.x, y: pinnedTopLeft.y - frame.height))
+        window.contentMinSize = size
+        window.contentMaxSize = size
+        mask.remove(.resizable)
+        window.styleMask = mask
     }
 }

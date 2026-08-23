@@ -53,6 +53,8 @@ public struct Engine: Equatable, Sendable {
             try configureFocusGuard(config)
         case .setCuesEnabled(let enabled):
             world.config.cuesEnabled = enabled
+        case .setLastIntention(let text):
+            try setLastIntention(text)
         case .pauseForRecovery, .`continue`:
             break
         }
@@ -296,6 +298,11 @@ public struct Engine: Equatable, Sendable {
         world.live = nil
     }
 
+    private mutating func setLastIntention(_ text: String) throws {
+        guard world.live == nil else { throw EngineError.notIdle }
+        world.profile.lastIntention = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private mutating func configureFocusGuard(_ config: FocusGuardConfiguration) throws {
         guard world.live == nil else { throw EngineError.notIdle }
         var next = config
@@ -351,7 +358,8 @@ public struct Engine: Equatable, Sendable {
             breakSeconds: live.breakDuration ?? 0,
             captureCount: live.captures.count,
             recallText: recall.isEmpty ? nil : recall,
-            endedAt: live.focusEndedAt ?? now
+            endedAt: live.focusEndedAt ?? now,
+            captures: live.captures
         )
         world.history.append(completed)
         world.profile = ProfileLearner.apply(world.profile, focusSeconds: focus)

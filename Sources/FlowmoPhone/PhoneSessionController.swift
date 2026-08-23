@@ -86,7 +86,9 @@ public final class PhoneSessionController: ObservableObject {
     public func continueSession() { apply(.`continue`) }
 
     public func submitCapture() {
-        apply(.capture(captureDraft))
+        let trimmed = captureDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        apply(.capture(trimmed))
         captureDraft = ""
         showCapture = false
     }
@@ -100,6 +102,16 @@ public final class PhoneSessionController: ObservableObject {
     public func dismissCloseBeat() {
         guard world.live?.phase == .closeBeat, world.live?.isPaused != true else { return }
         apply(.skip)
+    }
+
+    public func discardCapture() {
+        captureDraft = ""
+        showCapture = false
+    }
+
+    public func clearIntention() {
+        intentionDraft = ""
+        apply(.setLastIntention(""))
     }
 
     public func setCuesEnabled(_ enabled: Bool) {
