@@ -146,6 +146,9 @@ public struct SessionSnapshot: Equatable, Sendable {
     public var breakRatio: Double
     public var startedAt: Date
     public var phaseStartedAt: Date
+    /// Durable lower bound for recovery after a supported Continue rewrites
+    /// phase clocks while retaining this session's UUID.
+    public var lastResumedAt: Date?
     public var focusStartedAt: Date?
     public var focusEndedAt: Date?
     public var breakStartedAt: Date?
@@ -177,7 +180,8 @@ public struct SessionSnapshot: Equatable, Sendable {
         recallText: String = "",
         pausedAt: Date? = nil,
         frozenElapsed: TimeInterval? = nil,
-        frozenRemaining: TimeInterval? = nil
+        frozenRemaining: TimeInterval? = nil,
+        lastResumedAt: Date? = nil
     ) {
         self.id = id
         self.intention = intention
@@ -185,6 +189,7 @@ public struct SessionSnapshot: Equatable, Sendable {
         self.breakRatio = breakRatio
         self.startedAt = startedAt
         self.phaseStartedAt = phaseStartedAt
+        self.lastResumedAt = lastResumedAt
         self.focusStartedAt = focusStartedAt
         self.focusEndedAt = focusEndedAt
         self.breakStartedAt = breakStartedAt
@@ -202,7 +207,7 @@ public struct SessionSnapshot: Equatable, Sendable {
 extension SessionSnapshot: Codable {
     enum CodingKeys: String, CodingKey {
         case id, intention, label, phase, state
-        case breakRatio, startedAt, phaseStartedAt
+        case breakRatio, startedAt, phaseStartedAt, lastResumedAt
         case focusStartedAt, focusEndedAt, encodingStartedAt, encodingEndedAt
         case breakStartedAt, breakDuration, captures
         case primeDuration, recallDuration, recallText
@@ -212,15 +217,19 @@ extension SessionSnapshot: Codable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
-        intention = try c.decodeIfPresent(String.self, forKey: .intention)
+        intention =
+            try c.decodeIfPresent(String.self, forKey: .intention)
             ?? c.decodeIfPresent(String.self, forKey: .label)
             ?? ""
         breakRatio = try c.decode(Double.self, forKey: .breakRatio)
         startedAt = try c.decode(Date.self, forKey: .startedAt)
         phaseStartedAt = try c.decode(Date.self, forKey: .phaseStartedAt)
-        focusStartedAt = try c.decodeIfPresent(Date.self, forKey: .focusStartedAt)
+        lastResumedAt = try c.decodeIfPresent(Date.self, forKey: .lastResumedAt)
+        focusStartedAt =
+            try c.decodeIfPresent(Date.self, forKey: .focusStartedAt)
             ?? c.decodeIfPresent(Date.self, forKey: .encodingStartedAt)
-        focusEndedAt = try c.decodeIfPresent(Date.self, forKey: .focusEndedAt)
+        focusEndedAt =
+            try c.decodeIfPresent(Date.self, forKey: .focusEndedAt)
             ?? c.decodeIfPresent(Date.self, forKey: .encodingEndedAt)
         breakStartedAt = try c.decodeIfPresent(Date.self, forKey: .breakStartedAt)
         breakDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .breakDuration)
@@ -260,6 +269,7 @@ extension SessionSnapshot: Codable {
         try c.encode(breakRatio, forKey: .breakRatio)
         try c.encode(startedAt, forKey: .startedAt)
         try c.encode(phaseStartedAt, forKey: .phaseStartedAt)
+        try c.encodeIfPresent(lastResumedAt, forKey: .lastResumedAt)
         try c.encodeIfPresent(focusStartedAt, forKey: .focusStartedAt)
         try c.encodeIfPresent(focusEndedAt, forKey: .focusEndedAt)
         try c.encodeIfPresent(breakStartedAt, forKey: .breakStartedAt)
@@ -324,7 +334,8 @@ extension CompletedSession: Codable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
-        intention = try c.decodeIfPresent(String.self, forKey: .intention)
+        intention =
+            try c.decodeIfPresent(String.self, forKey: .intention)
             ?? c.decodeIfPresent(String.self, forKey: .label)
             ?? ""
         focusSeconds = try c.decode(TimeInterval.self, forKey: .focusSeconds)
@@ -382,7 +393,12 @@ public struct World: Codable, Equatable, Sendable {
     public func todayFocusSeconds(now: Date, calendar: Calendar = .current) -> TimeInterval {
         let start = calendar.startOfDay(for: now)
         return history.reduce(0) { partial, session in
-            session.endedAt >= start ? partial + session.focusSeconds : partial
+            guard session.endedAt >= start else { return partial }
+            let sum = partial + session.focusSeconds
+            if sum.isInfinite, partial.isFinite, session.focusSeconds.isFinite {
+                return sum.sign == .minus ? -.greatestFiniteMagnitude : .greatestFiniteMagnitude
+            }
+            return sum
         }
     }
 }
@@ -517,4 +533,3 @@ public enum TimedNotice {
         }
     }
 }
-

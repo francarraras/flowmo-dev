@@ -1,0 +1,64 @@
+name: Bug report
+description: Report a reproducible Flowmo problem for the private beta tracker.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include intentions, parked thoughts, recall text, or local store contents unless the private tracker explicitly requests them.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. …\n2. …\n3. …"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: revision
+    attributes:
+      label: Revision or build
+      placeholder: "Commit SHA or development build"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Device and OS
+      placeholder: "Mac model and macOS version, or iPhone model and iOS version"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Mac window
+        - CLI or live terminal view
+        - iPhone app
+        - Widget
+    validations:
+      required: true
+  - type: input
+    id: issue-code
+    attributes:
+      label: Flowmo issue code
+      description: Add the code shown by the app, if any. Do not paste private session text.
+      placeholder: "FLOWMO-…"
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostic report
+      description: Attach the app's redacted diagnostic export when it is safe and relevant. Never attach the full-data export here.

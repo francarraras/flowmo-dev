@@ -15,7 +15,7 @@ Copy says what it does. Do not claim it improves productivity, well-being, or fl
 - One remembered set of `.app` bundles (bundle IDs in `world.json`).
 - Configure from **Idle** in the existing frame. No Home, tabs, second window, or wizard.
 - Guard only during **unpaused Focus**. Prime, break, recall, close beat, idle: off.
-- Hide + bring Flowmo forward. **Stay focused** / **Open once** (that process until it loses activation).
+- Hide + bring Flowmo forward. **Stay focused** / **Open once** (that exact process instance until it loses activation).
 - Small factual Focus line (`Guarding 3 apps`). Clock stays the hero. No extra ring.
 - Same Core store. `swift run` and the Dock app, if the spike proves both.
 - Fail open. Crash/quit leaves no OS restriction.
@@ -39,7 +39,13 @@ WHEN a selected app activates during guarded Focus
 THE SYSTEM SHALL hide it, bring Flowmo forward, and offer Stay focused and Open once.
 
 WHEN Open once is chosen  
-THE SYSTEM SHALL allow that running process until it deactivates, then guard the next activation.
+THE SYSTEM SHALL bind the exception to PID + bundle identifier + launch identity,
+allow that exact running process until it deactivates, and never transfer the
+exception to a process that reuses its PID.
+
+WHEN guarding becomes active or its session/selection changes
+THE SYSTEM SHALL evaluate the current frontmost application once and SHALL
+reject retries belonging to an older demand generation.
 
 WHEN Focus stops, skips, cancels, or recovery-pauses  
 THE SYSTEM SHALL stop guarding.

@@ -1,6 +1,6 @@
-import SwiftUI
 import FlowmoCore
 import FlowmoLook
+import SwiftUI
 
 /// The smallest honest surface. One aperture owns the tile; verbs sit on the
 /// lower arc. Anything that needs a keyboard routes back to Classic.

@@ -1,7 +1,7 @@
 import AppKit
 import Combine
-import Foundation
 import FlowmoCore
+import Foundation
 
 /// Window presentation. Both modes are fixed-size; the window never
 /// resizes freely, because every pane is laid out against these bounds.
@@ -28,6 +28,11 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public var isPinned: Bool = false
     @Published public var showGuardConfig: Bool = false
     @Published public private(set) var displayMode: DisplayMode
+    @Published public private(set) var storeNeedsRecovery = false
+    @Published public private(set) var lifecycleNeedsRecovery = false
+    @Published public var activeIssue: FlowmoPresentedIssue?
+    @Published public private(set) var userNotice: String?
+    @Published public private(set) var recentIssues: [FlowmoIssueRecord] = []
 
     let store: Store
     let attention: AttentionAdapter
@@ -38,10 +43,39 @@ public final class FlowmoSessionController: ObservableObject {
     private var watcher: WorldWatcher?
     private var applying = false
     private var sessionWasLive = false
+    private var didClaimMacProcessLifetime = false
+    private var markerRecoveryFailed = false
+    private var pauseRecoveryFailed = false
+    private var dataDeletionWarningPending = false
+    private var pendingRecoveryPause: RecoveryPauseRequest?
+    private var lastIssuePresentedAt: [FlowmoIssueCode: Date] = [:]
     private var cancellables = Set<AnyCancellable>()
+
+    private struct RecoveryPauseRequest {
+        let sessionID: UUID
+        let requestedAt: Date
+    }
 
     public var status: SessionStatus {
         Engine.sessionStatus(world, now: now)
+    }
+
+    public var effectiveWindowContentSize: CGSize {
+        Self.windowContentSize(
+            displayMode: displayMode,
+            storeNeedsRecovery: storeNeedsRecovery,
+            lifecycleNeedsRecovery: lifecycleNeedsRecovery
+        )
+    }
+
+    static func windowContentSize(
+        displayMode: DisplayMode,
+        storeNeedsRecovery: Bool,
+        lifecycleNeedsRecovery: Bool
+    ) -> CGSize {
+        storeNeedsRecovery || lifecycleNeedsRecovery
+            ? DisplayMode.classic.windowContentSize
+            : displayMode.windowContentSize
     }
 
     public var guardStatusLine: String? {
@@ -61,13 +95,26 @@ public final class FlowmoSessionController: ObservableObject {
         self.focusGuard = focusGuard
         self.macRecovery = MacProcessRecoveryMarker(store: store)
 
-        let loaded = (try? store.load()) ?? .empty
+        let loaded: World
+        do {
+            loaded = try store.load()
+        } catch {
+            let timestamp = Date()
+            loaded = .empty
+            self.storeNeedsRecovery = true
+            self.recentIssues = [
+                FlowmoIssueRecord(code: .storeUnreadable, operation: .load, occurredAt: timestamp)
+            ]
+            self.lastIssuePresentedAt[.storeUnreadable] = timestamp
+            FlowmoDiagnosticLog.emit(.storeUnreadable, operation: .load)
+        }
         self.world = loaded
         self.intentionDraft = ""
         self.sessionWasLive = loaded.live != nil
-        self.displayMode = DisplayMode(
-            rawValue: UserDefaults.standard.string(forKey: "FlowmoDisplayMode") ?? ""
-        ) ?? .classic
+        self.displayMode =
+            DisplayMode(
+                rawValue: UserDefaults.standard.string(forKey: "FlowmoDisplayMode") ?? ""
+            ) ?? .classic
         if loaded.live?.phase == .recall {
             self.recallDraft = loaded.live?.recallText ?? ""
         }
@@ -89,7 +136,9 @@ public final class FlowmoSessionController: ObservableObject {
             self?.attention.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
-        beginMacProcessLifetime()
+        if !storeNeedsRecovery {
+            beginMacProcessLifetime()
+        }
 
         reloadFromStore(cueIfChanged: false)
         reconcileGuard()
@@ -130,12 +179,35 @@ public final class FlowmoSessionController: ObservableObject {
 
     @discardableResult
     public func pauseForRecovery() -> Bool {
-        apply(.pauseForRecovery)
+        guard let live = world.live, !live.isPaused else { return true }
+        if pendingRecoveryPause?.sessionID != live.id {
+            pendingRecoveryPause = RecoveryPauseRequest(sessionID: live.id, requestedAt: Date())
+        }
+        return persistPendingRecoveryPause()
     }
 
     public func prepareForTermination() {
-        guard macRecovery.ownsLifecycle, pauseForRecovery() else { return }
-        macRecovery.finishNormally()
+        guard macRecovery.ownsLifecycle else { return }
+        let timestamp = Date()
+        do {
+            let engine = try store.update(
+                { engine in
+                    if let live = engine.world.live, !live.isPaused {
+                        let pauseAt = max(timestamp, live.phaseStartedAt)
+                        try engine.apply(.pauseForRecovery, now: pauseAt)
+                    }
+                },
+                afterPersist: { _ in
+                    try self.macRecovery.finishNormally()
+                }
+            )
+            world = engine.world
+            now = timestamp
+        } catch let error as MacProcessRecoveryError {
+            handleMarkerRecoveryFailure(error, operation: .recoveryFinish)
+        } catch {
+            handlePauseRecoveryFailure(error)
+        }
     }
 
     public func submitCapture() {
@@ -167,8 +239,8 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func clearIntention() {
+        guard apply(.setLastIntention("")) else { return }
         intentionDraft = ""
-        apply(.setLastIntention(""))
     }
 
     public func setCuesEnabled(_ enabled: Bool) {
@@ -202,27 +274,192 @@ public final class FlowmoSessionController: ObservableObject {
         focusGuard.openOnce()
     }
 
+    public func retryStore() {
+        let needsLifecycleClaim = !didClaimMacProcessLifetime
+        reloadFromStore(cueIfChanged: false)
+        if !storeNeedsRecovery, needsLifecycleClaim {
+            beginMacProcessLifetime()
+        }
+    }
+
+    public func retryLifecycleRecovery() {
+        if pendingRecoveryPause != nil {
+            _ = persistPendingRecoveryPause()
+        }
+        guard markerRecoveryFailed else {
+            updateLifecycleRecoveryState()
+            return
+        }
+        if didClaimMacProcessLifetime, macRecovery.ownsLifecycle {
+            let timestamp = Date()
+            do {
+                _ = try store.update { engine in
+                    try macRecovery.refreshOwnership(for: engine.world.live?.id, at: timestamp)
+                }
+                markerRecoveryFailed = false
+                clearRecoveryIssueIfResolved()
+            } catch let error as MacProcessRecoveryError {
+                handleMarkerRecoveryFailure(error, operation: .recoveryClaim)
+            } catch {
+                handlePersistenceFailure(error, operation: .recoveryClaim)
+            }
+        } else {
+            didClaimMacProcessLifetime = false
+            beginMacProcessLifetime()
+        }
+        updateLifecycleRecoveryState()
+    }
+
+    public func preserveAndResetStore() {
+        guard storeNeedsRecovery else { return }
+        do {
+            _ = try store.quarantineInvalidWorldAndReset()
+            world = try store.load()
+            now = Date()
+            storeNeedsRecovery = false
+            activeIssue = nil
+            userNotice = "Original data was preserved and Flowmo was reset."
+            intentionDraft = ""
+            captureDraft = ""
+            recallDraft = ""
+            showCapture = false
+            sessionWasLive = false
+            beginMacProcessLifetime()
+            reconcileGuard()
+        } catch {
+            presentIssue(.preserveAndResetFailed, operation: .preserveAndReset)
+        }
+    }
+
+    public func prepareFullDataExport() -> Data? {
+        guard status.isIdle, !storeNeedsRecovery, !lifecycleNeedsRecovery else { return nil }
+        do {
+            return try store.exportCurrentWorldJSON()
+        } catch {
+            presentIssue(.dataExportFailed, operation: .dataExport)
+            return nil
+        }
+    }
+
+    public func prepareDiagnosticExport() -> Data? {
+        do {
+            return try FlowmoDiagnosticReport(
+                generatedAt: Date(),
+                app: FlowmoDiagnosticReport.currentAppMetadata(),
+                world: world,
+                recentIssues: recentIssues,
+                storeAvailable: !storeNeedsRecovery
+            ).encoded()
+        } catch {
+            presentIssue(.diagnosticExportFailed, operation: .diagnosticExport)
+            return nil
+        }
+    }
+
+    public func deleteAllData() {
+        guard status.isIdle, !storeNeedsRecovery, !lifecycleNeedsRecovery else { return }
+        userNotice = nil
+        var deletionIncomplete = false
+        do {
+            _ = try store.deleteAllData()
+        } catch is StoreDataDeletionError {
+            deletionIncomplete = true
+        } catch {
+            presentIssue(.resetFailed, operation: .reset)
+            return
+        }
+
+        let timestamp = Date()
+        do {
+            let engine = try store.update { engine in
+                try macRecovery.recordDataDeletion(engine.world.live?.id, at: timestamp)
+            }
+            finishDataDeletion(world: engine.world)
+            if deletionIncomplete {
+                markDataDeletionIncomplete()
+            } else {
+                clearDataDeletionWarning()
+                userNotice = "All Flowmo data was deleted."
+            }
+        } catch is MacProcessRecoveryDataDeletionError {
+            finishDataDeletion(world: (try? store.load()) ?? .empty)
+            markDataDeletionIncomplete()
+        } catch let error as MacProcessRecoveryError {
+            finishDataDeletion(world: (try? store.load()) ?? .empty)
+            markDataDeletionIncomplete()
+            handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
+        } catch {
+            finishDataDeletion(world: (try? store.load()) ?? .empty)
+            markDataDeletionIncomplete()
+            handlePersistenceFailure(error, operation: .reset)
+        }
+    }
+
+    public func exportFinished(kind: String, succeeded: Bool) {
+        if succeeded {
+            userNotice = kind == "diagnostics" ? "Diagnostic report exported." : "Flowmo data exported."
+        } else {
+            let code: FlowmoIssueCode = kind == "diagnostics" ? .diagnosticExportFailed : .dataExportFailed
+            let operation: FlowmoDiagnosticOperation = kind == "diagnostics" ? .diagnosticExport : .dataExport
+            presentIssue(code, operation: operation)
+        }
+    }
+
+    public func clearNotice() {
+        userNotice = nil
+    }
+
     /// Claims the Mac process marker and recovers only a session owned by a
     /// dead Mac host. This runs before the window is constructed.
-    private func beginMacProcessLifetime() {
+    func beginMacProcessLifetime() {
+        guard !didClaimMacProcessLifetime else { return }
         applying = true
         defer { applying = false }
         let timestamp = Date()
         do {
+            var preparation = MacProcessRecoveryMarker.ClaimPreparation.contended
             let engine = try store.update { engine in
-                macRecovery.claim(&engine, now: timestamp)
+                preparation = try macRecovery.prepareClaim(&engine, now: timestamp)
+            }
+            switch preparation {
+            case .prepared:
+                macRecovery.commitPreparedClaim()
+            case .contended:
+                world = engine.world
+                now = timestamp
+                didClaimMacProcessLifetime = false
+                handleMarkerRecoveryFailure(
+                    MacProcessRecoveryError.claimContended,
+                    operation: .recoveryClaim
+                )
+                refreshDraftsAfterChange()
+                return
             }
             world = engine.world
             now = timestamp
+            didClaimMacProcessLifetime = true
+            markerRecoveryFailed = false
+            clearRecoveryIssueIfResolved()
             refreshDraftsAfterChange()
             reconcileGuard()
+        } catch let error as MacProcessRecoveryError {
+            handleMarkerRecoveryFailure(error, operation: .recoveryClaim)
         } catch {
-            return
+            if FlowmoIssueClassifier.persistenceFailure(error) == .storeUnreadable {
+                handlePersistenceFailure(error, operation: .recoveryClaim)
+            } else {
+                handleMarkerRecoveryFailure(error, operation: .recoveryClaim)
+            }
         }
     }
 
     private func tick() {
         now = Date()
+        if pendingRecoveryPause != nil {
+            _ = persistPendingRecoveryPause()
+            return
+        }
+        guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return }
         var probe = Engine(world: world)
         let before = probe.world.live?.phase
         probe.sync(now: now)
@@ -240,17 +477,17 @@ public final class FlowmoSessionController: ObservableObject {
         do {
             let engine = try store.update { engine in
                 engine.sync(now: timestamp)
-                macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                try macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
             }
             world = engine.world
             now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
+        } catch let error as MacProcessRecoveryError {
+            handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
         } catch {
-            var engine = Engine(world: world)
-            engine.sync(now: timestamp)
-            world = engine.world
+            handlePersistenceFailure(error, operation: .sync)
         }
     }
 
@@ -259,32 +496,50 @@ public final class FlowmoSessionController: ObservableObject {
         defer { applying = false }
         do {
             _ = try store.update { engine in
-                macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                try macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
             }
+        } catch let error as MacProcessRecoveryError {
+            handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
         } catch {
-            return
+            handlePersistenceFailure(error, operation: .heartbeat)
         }
     }
 
     @discardableResult
     private func apply(_ event: Event) -> Bool {
+        guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return false }
         let before = world.live?.phase
         applying = true
         defer { applying = false }
         let timestamp = Date()
         do {
-            let engine = try store.update { engine in
-                try engine.apply(event, now: timestamp)
-                macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
-            }
+            let engine = try store.update(
+                { engine in
+                    try engine.apply(event, now: timestamp)
+                    if let sessionID = engine.world.live?.id {
+                        try macRecovery.recordObservation(sessionID, at: timestamp)
+                    }
+                },
+                afterPersist: { engine in
+                    if engine.world.live == nil {
+                        try self.macRecovery.recordObservation(nil, at: timestamp)
+                    }
+                }
+            )
             world = engine.world
             now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
             return true
+        } catch is EngineError {
+            // Expected state race: another local surface won. Reload will reconcile.
+            return false
+        } catch let error as MacProcessRecoveryError {
+            handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
+            return false
         } catch {
-            // Invalid for the current phase; leave the window as-is.
+            handlePersistenceFailure(error, operation: .update)
             return false
         }
     }
@@ -302,19 +557,58 @@ public final class FlowmoSessionController: ObservableObject {
                 defer { applying = false }
                 engine = try store.update { engine in
                     engine.sync(now: timestamp)
-                    macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                    try macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
                 }
             }
             let changed = engine.world != world
             world = engine.world
             now = timestamp
+            storeNeedsRecovery = false
+            if activeIssue?.code == .storeUnreadable {
+                activeIssue = nil
+            }
             if cueIfChanged, changed {
                 attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             }
             refreshDraftsAfterChange()
             reconcileGuard()
+            if !didClaimMacProcessLifetime {
+                beginMacProcessLifetime()
+            }
+        } catch let error as MacProcessRecoveryError {
+            handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
         } catch {
-            return
+            handlePersistenceFailure(error, operation: .load)
+        }
+    }
+
+    @discardableResult
+    private func persistPendingRecoveryPause() -> Bool {
+        guard let request = pendingRecoveryPause else { return true }
+        applying = true
+        defer { applying = false }
+        do {
+            var requestStillMatches = false
+            let engine = try store.update { engine in
+                guard let live = engine.world.live, live.id == request.sessionID else { return }
+                requestStillMatches = true
+                guard !live.isPaused else { return }
+                let pauseAt = max(request.requestedAt, live.phaseStartedAt)
+                try engine.apply(.pauseForRecovery, now: pauseAt)
+            }
+            world = engine.world
+            now = request.requestedAt
+            if !requestStillMatches || engine.world.live?.isPaused == true {
+                pendingRecoveryPause = nil
+                pauseRecoveryFailed = false
+                clearRecoveryIssueIfResolved()
+            }
+            refreshDraftsAfterChange()
+            reconcileGuard()
+            return pendingRecoveryPause == nil
+        } catch {
+            handlePauseRecoveryFailure(error)
+            return false
         }
     }
 
@@ -349,5 +643,99 @@ public final class FlowmoSessionController: ObservableObject {
 
     private func reconcileGuard() {
         focusGuard.reconcile(world: world)
+    }
+
+    private func finishDataDeletion(world nextWorld: World = .empty) {
+        world = nextWorld
+        now = Date()
+        intentionDraft = ""
+        captureDraft = ""
+        recallDraft = ""
+        showCapture = false
+        showGuardConfig = false
+        if nextWorld.live?.phase == .recall {
+            recallDraft = nextWorld.live?.recallText ?? ""
+        }
+        sessionWasLive = nextWorld.live != nil
+        reconcileGuard()
+    }
+
+    private func handlePersistenceFailure(_ error: Error, operation: FlowmoDiagnosticOperation) {
+        let code = FlowmoIssueClassifier.persistenceFailure(error)
+        presentIssue(code, operation: operation, blocksStore: code == .storeUnreadable)
+    }
+
+    private func handleMarkerRecoveryFailure(_ error: Error, operation: FlowmoDiagnosticOperation) {
+        markerRecoveryFailed = true
+        updateLifecycleRecoveryState()
+        presentIssue(.recoveryUnavailable, operation: operation)
+    }
+
+    private func handlePauseRecoveryFailure(_ error: Error) {
+        let persistenceCode = FlowmoIssueClassifier.persistenceFailure(error)
+        if persistenceCode == .storeUnreadable {
+            handlePersistenceFailure(error, operation: .recoveryPause)
+            return
+        }
+        pauseRecoveryFailed = true
+        updateLifecycleRecoveryState()
+        presentIssue(.recoveryUnavailable, operation: .recoveryPause)
+    }
+
+    private func updateLifecycleRecoveryState() {
+        lifecycleNeedsRecovery = markerRecoveryFailed || pauseRecoveryFailed
+        if lifecycleNeedsRecovery {
+            focusGuard.reconcile(world: .empty)
+        }
+    }
+
+    private func clearRecoveryIssueIfResolved() {
+        updateLifecycleRecoveryState()
+        guard !lifecycleNeedsRecovery else { return }
+        if activeIssue?.code == .recoveryUnavailable {
+            activeIssue =
+                dataDeletionWarningPending
+                ? FlowmoPresentedIssue(code: .dataDeletionIncomplete)
+                : nil
+        } else if activeIssue == nil, dataDeletionWarningPending {
+            activeIssue = FlowmoPresentedIssue(code: .dataDeletionIncomplete)
+        }
+        reconcileGuard()
+    }
+
+    private func markDataDeletionIncomplete() {
+        dataDeletionWarningPending = true
+        userNotice = nil
+        presentIssue(.dataDeletionIncomplete, operation: .reset)
+        // A preceding attempt may have rate-limited this diagnostic code. The
+        // user-visible privacy warning must still survive lifecycle recovery.
+        activeIssue = FlowmoPresentedIssue(code: .dataDeletionIncomplete)
+    }
+
+    private func clearDataDeletionWarning() {
+        dataDeletionWarningPending = false
+        if activeIssue?.code == .dataDeletionIncomplete {
+            activeIssue = nil
+        }
+    }
+
+    private func presentIssue(
+        _ code: FlowmoIssueCode,
+        operation: FlowmoDiagnosticOperation,
+        blocksStore: Bool = false
+    ) {
+        let timestamp = Date()
+        if blocksStore {
+            storeNeedsRecovery = true
+            focusGuard.reconcile(world: .empty)
+        }
+        guard timestamp.timeIntervalSince(lastIssuePresentedAt[code] ?? .distantPast) >= 60 else { return }
+        lastIssuePresentedAt[code] = timestamp
+        FlowmoDiagnosticLog.emit(code, operation: operation)
+        recentIssues.append(FlowmoIssueRecord(code: code, operation: operation, occurredAt: timestamp))
+        recentIssues = Array(recentIssues.suffix(20))
+        if !blocksStore {
+            activeIssue = FlowmoPresentedIssue(code: code)
+        }
     }
 }

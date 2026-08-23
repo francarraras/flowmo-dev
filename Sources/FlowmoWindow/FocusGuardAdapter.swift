@@ -2,6 +2,19 @@ import AppKit
 import Combine
 import FlowmoCore
 
+private func processIdentity(
+    for application: NSRunningApplication
+) -> FocusGuardProcessIdentity? {
+    guard let bundleIdentifier = application.bundleIdentifier,
+        let launchDate = application.launchDate
+    else { return nil }
+    return FocusGuardProcessIdentity(
+        processIdentifier: application.processIdentifier,
+        bundleIdentifier: bundleIdentifier,
+        launchDate: launchDate
+    )
+}
+
 @MainActor
 public final class FocusGuardAdapter: ObservableObject {
     @Published public private(set) var runtime = FocusGuardRuntime()
@@ -23,6 +36,7 @@ public final class FocusGuardAdapter: ObservableObject {
     }
 
     public func reconcile(world: World) {
+        let previousGeneration = runtime.demandGeneration
         var next = runtime
         next.setDemand(FocusGuard.demand(world: world))
         runtime = next
@@ -31,6 +45,9 @@ public final class FocusGuardAdapter: ObservableObject {
             stopObserving()
         case .active:
             startObserving()
+            if runtime.demandGeneration != previousGeneration {
+                evaluateFrontmostApplication()
+            }
         }
     }
 
@@ -41,14 +58,28 @@ public final class FocusGuardAdapter: ObservableObject {
     }
 
     public func openOnce() {
+        guard let work = runtime.currentWork else { return }
+        guard resolve(work.processIdentity) != nil else {
+            failOpen(work)
+            return
+        }
+
         var next = runtime
-        let pid = next.interception?.processIdentifier
         next.allowOnce()
         runtime = next
-        if let pid, let app = NSRunningApplication(processIdentifier: pid) {
-            _ = app.unhide()
-            _ = app.activate(options: [.activateIgnoringOtherApps])
+
+        guard let app = resolve(work.processIdentity) else {
+            failOpenAllowedProcess(work.processIdentity)
+            return
         }
+        _ = app.unhide()
+        guard let app = resolve(work.processIdentity),
+            app.activate(options: [.activateIgnoringOtherApps])
+        else {
+            failOpenAllowedProcess(work.processIdentity)
+            return
+        }
+        runtime.degraded = false
     }
 
     private func startObserving() {
@@ -61,15 +92,13 @@ public final class FocusGuardAdapter: ObservableObject {
                 queue: .main
             ) { [weak self] note in
                 let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                let pid = app?.processIdentifier
-                let bundleID = app?.bundleIdentifier
-                let name = app?.localizedName ?? bundleID ?? "App"
-                let isSelf = app == NSRunningApplication.current
+                let identity = app.flatMap(processIdentity(for:))
+                let name = app?.localizedName ?? identity?.bundleIdentifier ?? "App"
+                let isSelf = app == .current
                 Task { @MainActor in
-                    guard let pid else { return }
+                    guard let identity else { return }
                     self?.handleActivation(
-                        processID: pid,
-                        bundleID: bundleID,
+                        processIdentity: identity,
                         displayName: name,
                         isSelf: isSelf
                     )
@@ -83,14 +112,26 @@ public final class FocusGuardAdapter: ObservableObject {
                 queue: .main
             ) { [weak self] note in
                 let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                let pid = app?.processIdentifier
+                let identity = app.flatMap(processIdentity(for:))
                 Task { @MainActor in
-                    guard let pid else { return }
-                    self?.handleDeactivation(processID: pid)
+                    guard let identity else { return }
+                    self?.handleDeactivation(processIdentity: identity)
                 }
             }
         )
         observing = true
+    }
+
+    private func evaluateFrontmostApplication() {
+        if let app = NSWorkspace.shared.frontmostApplication,
+            let identity = processIdentity(for: app)
+        {
+            handleActivation(
+                processIdentity: identity,
+                displayName: app.localizedName ?? identity.bundleIdentifier,
+                isSelf: app == .current
+            )
+        }
     }
 
     private func stopObserving() {
@@ -103,16 +144,14 @@ public final class FocusGuardAdapter: ObservableObject {
     }
 
     private func handleActivation(
-        processID: Int32,
-        bundleID: String?,
+        processIdentity: FocusGuardProcessIdentity,
         displayName: String,
         isSelf: Bool
     ) {
-        let selfID = bundleID.map { ownBundleIDs.contains($0) } ?? false
+        let selfID = ownBundleIDs.contains(processIdentity.bundleIdentifier)
         var next = runtime
         let decision = next.activated(
-            bundleID: bundleID,
-            processID: processID,
+            processIdentity: processIdentity,
             displayName: displayName,
             isSelf: isSelf || selfID
         )
@@ -121,18 +160,24 @@ public final class FocusGuardAdapter: ObservableObject {
             runtime = next
         case .intercept:
             runtime = next
-            hideGuardedApp(processID: processID)
+            guard let work = runtime.currentWork else { return }
+            hideGuardedApp(work)
         }
     }
 
-    private func hideGuardedApp(processID: Int32, attempt: Int = 0) {
-        guard case .active = runtime.demand else { return }
-        guard runtime.interception?.processIdentifier == processID else { return }
-        guard let app = NSRunningApplication(processIdentifier: processID) else {
-            failOpen()
+    private func hideGuardedApp(_ work: FocusGuardWork, attempt: Int = 0) {
+        guard runtime.isCurrent(work) else { return }
+        guard let app = resolve(work.processIdentity) else {
+            failOpen(work)
             return
         }
         _ = app.hide()
+
+        guard runtime.isCurrent(work) else { return }
+        guard let app = resolve(work.processIdentity) else {
+            failOpen(work)
+            return
+        }
         if app.isHidden {
             runtime.degraded = false
             bringForward()
@@ -140,23 +185,43 @@ public final class FocusGuardAdapter: ObservableObject {
         }
         if attempt < 3 {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-                self?.hideGuardedApp(processID: processID, attempt: attempt + 1)
+                self?.hideGuardedApp(work, attempt: attempt + 1)
             }
             return
         }
-        failOpen()
+        failOpen(work)
     }
 
-    private func failOpen() {
+    private func failOpen(_ work: FocusGuardWork) {
+        guard runtime.isCurrent(work) else { return }
         var next = runtime
         next.degraded = true
         next.interception = nil
         runtime = next
     }
 
-    private func handleDeactivation(processID: Int32) {
+    private func failOpenAllowedProcess(_ identity: FocusGuardProcessIdentity) {
+        guard runtime.allowedProcessIdentity == identity else { return }
         var next = runtime
-        next.deactivated(processID: processID)
+        next.allowedProcessIdentity = nil
+        next.degraded = true
+        runtime = next
+    }
+
+    private func resolve(
+        _ identity: FocusGuardProcessIdentity
+    ) -> NSRunningApplication? {
+        guard
+            let app = NSRunningApplication(
+                processIdentifier: identity.processIdentifier
+            ), processIdentity(for: app) == identity
+        else { return nil }
+        return app
+    }
+
+    private func handleDeactivation(processIdentity: FocusGuardProcessIdentity) {
+        var next = runtime
+        next.deactivated(processIdentity: processIdentity)
         runtime = next
     }
 }

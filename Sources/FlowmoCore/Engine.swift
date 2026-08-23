@@ -2,8 +2,9 @@ import Foundation
 
 public enum BreakMath {
     public static func earnedBreak(focus: TimeInterval, ratio: Double) -> TimeInterval {
-        guard ratio > 0 else { return 0 }
-        return max(0, focus / ratio)
+        guard focus.isFinite, ratio.isFinite, ratio > 0 else { return 0 }
+        let result = max(0, focus) / ratio
+        return result.isFinite ? result : .greatestFiniteMagnitude
     }
 }
 
@@ -148,7 +149,8 @@ public struct Engine: Equatable, Sendable {
     ) -> SessionStatus {
         let clock = live.pausedAt ?? now
         if live.isPaused {
-            let focus = live.phase == .focus
+            let focus =
+                live.phase == .focus
                 ? (live.frozenElapsed ?? focusElapsed(live, now: clock))
                 : completedFocus(live)
             let earned = BreakMath.earnedBreak(focus: focus, ratio: live.breakRatio)
@@ -252,6 +254,7 @@ public struct Engine: Equatable, Sendable {
             live.phaseStartedAt = now
         }
 
+        live.lastResumedAt = now
         live.pausedAt = nil
         live.frozenElapsed = nil
         live.frozenRemaining = nil
@@ -262,7 +265,8 @@ public struct Engine: Equatable, Sendable {
         guard var live = world.live else { throw EngineError.nothingRunning }
         guard live.phase == .focus else { throw EngineError.notFocus }
         let clock = live.pausedAt ?? now
-        let focus = live.isPaused
+        let focus =
+            live.isPaused
             ? (live.frozenElapsed ?? Self.focusElapsed(live, now: clock))
             : Self.focusElapsed(live, now: now)
         live.focusEndedAt = live.isPaused ? live.pausedAt : now
@@ -292,6 +296,7 @@ public struct Engine: Equatable, Sendable {
         case .focus:
             try stopFocus(now: now)
         case .closeBeat:
+            recordCompletion(live, now: now)
             world.live = nil
         }
     }
@@ -356,7 +361,6 @@ public struct Engine: Equatable, Sendable {
         live.phase = .closeBeat
         live.phaseStartedAt = now
         Self.clearFreeze(&live)
-        recordCompletion(live, now: now)
     }
 
     private mutating func recordCompletion(_ live: SessionSnapshot, now: Date) {
@@ -449,12 +453,19 @@ public enum ProfileLearner {
 
     public static func apply(_ profile: Profile, focusSeconds: TimeInterval) -> Profile {
         var next = profile
-        next.sessionCount += 1
-        next.totalFocusSeconds += focusSeconds
-        next.recentFocusSeconds.append(focusSeconds)
-        if next.recentFocusSeconds.count > 5 {
-            next.recentFocusSeconds.removeFirst(next.recentFocusSeconds.count - 5)
+        if next.sessionCount < WorldPersistenceLimits.maximumCounter {
+            next.sessionCount += 1
+        } else {
+            next.sessionCount = WorldPersistenceLimits.maximumCounter
         }
+        let total = next.totalFocusSeconds + focusSeconds
+        if total == .infinity || total > WorldPersistenceLimits.maximumAggregateSeconds {
+            next.totalFocusSeconds = WorldPersistenceLimits.maximumAggregateSeconds
+        } else {
+            next.totalFocusSeconds = total
+        }
+        next.recentFocusSeconds = Array(profile.recentFocusSeconds.suffix(4))
+        next.recentFocusSeconds.append(focusSeconds)
 
         let recent = next.recentFocusSeconds.suffix(3)
         guard recent.count == 3 else {
@@ -466,7 +477,8 @@ public enum ProfileLearner {
             let before = next.breakRatio
             next.breakRatio = max(minRatio, next.breakRatio - step)
             if next.breakRatio < before {
-                next.lastNote = "Last three sessions ran long, so the next break will be a bit longer (ratio \(format(next.breakRatio)))."
+                next.lastNote =
+                    "Last three sessions ran long, so the next break will be a bit longer (ratio \(format(next.breakRatio)))."
             } else {
                 next.lastNote = nil
             }
@@ -474,7 +486,8 @@ public enum ProfileLearner {
             let before = next.breakRatio
             next.breakRatio = min(maxRatio, next.breakRatio + step)
             if next.breakRatio > before {
-                next.lastNote = "Last three sessions were short, so the next break will be a bit shorter (ratio \(format(next.breakRatio)))."
+                next.lastNote =
+                    "Last three sessions were short, so the next break will be a bit shorter (ratio \(format(next.breakRatio)))."
             } else {
                 next.lastNote = nil
             }

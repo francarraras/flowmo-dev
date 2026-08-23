@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import FlowmoLook
+import SwiftUI
 
 /// One-line instrument field with reliable focus.
 ///

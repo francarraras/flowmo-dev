@@ -1,6 +1,7 @@
-import SwiftUI
 import FlowmoCore
 import FlowmoLook
+import SwiftUI
+import UniformTypeIdentifiers
 
 public struct PhoneRootView: View {
     @ObservedObject var controller: PhoneSessionController
@@ -13,7 +14,9 @@ public struct PhoneRootView: View {
         let status = controller.status
         let atmo = Atmosphere.of(status)
         Group {
-            if status.isIdle {
+            if controller.storeNeedsRecovery {
+                StoreRecoveryPane(controller: controller)
+            } else if status.isIdle {
                 IdlePane(controller: controller, status: status)
             } else {
                 phasePane(status)
@@ -33,7 +36,28 @@ public struct PhoneRootView: View {
                 Spacer()
                 muteButton(atmo)
             }
-            .opacity(atmo.chrome)
+            .opacity(controller.storeNeedsRecovery ? 0 : atmo.chrome)
+            .allowsHitTesting(!controller.storeNeedsRecovery)
+        }
+        .alert(item: $controller.activeIssue) { issue in
+            Alert(
+                title: Text(issue.title),
+                message: Text("\(issue.message)\n\nIssue code: \(issue.code.rawValue)"),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let notice = controller.userNotice {
+                Text(notice)
+                    .font(.system(.caption, design: .rounded).weight(.medium))
+                    .foregroundStyle(atmo.mute)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
+                    .contentShape(Rectangle())
+                    .onTapGesture { controller.clearNotice() }
+            }
         }
     }
 
@@ -68,15 +92,50 @@ public struct PhoneRootView: View {
     }
 }
 
+public struct PhoneStoreUnavailableView: View {
+    private let retry: () -> Void
+
+    public init(retry: @escaping () -> Void) {
+        self.retry = retry
+    }
+
+    public var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Text("Flowmo unavailable")
+                .font(.system(.title2, design: .rounded).weight(.semibold))
+            Text("Flowmo can’t access its shared local data right now.")
+                .font(.system(.body, design: .rounded))
+                .foregroundStyle(Look.mute)
+                .multilineTextAlignment(.center)
+            Text(FlowmoIssueCode.storeUnavailable.rawValue)
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(Look.faint)
+            InkButton("Retry", action: retry)
+            Spacer()
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(Look.ink)
+        .background(FieldCanvas())
+        .preferredColorScheme(.dark)
+    }
+}
+
 private struct IdlePane: View {
     @Environment(\.atmosphere) private var atmo
     @ObservedObject var controller: PhoneSessionController
     var status: SessionStatus
     @State private var showingHistory = false
+    @State private var showingData = false
 
     var body: some View {
         Group {
-            if showingHistory {
+            if showingData {
+                DataControlsPane(controller: controller) {
+                    showingData = false
+                }
+            } else if showingHistory {
                 HistoryPane(sessions: HistoryOrder.newestFirst(controller.world.history)) {
                     showingHistory = false
                 }
@@ -103,6 +162,14 @@ private struct IdlePane: View {
                                 .modifier(QuietHoverInk())
                         }
                         .buttonStyle(PressStyle())
+                        Button {
+                            showingData = true
+                        } label: {
+                            Text("Data")
+                                .underline(false)
+                                .modifier(QuietHoverInk())
+                        }
+                        .buttonStyle(PressStyle())
                         if !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Button {
                                 controller.clearIntention()
@@ -120,6 +187,144 @@ private struct IdlePane: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct StoreRecoveryPane: View {
+    @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: PhoneSessionController
+    @State private var exportingDiagnostics = false
+    @State private var diagnosticDocument: FlowmoJSONDocument?
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+            Text("Data needs attention")
+                .font(.system(.title2, design: .rounded).weight(.semibold))
+            Text(
+                controller.canPreserveAndReset
+                    ? "Flowmo couldn’t read its local data. Retry, or preserve the original and reset."
+                    : "Flowmo couldn’t safely recover its local session. Retry when local data is available."
+            )
+            .font(.system(.body, design: .rounded))
+            .foregroundStyle(atmo.mute)
+            .multilineTextAlignment(.center)
+            Text(
+                controller.canPreserveAndReset
+                    ? FlowmoIssueCode.storeUnreadable.rawValue
+                    : FlowmoIssueCode.persistenceFailed.rawValue
+            )
+            .font(.system(.caption2, design: .monospaced))
+            .foregroundStyle(atmo.faint)
+            VStack(spacing: 10) {
+                InkButton("Retry") { controller.retryStore() }
+                if controller.canPreserveAndReset {
+                    QuietButton("Preserve & Reset", minHeight: 44) {
+                        controller.preserveAndResetStore()
+                    }
+                }
+                QuietButton("Export Redacted Diagnostics", minHeight: 44) {
+                    guard let data = controller.prepareDiagnosticExport() else { return }
+                    diagnosticDocument = FlowmoJSONDocument(data: data)
+                    exportingDiagnostics = true
+                }
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fileExporter(
+            isPresented: $exportingDiagnostics,
+            document: diagnosticDocument,
+            contentType: .json,
+            defaultFilename: "flowmo-diagnostics"
+        ) { result in
+            switch result {
+            case .success:
+                controller.exportFinished(kind: "diagnostics", succeeded: true)
+            case .failure(let error):
+                if !FlowmoExportResult.isUserCancellation(error) {
+                    controller.exportFinished(kind: "diagnostics", succeeded: false)
+                }
+            }
+            diagnosticDocument = nil
+        }
+    }
+}
+
+private struct DataControlsPane: View {
+    @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: PhoneSessionController
+    var dismiss: () -> Void
+    @State private var showingDeleteConfirmation = false
+    @State private var exporting = false
+    @State private var exportKind = "data"
+    @State private var exportDocument: FlowmoJSONDocument?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                QuietButton("Back", minHeight: 44, action: dismiss)
+                Spacer()
+                Text("Data")
+                    .font(.system(.headline, design: .rounded))
+            }
+            Spacer()
+            Text("Exports stay on this device unless you choose where to save them.")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
+            InkButton("Export Flowmo Data") {
+                beginExport(kind: "data")
+            }
+            QuietButton("Export Redacted Diagnostics", minHeight: 44) {
+                beginExport(kind: "diagnostics")
+            }
+            QuietButton("Delete All Data", minHeight: 44) {
+                showingDeleteConfirmation = true
+            }
+            .foregroundStyle(Color.red.opacity(0.85))
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .confirmationDialog(
+            "Delete all Flowmo data?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete All Data", role: .destructive) {
+                controller.deleteAllData()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your current local Flowmo data. This cannot be undone.")
+        }
+        .fileExporter(
+            isPresented: $exporting,
+            document: exportDocument,
+            contentType: .json,
+            defaultFilename: exportKind == "diagnostics" ? "flowmo-diagnostics" : "flowmo-data"
+        ) { result in
+            switch result {
+            case .success:
+                controller.exportFinished(kind: exportKind, succeeded: true)
+            case .failure(let error):
+                if !FlowmoExportResult.isUserCancellation(error) {
+                    controller.exportFinished(kind: exportKind, succeeded: false)
+                }
+            }
+            exportDocument = nil
+        }
+    }
+
+    private func beginExport(kind: String) {
+        let data =
+            kind == "diagnostics"
+            ? controller.prepareDiagnosticExport()
+            : controller.prepareFullDataExport()
+        guard let data else { return }
+        exportKind = kind
+        exportDocument = FlowmoJSONDocument(data: data)
+        exporting = true
     }
 }
 
@@ -248,11 +453,13 @@ private struct BreakPane: View {
         PhaseColumn {
             PhaseCaption("Time to recharge", tone: Look.mute)
         } hole: {
-            Aperture(ring: .timed(
-                progress: ringProgress(status),
-                rest: true,
-                race: !status.isPaused && (status.remaining ?? 0) <= 10
-            )) {
+            Aperture(
+                ring: .timed(
+                    progress: ringProgress(status),
+                    rest: true,
+                    race: !status.isPaused && (status.remaining ?? 0) <= 10
+                )
+            ) {
                 InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 40)
                     .breakRace(
                         remaining: status.remaining ?? 0,

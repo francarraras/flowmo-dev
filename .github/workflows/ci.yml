@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Swift format lint
+        run: swift format lint --strict --recursive Package.swift Sources Tests Apps
+
+      - name: SwiftPM tests
+        run: swift test -Xswiftc -warnings-as-errors
+
+      - name: Core proofs
+        run: swift run -Xswiftc -warnings-as-errors flowmo check
+
+      - name: CLI JSON and privacy smoke
+        shell: bash
+        run: |
+          flowmo_test_root="$(mktemp -d)"
+          export FLOWMO_HOME="$flowmo_test_root"
+
+          status_json="$(swift run flowmo status --json)"
+          ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["schemaVersion"] == 1 && j.dig("status", "running") == false' <<<"$status_json"
+
+          action_json="$(swift run flowmo start "ci-private-intention" --json)"
+          ruby -rjson -e 'raw = STDIN.read; j = JSON.parse(raw); abort unless j["ok"] == true && j["command"] == "start" && !raw.include?("ci-private-intention")' <<<"$action_json"
+
+          set +e
+          error_json="$(swift run flowmo pause --json)"
+          error_status=$?
+          set -e
+          test "$error_status" -eq 1
+          ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["ok"] == false && j.dig("error", "code") == "unsupported_control"' <<<"$error_json"
+
+      - name: Release SwiftPM build
+        run: swift build -c release -Xswiftc -warnings-as-errors
+
+      - name: Build and analyze Mac app
+        shell: bash
+        run: |
+          xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+
+          mac_release_settings="$(xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES -showBuildSettings)"
+          grep -Fq 'CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO' <<<"$mac_release_settings"
+          mac_build_dir="$(sed -n 's/^[[:space:]]*TARGET_BUILD_DIR = //p' <<<"$mac_release_settings" | head -n 1)"
+          mac_product_name="$(sed -n 's/^[[:space:]]*FULL_PRODUCT_NAME = //p' <<<"$mac_release_settings" | head -n 1)"
+          mac_app="$mac_build_dir/$mac_product_name"
+          test -d "$mac_app"
+          if codesign -d --entitlements :- "$mac_app" 2>&1 | grep -Fq 'com.apple.security.get-task-allow'; then
+            echo 'Release app unexpectedly contains get-task-allow.' >&2
+            exit 1
+          fi
+
+          xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Debug -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
+
+      - name: Build and analyze iPhone app and widget
+        shell: bash
+        run: |
+          xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+
+          phone_release_settings="$(xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES -showBuildSettings)"
+          phone_build_dir="$(sed -n 's/^[[:space:]]*TARGET_BUILD_DIR = //p' <<<"$phone_release_settings" | head -n 1)"
+          phone_product_name="$(sed -n 's/^[[:space:]]*FULL_PRODUCT_NAME = //p' <<<"$phone_release_settings" | head -n 1)"
+          phone_app="$phone_build_dir/$phone_product_name"
+          widget="$(find "$phone_app/PlugIns" -maxdepth 1 -type d -name '*.appex' -print -quit)"
+          test -f "$phone_app/PrivacyInfo.xcprivacy"
+          test -n "$widget"
+          test -f "$widget/PrivacyInfo.xcprivacy"
+          plutil -lint "$phone_app/PrivacyInfo.xcprivacy" "$widget/PrivacyInfo.xcprivacy"
+
+          xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze

@@ -1,6 +1,9 @@
 # Flowmo — iPhone widget
 
-The Home Screen widget is a glance over the phone's Core clock. The iPhone app remains the phone product. Mac glance behavior stays in [`menu-bar.md`](menu-bar.md). Shipped and simulator-proved on 2026-08-21.
+The Home Screen widget is a glance over the phone's Core clock. The iPhone app
+remains the phone product. Mac glance behavior stays in
+[`menu-bar.md`](menu-bar.md). The implementation is a private-beta candidate;
+the simulator build and runtime checks belong to the release verification gate.
 
 ---
 
@@ -52,5 +55,6 @@ THE SYSTEM SHALL open the iPhone app and SHALL NOT Continue.
 WHEN the phone app writes `world.json`
 THE SYSTEM SHALL reload the widget timeline.
 
-WHEN an App Group cannot share the store
-THE SYSTEM SHALL stop this slice (spike fails). Do not invent a second JSON file the app never writes.
+WHEN the App Group cannot share the store or the store cannot be validated
+THE SYSTEM SHALL show `Unavailable`, retry on a later timeline, and SHALL NOT
+crash, write, or invent a second JSON file the app never writes.

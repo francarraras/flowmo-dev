@@ -1,9 +1,10 @@
 import AudioToolbox
-import Foundation
 import FlowmoCore
+import Foundation
 import UserNotifications
+
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 @MainActor
@@ -23,7 +24,7 @@ public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
         guard AttentionCue.shouldPlay(from: from, to: to) else { return }
         guard cuesEnabled else { return }
         #if canImport(UIKit)
-        guard UIApplication.shared.applicationState == .active else { return }
+            guard UIApplication.shared.applicationState == .active else { return }
         #endif
         AudioServicesPlaySystemSound(1104)
     }

@@ -1,5 +1,5 @@
-import SwiftUI
 import FlowmoCore
+import SwiftUI
 
 /// Ring mode. Standalone so Mini and Classic share one type.
 public enum ApertureRing: Equatable {
@@ -381,7 +381,9 @@ public struct CloseFigures: View {
 
     public var body: some View {
         VStack(spacing: compact ? 6 : 10) {
-            figure(Format.clock(focus), name: "Focused", size: compact ? 26 : 36, tone: Atmosphere.canvas.ink, nameTone: Look.mute)
+            figure(
+                Format.clock(focus), name: "Focused", size: compact ? 26 : 36, tone: Atmosphere.canvas.ink,
+                nameTone: Look.mute)
             figure(Format.clock(rest), name: "Rested", size: compact ? 16 : 22, tone: Look.mute, nameTone: Look.faint)
         }
     }
@@ -633,13 +635,13 @@ public struct RecoveryVerbs: View {
 public enum PhaseGrid {
     public static let head: CGFloat = 44
     #if os(iOS)
-    public static let verb: CGFloat = 44
-    /// Today / History / New. Live phases keep the empty slot so the hole does not grow into Start.
-    public static let chrome: CGFloat = 40
+        public static let verb: CGFloat = 44
+        /// Today / History / New. Live phases keep the empty slot so the hole does not grow into Start.
+        public static let chrome: CGFloat = 40
     #else
-    public static let verb: CGFloat = 36
-    /// Today / History / New + Guard. Live phases keep the empty slot so the hole does not grow into Start.
-    public static let chrome: CGFloat = 64
+        public static let verb: CGFloat = 36
+        /// Today / History / New + Guard. Live phases keep the empty slot so the hole does not grow into Start.
+        public static let chrome: CGFloat = 64
     #endif
     public static let gap: CGFloat = 10
 }
@@ -678,7 +680,6 @@ public struct PhaseColumn<Head: View, Hole: View, Verb: View, Chrome: View>: Vie
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             chrome
                 .frame(maxWidth: .infinity, minHeight: PhaseGrid.chrome, alignment: .top)
-                .layoutPriority(-1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

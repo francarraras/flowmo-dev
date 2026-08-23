@@ -12,5 +12,7 @@
 	<string>1</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Fran Carrara. All rights reserved.</string>
 </dict>
 </plist>

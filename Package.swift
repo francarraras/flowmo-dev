@@ -28,13 +28,17 @@ let package = Package(
             dependencies: ["FlowmoWindow", "FlowmoCLI", "FlowmoCheck"],
             exclude: ["Info.plist"],
             linkerSettings: [
-                .unsafeFlags([
-                    "-Xlinker", "-sectcreate",
-                    "-Xlinker", "__TEXT",
-                    "-Xlinker", "__info_plist",
-                    "-Xlinker", infoPlist,
-                ], .when(platforms: [.macOS])),
+                .unsafeFlags(
+                    [
+                        "-Xlinker", "-sectcreate",
+                        "-Xlinker", "__TEXT",
+                        "-Xlinker", "__info_plist",
+                        "-Xlinker", infoPlist,
+                    ], .when(platforms: [.macOS]))
             ]
         ),
+        .testTarget(name: "FlowmoCoreTests", dependencies: ["FlowmoCore"]),
+        .testTarget(name: "FlowmoCLITests", dependencies: ["FlowmoCLI", "FlowmoCore"]),
+        .testTarget(name: "FlowmoWindowTests", dependencies: ["FlowmoWindow", "FlowmoCore"]),
     ]
 )

@@ -43,49 +43,92 @@ public enum FocusGuardDecision: Equatable, Sendable {
     case allowedOnce
 }
 
+public struct FocusGuardProcessIdentity: Equatable, Hashable, Sendable {
+    public var processIdentifier: Int32
+    public var bundleIdentifier: String
+    public var launchDate: Date
+
+    public init(processIdentifier: Int32, bundleIdentifier: String, launchDate: Date) {
+        self.processIdentifier = processIdentifier
+        self.bundleIdentifier = bundleIdentifier
+        self.launchDate = launchDate
+    }
+}
+
+public struct FocusGuardWork: Equatable, Sendable {
+    public var processIdentity: FocusGuardProcessIdentity
+    public var demand: FocusGuardDemand
+    public var demandGeneration: UInt64
+
+    public init(
+        processIdentity: FocusGuardProcessIdentity,
+        demand: FocusGuardDemand,
+        demandGeneration: UInt64
+    ) {
+        self.processIdentity = processIdentity
+        self.demand = demand
+        self.demandGeneration = demandGeneration
+    }
+}
+
 public struct FocusGuardRuntime: Equatable, Sendable {
     public var demand: FocusGuardDemand = .inactive
-    public var allowedProcessID: Int32?
+    public private(set) var demandGeneration: UInt64 = 0
+    public var allowedProcessIdentity: FocusGuardProcessIdentity?
     public var interception: FocusGuardInterception?
     public var degraded: Bool = false
 
     public init() {}
 
+    public var currentWork: FocusGuardWork? {
+        guard case .active = demand, let interception else { return nil }
+        return FocusGuardWork(
+            processIdentity: interception.processIdentity,
+            demand: demand,
+            demandGeneration: demandGeneration
+        )
+    }
+
+    public func isCurrent(_ work: FocusGuardWork) -> Bool {
+        demandGeneration == work.demandGeneration
+            && demand == work.demand
+            && interception?.processIdentity == work.processIdentity
+    }
+
     public mutating func setDemand(_ next: FocusGuardDemand) {
         if demand != next {
-            allowedProcessID = nil
+            demandGeneration &+= 1
+            allowedProcessIdentity = nil
             interception = nil
             degraded = false
         }
         demand = next
         if case .inactive = next {
-            allowedProcessID = nil
+            allowedProcessIdentity = nil
             interception = nil
         }
     }
 
     public mutating func activated(
-        bundleID: String?,
-        processID: Int32,
+        processIdentity: FocusGuardProcessIdentity,
         displayName: String,
         isSelf: Bool
     ) -> FocusGuardDecision {
         guard case .active(_, let ids) = demand, !isSelf else { return .ignore }
-        guard let bundleID, ids.contains(bundleID) else { return .ignore }
-        if allowedProcessID == processID {
+        guard ids.contains(processIdentity.bundleIdentifier) else { return .ignore }
+        if allowedProcessIdentity == processIdentity {
             return .allowedOnce
         }
         interception = FocusGuardInterception(
-            bundleIdentifier: bundleID,
-            processIdentifier: processID,
+            processIdentity: processIdentity,
             displayName: displayName
         )
         return .intercept
     }
 
-    public mutating func deactivated(processID: Int32) {
-        if allowedProcessID == processID {
-            allowedProcessID = nil
+    public mutating func deactivated(processIdentity: FocusGuardProcessIdentity) {
+        if allowedProcessIdentity == processIdentity {
+            allowedProcessIdentity = nil
         }
     }
 
@@ -95,22 +138,23 @@ public struct FocusGuardRuntime: Equatable, Sendable {
 
     public mutating func allowOnce() {
         if let interception {
-            allowedProcessID = interception.processIdentifier
+            allowedProcessIdentity = interception.processIdentity
         }
         interception = nil
     }
 }
 
 public struct FocusGuardInterception: Equatable, Sendable {
-    public var bundleIdentifier: String
-    public var processIdentifier: Int32
+    public var processIdentity: FocusGuardProcessIdentity
     public var displayName: String
 
-    public init(bundleIdentifier: String, processIdentifier: Int32, displayName: String) {
-        self.bundleIdentifier = bundleIdentifier
-        self.processIdentifier = processIdentifier
+    public init(processIdentity: FocusGuardProcessIdentity, displayName: String) {
+        self.processIdentity = processIdentity
         self.displayName = displayName
     }
+
+    public var bundleIdentifier: String { processIdentity.bundleIdentifier }
+    public var processIdentifier: Int32 { processIdentity.processIdentifier }
 }
 
 public enum FocusGuard {

@@ -27,8 +27,8 @@ Copy does not claim productivity, well-being, or flow.
 ## In
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
-- Same `world.json` schema. File lives in the app container (not `~/.flowmo`). Same lock + atomic write.
-- Same controls as Mac: Start, Skip, Stop, +, Continue, Restart, mute. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
+- Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write.
+- Same controls as Mac: Start, Skip, Stop, +, Continue, Restart, mute, and Idle-only Data controls. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
 - Same look rules: black field, cyan on Start and timed rings, clock-in-ring on prime/break/recall, Focus is a count-up plus earned strip. No focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Phase end while you are not looking: a local notification. Tap opens the app; it does not Continue.
 
@@ -47,7 +47,7 @@ Notifications for “prime ended / break ended / recall ended” while away are 
 ## Checkable lines
 
 WHEN the app is idle
-THE SYSTEM SHALL show 00:00, last intention, Start, today’s focus total, and History.
+THE SYSTEM SHALL show 00:00, last intention, Start, today’s focus total, History, and Data.
 
 WHEN the user opens History from Idle
 THE SYSTEM SHALL show completed sessions newest-first. Each card shows intention, Focus duration, and local date. Tapping a card SHALL expand that session in place with Focused, Rested, parked lines, and reflection when present. Back SHALL return to Idle.
@@ -69,3 +69,16 @@ THE SYSTEM SHALL schedule a local notification for that end. Skip, Stop, or an e
 
 WHEN `world.json` is a Mac-shaped document
 THE SYSTEM SHALL load it. Guard fields have no iPhone UI.
+
+WHEN the App Group container is unavailable
+THE SYSTEM SHALL show a calm unavailable state with Retry and SHALL NOT crash or
+fall back to a different store.
+
+WHEN the shared store is invalid
+THE SYSTEM SHALL offer Retry, redacted diagnostics, or Preserve & Reset. The
+original bytes SHALL be preserved before reset.
+
+WHEN the user opens Data from Idle
+THE SYSTEM SHALL offer full export, redacted diagnostic export, and explicitly
+confirmed Delete All. Delete All SHALL remove Flowmo-owned recovery copies and
+reload the widget timeline.

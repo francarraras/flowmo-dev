@@ -4,9 +4,9 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-21
+Last updated: 2026-08-23
 Owner: Fran Carrara  
-Status: Mac, iPhone, widget, and local history list shipped.
+Status: 1.0 close-beta candidate; external Apple distribution remains gated.
 
 ---
 
@@ -14,7 +14,7 @@ Status: Mac, iPhone, widget, and local history list shipped.
 
 Flowmo is a Flowmodoro — a Pomodoro with the science left in — that gets more accurate to the person using it.
 
-You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and scripts can read and tweak the same local session; they do not replace the app.
+You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
 
 **Tagline (kept):** Stop counting down. Start flowing up.
 
@@ -50,7 +50,7 @@ Spaced repetition, flashcards, consolidation, written reflection, flow scores, a
 The product must stay:
 
 - **A — Lightweight and instant.** Compact window. One frame. Seconds to start.
-- **B — Easy, configurable if you want.** Defaults are enough. A file and CLI exist for people who want knobs.
+- **B — Easy, configurable if you want.** Defaults are enough. The CLI is the supported automation boundary; the local file remains inspectable internal storage.
 - **C — Scriptable.** CLI and JSON support integrations without becoming the daily UI.
 - **D — A real app for Mac and iPhone.** The native session frame is what people use.
 
@@ -86,7 +86,7 @@ The Mac **window is the product**.
 
 | State | On screen | Actions |
 |---|---|---|
-| **Idle** | Empty field, placeholder **Intention**. **Start**. Today, **History**, **New**. | Type a line, Start, inspect history, or New (clears a typed line). |
+| **Idle** | Empty field, placeholder **Intention**. **Start**. Today, **History**, **Data**, **New**. | Type a line, Start, inspect history, export/delete data, or New (clears a typed line). |
 | **Prime (2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Sit. Skip. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **+** opens capture; **Park** / **Discard** replace + / Stop. | Work. Park a thought. Stop. |
 | **Break** | **Time to recharge**. Countdown + determinate gold ring. | Sit. Skip. |
@@ -114,6 +114,11 @@ Pause exists only as **recovery**:
 
 - Quit the app, or the Mac sleeps → on return the session is **paused**.
 - On return: same phase, clock frozen, **Continue** or **Restart**. Bringing the window forward does not resume. Continue resumes from the frozen time. Restart drops the frozen session (not recorded) and starts Prime with the same line.
+- A persisted Continue boundary protects the frozen clock even when Continue is
+  sent through the CLI immediately before a Mac crash.
+- Only one Mac process may own recovery for a store. A kernel-held lifetime lock
+  is authoritative; the JSON marker is crash metadata, not proof that an owner
+  is alive. A competing Mac window blocks mutations and offers Retry.
 
 ### Window lifetime
 
@@ -149,12 +154,34 @@ Scripts may fire verbs against the same session shown by the window or living te
 - start with a label  
 - stop focus  
 - skip current timed beat  
+- continue or restart a recovery-paused session
 - capture a line  
+- save recall text
+- cancel the current session
 - status as JSON  
-- read/set config (ratio, durations)  
-- later: explain why the ratio moved  
+- later: supported config verbs and an explanation of why the ratio moved
+
+Action and error responses use a documented versioned JSON envelope and do not
+echo private session text. `status --json` is the explicit read contract when a
+script needs those session fields. The internal `world.json` schema is not a
+write contract.
 
 The API talks to the **same** live session as the window. Two clocks is a bug.
+
+### Data and diagnostics
+
+Data controls are deliberately reachable only from Idle. A full export is a
+validated snapshot of the user's local data. A redacted diagnostic export
+contains app/build/OS metadata, phase and counts, and stable issue codes with
+operation categories and timestamps—never intention, capture, recall,
+selected-app identifiers, or store paths.
+
+Invalid stores are never silently discarded. The recovery action preserves the
+original bytes before resetting. **Delete All Data** requires explicit
+confirmation, refuses a live session, and removes the canonical data and exact
+Flowmo-owned recovery artifacts without recursively deleting a planted
+directory. Any incomplete cleanup remains visible to the user. Neither export
+uploads itself.
 
 ---
 
@@ -168,7 +195,7 @@ After each completed session, record focus duration.
 
 Prime stays 2:00. Reflection stays 3:00. Learning does **not** turn reflection or prime on/off in v1.
 
-The profile stays inspectable through the file and `status` output, including the current ratio and its one-line reason. The idle window does not need a lecture about it.
+The profile stays inspectable through `status --json`, including the current ratio and its one-line reason. The idle window does not need a lecture about it.
 
 ---
 
@@ -287,7 +314,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
-| Idle | Empty Intention + Start + today + History + New (clears a typed line) |
+| Idle | Empty Intention + Start + today + History + Data + New (clears a typed line) |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |
 | Close / hide window | Session keeps running |
@@ -298,6 +325,8 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | History UI | Local list from Idle. Collapsed: intention, date, focus clock, writing count. Tap expands that session: Focused / Rested, parked lines, reflection. |
 | Window delivery | SwiftPM launcher (`swift run`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
+| Store recovery | Preserve invalid bytes before reset; never silently replace them |
+| Data controls | Idle-only full export, redacted diagnostics, confirmed Delete All |
 | Mini | Aperture + verb. Mute and pin on the left, expand on the right. Typing expands to Classic. |
 | Guide | Process names the beat: Prepare / Focus / Time to recharge / Reflection. |
 

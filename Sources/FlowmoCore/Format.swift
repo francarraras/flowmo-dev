@@ -1,30 +1,49 @@
 import Foundation
 
 public enum Format {
+    /// Visible instead of crashing or presenting corrupt numeric state as time.
+    public static let corruptionIndicator = "—"
+
     public static func clock(_ interval: TimeInterval) -> String {
-        render(max(0, Int(interval.rounded())))
+        guard let seconds = safeRoundedSeconds(interval) else { return corruptionIndicator }
+        return render(seconds)
     }
 
     /// Countdowns stay on 00:01 until the phase is actually over.
     public static func remainingClock(_ interval: TimeInterval) -> String {
-        render(remainingSeconds(interval))
+        guard interval.isFinite,
+            interval <= WorldPersistenceLimits.maximumAggregateSeconds
+        else {
+            return corruptionIndicator
+        }
+        return render(remainingSeconds(interval))
     }
 
     public static func remainingSeconds(_ interval: TimeInterval) -> Int {
+        if interval.isNaN || interval == -.infinity { return 0 }
+        if interval == .infinity || interval > WorldPersistenceLimits.maximumAggregateSeconds {
+            return Int.max
+        }
         let clamped = max(0, interval)
         if clamped == 0 { return 0 }
         return Int(ceil(clamped - 1e-9))
     }
 
     public static func minutes(_ interval: TimeInterval) -> String {
-        let minutes = interval / 60
+        guard interval.isFinite,
+            interval <= WorldPersistenceLimits.maximumAggregateSeconds
+        else {
+            return corruptionIndicator
+        }
+        let safeInterval = max(0, interval)
+        let minutes = safeInterval / 60
         if minutes >= 10 {
             return String(format: "%.0fm", minutes)
         }
         if minutes >= 1 {
             return String(format: "%.1fm", minutes)
         }
-        return String(format: "%.0fs", interval)
+        return String(format: "%.0fs", safeInterval)
     }
 
     public static func earned(_ interval: TimeInterval) -> String {
@@ -47,42 +66,44 @@ public enum Format {
 
     /// Living terminal frame. Same session facts as status, not a command list.
     public static func liveView(_ view: SessionStatus) -> String {
-        func trim(_ value: Double) -> String { String(format: "%g", value) }
+        func trim(_ value: Double) -> String {
+            value.isFinite ? String(format: "%g", value) : corruptionIndicator
+        }
         guard let phase = view.phase else {
             return """
-            Flowmo  idle
-            last \(view.lastIntention.isEmpty ? "—" : view.lastIntention)
-            today \(clock(view.todayFocusSeconds))
-            ratio \(trim(view.ratio))
-            """
+                Flowmo  idle
+                last \(view.lastIntention.isEmpty ? "—" : terminalText(view.lastIntention))
+                today \(clock(view.todayFocusSeconds))
+                ratio \(trim(view.ratio))
+                """
         }
         let paused = view.isPaused ? "  paused" : ""
         switch phase {
         case .prime:
             return """
-            Flowmo  prime\(paused)  \(view.intention)
-            \(remainingClock(view.remaining ?? 0)) remaining
-            """
+                Flowmo  prime\(paused)  \(terminalText(view.intention))
+                \(remainingClock(view.remaining ?? 0)) remaining
+                """
         case .focus:
             return """
-            Flowmo  focus\(paused)  \(view.intention)
-            \(clock(view.elapsed))
-            \(earned(view.earnedBreakSeconds))
-            """
+                Flowmo  focus\(paused)  \(terminalText(view.intention))
+                \(clock(view.elapsed))
+                \(earned(view.earnedBreakSeconds))
+                """
         case .onBreak:
             return """
-            Flowmo  break\(paused)  \(view.intention)
-            \(remainingClock(view.remaining ?? 0)) remaining
-            earned from \(minutes(view.focusSeconds)) focus
-            """
+                Flowmo  break\(paused)  \(terminalText(view.intention))
+                \(remainingClock(view.remaining ?? 0)) remaining
+                earned from \(minutes(view.focusSeconds)) focus
+                """
         case .recall:
             return """
-            Flowmo  reflection\(paused)  \(view.intention)
-            What did you just do?
-            \(remainingClock(view.remaining ?? 0)) remaining
-            """
+                Flowmo  reflection\(paused)  \(terminalText(view.intention))
+                What did you just do?
+                \(remainingClock(view.remaining ?? 0)) remaining
+                """
         case .closeBeat:
-            let recall = view.recallText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let recall = terminalText(view.recallText).trimmingCharacters(in: .whitespacesAndNewlines)
             var lines = [
                 "Flowmo  close beat\(paused)",
                 "focus \(clock(view.focusSeconds))",
@@ -90,7 +111,7 @@ public enum Format {
             ]
             if !recall.isEmpty { lines.append(recall) }
             for item in view.captures {
-                lines.append(item.text)
+                lines.append(terminalText(item.text))
             }
             return lines.joined(separator: "\n")
         }
@@ -104,6 +125,29 @@ public enum Format {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private static func safeRoundedSeconds(_ interval: TimeInterval) -> Int? {
+        guard interval.isFinite,
+            interval <= WorldPersistenceLimits.maximumAggregateSeconds
+        else {
+            return nil
+        }
+        return Int(max(0, interval).rounded())
+    }
+
+    /// User text in the living terminal must remain one inert display line.
+    /// Replace terminal controls with spaces while preserving ordinary Unicode.
+    private static func terminalText(_ value: String) -> String {
+        let scalars = value.unicodeScalars.map { scalar -> Unicode.Scalar in
+            let code = scalar.value
+            let isC0 = code <= 0x1F
+            let isDelete = code == 0x7F
+            let isC1 = (0x80...0x9F).contains(code)
+            let isLineSeparator = code == 0x2028 || code == 0x2029
+            return (isC0 || isDelete || isC1 || isLineSeparator) ? " " : scalar
+        }
+        return String(String.UnicodeScalarView(scalars))
     }
 }
 

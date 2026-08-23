@@ -1,5 +1,5 @@
-import SwiftUI
 import FlowmoCore
+import SwiftUI
 
 /// Short grow when the count-up crosses a mark. Ink only — gold stays earned rest.
 public struct MilestoneGrow: ViewModifier {
@@ -86,12 +86,12 @@ public struct BreakRace: ViewModifier {
     }
 }
 
-public extension View {
-    func milestoneGrow(elapsed: TimeInterval, paused: Bool) -> some View {
+extension View {
+    public func milestoneGrow(elapsed: TimeInterval, paused: Bool) -> some View {
         modifier(MilestoneGrow(elapsed: elapsed, paused: paused))
     }
 
-    func breakRace(remaining: TimeInterval, elapsed: TimeInterval, paused: Bool) -> some View {
+    public func breakRace(remaining: TimeInterval, elapsed: TimeInterval, paused: Bool) -> some View {
         modifier(BreakRace(remaining: remaining, elapsed: elapsed, paused: paused))
     }
 }

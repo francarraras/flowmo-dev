@@ -1,31 +1,28 @@
-import SwiftUI
 import FlowmoPhone
+import SwiftUI
 
 @main
 struct FlowmoPhoneApp: App {
-    @StateObject private var controller: PhoneSessionController
+    @StateObject private var bootstrap = PhoneStoreBootstrap()
     @Environment(\.scenePhase) private var scenePhase
-
-    init() {
-        let controller: PhoneSessionController
-        do {
-            let store = try PhoneSessionController.containerStore()
-            controller = PhoneSessionController(store: store)
-        } catch {
-            fatalError(error.localizedDescription)
-        }
-        _controller = StateObject(wrappedValue: controller)
-    }
 
     var body: some Scene {
         WindowGroup {
-            PhoneRootView(controller: controller)
-                .onAppear { controller.startRunning() }
-                .onChange(of: scenePhase) { phase in
-                    if phase == .active {
-                        controller.becameActive()
+            Group {
+                if let controller = bootstrap.controller {
+                    PhoneRootView(controller: controller)
+                        .onAppear { controller.startRunning() }
+                        .onChange(of: scenePhase) { phase in
+                            if phase == .active {
+                                controller.becameActive()
+                            }
+                        }
+                } else {
+                    PhoneStoreUnavailableView {
+                        bootstrap.retry()
                     }
                 }
+            }
         }
     }
 }

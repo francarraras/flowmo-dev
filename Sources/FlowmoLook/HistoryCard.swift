@@ -1,5 +1,5 @@
-import SwiftUI
 import FlowmoCore
+import SwiftUI
 
 /// One finished session. Collapsed is a scan row. Tap opens that session only.
 public struct HistorySessionCard: View {

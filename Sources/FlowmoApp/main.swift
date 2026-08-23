@@ -1,7 +1,7 @@
-import Foundation
-import FlowmoCheck
 import FlowmoCLI
+import FlowmoCheck
 import FlowmoWindow
+import Foundation
 
 @main
 enum FlowmoApp {

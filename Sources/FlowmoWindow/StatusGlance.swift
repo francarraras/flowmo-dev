@@ -35,15 +35,17 @@ final class StatusGlance {
         guard let controller else { return }
         let status = controller.status
         let atmo = Atmosphere.canvas
-        let ink: Color = status.isPaused ? atmo.faint : (status.isIdle ? atmo.mute : atmo.ink)
+        let unavailable = controller.storeNeedsRecovery
+        let ink: Color = unavailable || status.isPaused ? atmo.faint : (status.isIdle ? atmo.mute : atmo.ink)
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.attributedTitle = NSAttributedString(
-            string: Format.glance(status),
+            string: unavailable ? "Unavailable" : Format.glance(status),
             attributes: [
                 .font: font,
                 .foregroundColor: NSColor(ink),
             ]
         )
+        item.button?.toolTip = unavailable ? "Flowmo data unavailable" : "Flowmo"
     }
 
     @objc private func clicked() {

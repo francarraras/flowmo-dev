@@ -1,12 +1,17 @@
-import SwiftUI
-import WidgetKit
 import FlowmoCore
 import FlowmoLook
+import SwiftUI
+import WidgetKit
 
 private enum GlanceContent {
     case text(String, accessibility: String?)
     case elapsed(since: Date)
     case countdown(ClosedRange<Date>)
+}
+
+private enum GlanceStoreSnapshot {
+    case available(World)
+    case unavailable
 }
 
 private struct GlanceEntry: TimelineEntry {
@@ -25,14 +30,20 @@ private struct Provider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (GlanceEntry) -> Void) {
         let now = Date()
-        completion(entry(world: loadWorld(), at: now))
+        completion(entry(snapshot: loadWorld(), at: now))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<GlanceEntry>) -> Void) {
         let now = Date()
-        let world = loadWorld()
+        let snapshot = loadWorld()
+        guard case .available(let world) = snapshot else {
+            completion(
+                Timeline(entries: [entry(snapshot: snapshot, at: now)], policy: .after(now.addingTimeInterval(15 * 60)))
+            )
+            return
+        }
         let entries = timelineDates(world: world, now: now).map { date in
-            entry(world: world, at: date)
+            entry(snapshot: snapshot, at: date)
         }
         completion(Timeline(entries: entries, policy: .never))
     }
@@ -44,10 +55,11 @@ private struct Provider: TimelineProvider {
 
         while dates.count < Self.maximumTimelineEntries {
             guard let live = projected.world.live,
-                  !live.isPaused,
-                  live.phase != .closeBeat,
-                  let boundary = timedBoundary(in: live),
-                  boundary > dates[dates.count - 1] else {
+                !live.isPaused,
+                live.phase != .closeBeat,
+                let boundary = timedBoundary(in: live),
+                boundary > dates[dates.count - 1]
+            else {
                 break
             }
             dates.append(boundary)
@@ -73,6 +85,18 @@ private struct Provider: TimelineProvider {
     }
 
     /// Project from the shared snapshot. The widget never writes the store.
+    private func entry(snapshot: GlanceStoreSnapshot, at date: Date) -> GlanceEntry {
+        guard case .available(let world) = snapshot else {
+            return GlanceEntry(
+                date: date,
+                content: .text("Unavailable", accessibility: "Flowmo data unavailable"),
+                phase: nil,
+                isPaused: false
+            )
+        }
+        return entry(world: world, at: date)
+    }
+
     private func entry(world: World, at date: Date) -> GlanceEntry {
         var engine = Engine(world: world)
         engine.sync(now: date)
@@ -155,9 +179,17 @@ private struct Provider: TimelineProvider {
         )
     }
 
-    private func loadWorld() -> World {
-        guard let root = Store.phoneSharedRoot() else { return .empty }
-        return (try? Store(root: root).load()) ?? .empty
+    private func loadWorld() -> GlanceStoreSnapshot {
+        guard let root = Store.phoneSharedRoot() else {
+            FlowmoDiagnosticLog.emit(.storeUnavailable, operation: .appGroup)
+            return .unavailable
+        }
+        do {
+            return .available(try Store(root: root).load())
+        } catch {
+            FlowmoDiagnosticLog.emit(.storeUnreadable, operation: .load)
+            return .unavailable
+        }
     }
 }
 
@@ -199,9 +231,9 @@ private struct GlanceView: View {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder
-    func flowmoContainerBackground(_ field: Color) -> some View {
+    fileprivate func flowmoContainerBackground(_ field: Color) -> some View {
         if #available(iOS 17.0, *) {
             containerBackground(for: .widget) {
                 field

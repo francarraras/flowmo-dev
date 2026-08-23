@@ -1,5 +1,5 @@
-import SwiftUI
 import FlowmoCore
+import SwiftUI
 
 /// One charcoal square. Phase is the aperture, not the wallpaper.
 public struct Atmosphere: Equatable, Sendable {
@@ -93,7 +93,6 @@ public enum Motion {
 private struct AtmosphereKey: EnvironmentKey {
     static let defaultValue = Atmosphere.canvas
 }
-
 
 extension EnvironmentValues {
     public var atmosphere: Atmosphere {

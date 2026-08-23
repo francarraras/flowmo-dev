@@ -1,0 +1,77 @@
+FLOWMO — FRIENDS & FAMILY MAC PREVIEW
+
+Version 1.0 (build 1)
+Requires macOS 13 Ventura or newer. Works on Apple silicon and Intel Macs.
+
+BEFORE YOU OPEN IT
+
+This is an early Mac-only preview sent directly by Fran. It is not signed with
+an Apple Developer ID and has not been notarized by Apple, so macOS cannot
+verify it and will show a warning. It is not available for iPhone yet.
+
+Only continue if you received the ZIP directly from Fran and its SHA-256 value
+matches the value Fran sent in a separate message. If macOS says the app "will
+damage your computer" or that the app is damaged, stop and contact Fran. Do not
+override that warning.
+
+INSTALL
+
+1. Double-click the Flowmo ZIP to unzip it.
+2. Open the unzipped folder.
+3. Drag Flowmo.app into your Applications folder.
+4. Open Flowmo from Applications.
+
+FIRST OPENING
+
+The first opening will probably be blocked because this preview is not
+notarized. After you have tried to open Flowmo:
+
+1. Open Apple menu > System Settings > Privacy & Security.
+2. Scroll down to Security and click Open Anyway for Flowmo.
+3. Confirm by clicking Open and entering your Mac password if asked.
+
+This creates an exception for Flowmo only. Do not disable your Mac's security
+settings globally and do not use Terminal commands to bypass them. Apple's
+instructions are at https://support.apple.com/102445.
+
+USING FLOWMO
+
+Type an intention and start. Focus counts upward until you stop; Flowmo is not
+a 25-minute countdown timer and there is no Focus pause button. This is preview
+software, so do not use it as the only copy of anything important.
+
+PRIVACY
+
+Flowmo keeps its session data on this Mac. It has no Flowmo server, advertising,
+third-party analytics, or third-party crash-reporting SDK, and it does not
+upload your session text. A full Flowmo data export is private; do not attach it
+to a bug report.
+
+REPORTING A PROBLEM
+
+Reply privately to the person who sent you this preview with:
+
+- Flowmo version 1.0 (build 1)
+- your macOS version and Mac model
+- what you did
+- what you expected
+- what happened instead
+- the shortest steps that make it happen again
+
+While Flowmo is idle, choose Data > Export Redacted Diagnostics and attach that
+file if possible. It excludes intention, parked-thought and recall text,
+selected app identifiers, and local store paths. Do not send screenshots or
+exports containing private session text unless you deliberately choose to.
+
+UPDATES
+
+This preview does not update itself. Fran will send a new ZIP when a build is
+ready. Quit Flowmo, replace Flowmo.app in Applications, and reopen it. Your local
+Flowmo data normally remains in place.
+
+REMOVE FLOWMO
+
+To remove both the app and its data, first open Flowmo while idle, choose Data >
+Delete All Data, and confirm. Then quit Flowmo and move Flowmo.app from
+Applications to Trash. Moving only the app to Trash does not remove its local
+data.

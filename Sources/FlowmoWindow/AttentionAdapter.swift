@@ -7,8 +7,12 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
     weak var window: NSWindow?
     private let canNotify: Bool
 
-    public override init() {
-        canNotify = Bundle.main.bundleIdentifier != nil
+    public override convenience init() {
+        self.init(canNotify: Bundle.main.bundleIdentifier != nil)
+    }
+
+    init(canNotify: Bool) {
+        self.canNotify = canNotify
         super.init()
         guard canNotify else { return }
         UNUserNotificationCenter.current().delegate = self

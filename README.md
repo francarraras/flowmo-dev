@@ -43,11 +43,40 @@ What should happen:
 - Close shows **Focused** and **Rested**. After the last Skip, Idle is empty again.
 - **History** still has the parked line. Tap a card to open it.
 
-Same session as the window. Same file: `~/.flowmo/world.json`.
+Same session as the window. The current local store is `~/.flowmo/world.json`,
+but it is internal storage—not a supported write API. Automation should use the
+CLI verbs against that same store; direct `world.json` writes are unsupported.
 
 ```bash
 swift run flowmo live      # ticking view of that session
 swift run flowmo check     # core proofs
 ```
 
+## Script integration
+
+`status --json` is the read contract for automation. Its response has
+`schemaVersion: 1`, a `generatedAt` timestamp, and a `status` object. Supported
+action commands (`start`, `stop`, `skip`, `continue`, `restart`, `cancel`,
+`capture`, and `recall`) accept `--json` in any position after the command and
+return a structured success or error envelope. The action envelope deliberately
+does not echo intentions, captures, or recall text; call `status --json` only
+when that text is needed.
+
+`pause` and `resume` are not CLI flow controls. Recovery uses `continue` or
+`restart` after quit/sleep. There is no Focus pause command.
+
 iPhone is a separate local app (`Apps/FlowmoPhone.xcodeproj`). The old tree in `~/Flowmo` is reference only.
+
+## Verify a candidate
+
+```bash
+swift format lint --strict --recursive Package.swift Sources Tests Apps
+swift test -Xswiftc -warnings-as-errors
+swift run -Xswiftc -warnings-as-errors flowmo check
+swift build -c release -Xswiftc -warnings-as-errors
+```
+
+The Mac and iPhone apps also provide redacted diagnostic export, full-data
+export, invalid-store recovery, and confirmed deletion while Idle. See the
+[`release procedure`](docs/release.md), [`privacy policy`](PRIVACY.md), and
+[`security policy`](SECURITY.md) before sharing a build.

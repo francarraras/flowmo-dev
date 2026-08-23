@@ -1,8 +1,8 @@
 import AppKit
-import UniformTypeIdentifiers
-import SwiftUI
 import FlowmoCore
 import FlowmoLook
+import SwiftUI
+import UniformTypeIdentifiers
 
 struct FlowmoRootView: View {
     @ObservedObject var controller: FlowmoSessionController
@@ -10,10 +10,17 @@ struct FlowmoRootView: View {
     var body: some View {
         let status = controller.status
         let atmo = Atmosphere.of(status)
-        let mini = controller.displayMode == .mini
-        let size = controller.displayMode.windowContentSize
+        let mini =
+            controller.displayMode == .mini
+            && !controller.storeNeedsRecovery
+            && !controller.lifecycleNeedsRecovery
+        let size = controller.effectiveWindowContentSize
         Group {
-            if mini {
+            if controller.storeNeedsRecovery {
+                StoreRecoveryPane(controller: controller)
+            } else if controller.lifecycleNeedsRecovery {
+                LifecycleRecoveryPane(controller: controller)
+            } else if mini {
                 MiniView(controller: controller, status: status)
             } else if status.isIdle {
                 IdlePane(controller: controller, status: status)
@@ -41,20 +48,34 @@ struct FlowmoRootView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            HStack(spacing: 0) {
-                if mini {
-                    modeButton(atmo, to: .classic, icon: "arrow.up.left.and.arrow.down.right", help: "Expand to Classic", compact: true)
+            if !controller.storeNeedsRecovery, !controller.lifecycleNeedsRecovery {
+                HStack(spacing: 0) {
+                    if mini {
+                        modeButton(
+                            atmo, to: .classic, icon: "arrow.up.left.and.arrow.down.right",
+                            help: "Expand to Classic", compact: true
+                        )
                         .padding(.trailing, 4)
-                } else {
-                    muteButton(atmo)
-                    pinButton(atmo)
-                    modeButton(atmo, to: .mini, icon: "arrow.down.right.and.arrow.up.left", help: "Shrink to Mini")
+                    } else {
+                        muteButton(atmo)
+                        pinButton(atmo)
+                        modeButton(
+                            atmo, to: .mini, icon: "arrow.down.right.and.arrow.up.left", help: "Shrink to Mini"
+                        )
                         .padding(.trailing, 8)
+                    }
                 }
+                .opacity(mini ? 1 : atmo.chrome)
             }
-            .opacity(mini ? 1 : atmo.chrome)
         }
         .background(WindowPin(pinned: controller.isPinned, field: atmo.field))
+        .alert(item: $controller.activeIssue) { issue in
+            Alert(
+                title: Text(issue.title),
+                message: Text("\(issue.message)\n\nIssue code: \(issue.code.rawValue)"),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
 
     private func modeButton(
@@ -125,10 +146,15 @@ private struct IdlePane: View {
     @ObservedObject var controller: FlowmoSessionController
     var status: SessionStatus
     @State private var showingHistory = false
+    @State private var showingData = false
 
     var body: some View {
         Group {
-            if showingHistory {
+            if showingData {
+                DataControlsPane(controller: controller) {
+                    showingData = false
+                }
+            } else if showingHistory {
                 HistoryPane(sessions: HistoryOrder.newestFirst(controller.world.history)) {
                     showingHistory = false
                 }
@@ -154,7 +180,7 @@ private struct IdlePane: View {
                     .keyboardShortcut(.defaultAction)
                     .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 } chrome: {
-                    VStack(spacing: 12) {
+                    VStack(spacing: 8) {
                         HStack(spacing: 18) {
                             Text("Today \(Format.clock(status.todayFocusSeconds))")
                                 .foregroundStyle(atmo.faint)
@@ -163,6 +189,14 @@ private struct IdlePane: View {
                                 showingHistory = true
                             } label: {
                                 Text("History")
+                                    .underline(false)
+                                    .modifier(QuietHoverInk())
+                            }
+                            .buttonStyle(PressStyle())
+                            Button {
+                                showingData = true
+                            } label: {
+                                Text("Data")
                                     .underline(false)
                                     .modifier(QuietHoverInk())
                             }
@@ -180,8 +214,17 @@ private struct IdlePane: View {
                         }
                         .font(.system(.caption, design: .rounded).weight(.medium))
                         GuardConfig(controller: controller)
+                        if let notice = controller.userNotice {
+                            Text(notice)
+                                .font(.system(.caption2, design: .rounded).weight(.medium))
+                                .foregroundStyle(atmo.mute)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                                .contentShape(Rectangle())
+                                .onTapGesture { controller.clearNotice() }
+                        }
                     }
-                    .padding(.top, 18)
+                    .padding(.top, 8)
                 }
             }
         }
@@ -272,7 +315,12 @@ private struct FocusPane: View {
                     onCancel: { controller.discardCapture() }
                 )
             } else {
-                PhaseLead(status.intention, cue: "Focus", tone: atmo.mute)
+                VStack(spacing: 6) {
+                    PhaseLead(status.intention, cue: "Focus", tone: atmo.mute)
+                    if let guardStatus = controller.guardStatusLine {
+                        PhaseCaption(guardStatus, tone: atmo.faint)
+                    }
+                }
             }
         } hole: {
             Aperture(ring: .none) {
@@ -316,6 +364,178 @@ private struct FocusPane: View {
     }
 }
 
+private struct StoreRecoveryPane: View {
+    @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: FlowmoSessionController
+    @State private var exportingDiagnostics = false
+    @State private var diagnosticDocument: FlowmoJSONDocument?
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+            Text("Data needs attention")
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+            Text("Flowmo couldn’t read its local data. Retry, or preserve the original and reset.")
+                .font(.system(.body, design: .rounded))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
+            Text(FlowmoIssueCode.storeUnreadable.rawValue)
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(atmo.faint)
+            HStack(spacing: 12) {
+                QuietButton("Retry") { controller.retryStore() }
+                InkButton("Preserve & Reset") { controller.preserveAndResetStore() }
+            }
+            QuietButton("Export Redacted Diagnostics") {
+                guard let data = controller.prepareDiagnosticExport() else { return }
+                diagnosticDocument = FlowmoJSONDocument(data: data)
+                exportingDiagnostics = true
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fileExporter(
+            isPresented: $exportingDiagnostics,
+            document: diagnosticDocument,
+            contentType: .json,
+            defaultFilename: "flowmo-diagnostics"
+        ) { result in
+            switch result {
+            case .success:
+                controller.exportFinished(kind: "diagnostics", succeeded: true)
+            case .failure(let error):
+                if !FlowmoExportResult.isUserCancellation(error) {
+                    controller.exportFinished(kind: "diagnostics", succeeded: false)
+                }
+            }
+            diagnosticDocument = nil
+        }
+    }
+}
+
+private struct LifecycleRecoveryPane: View {
+    @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: FlowmoSessionController
+    @State private var exportingDiagnostics = false
+    @State private var diagnosticDocument: FlowmoJSONDocument?
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+            Text("Recovery needs attention")
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+            Text("Flowmo couldn’t safely protect quit or sleep recovery. Retry before continuing.")
+                .font(.system(.body, design: .rounded))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
+            Text(FlowmoIssueCode.recoveryUnavailable.rawValue)
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(atmo.faint)
+            InkButton("Retry") { controller.retryLifecycleRecovery() }
+            QuietButton("Export Redacted Diagnostics") {
+                guard let data = controller.prepareDiagnosticExport() else { return }
+                diagnosticDocument = FlowmoJSONDocument(data: data)
+                exportingDiagnostics = true
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fileExporter(
+            isPresented: $exportingDiagnostics,
+            document: diagnosticDocument,
+            contentType: .json,
+            defaultFilename: "flowmo-diagnostics"
+        ) { result in
+            switch result {
+            case .success:
+                controller.exportFinished(kind: "diagnostics", succeeded: true)
+            case .failure(let error):
+                if !FlowmoExportResult.isUserCancellation(error) {
+                    controller.exportFinished(kind: "diagnostics", succeeded: false)
+                }
+            }
+            diagnosticDocument = nil
+        }
+    }
+}
+
+private struct DataControlsPane: View {
+    @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: FlowmoSessionController
+    var dismiss: () -> Void
+    @State private var showingDeleteConfirmation = false
+    @State private var exporting = false
+    @State private var exportKind = "data"
+    @State private var exportDocument: FlowmoJSONDocument?
+
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                QuietButton("Back", action: dismiss)
+                Spacer()
+                Text("Data")
+                    .font(.system(.headline, design: .rounded))
+            }
+            Spacer()
+            Text("Exports stay on this device unless you choose where to save them.")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
+            InkButton("Export Flowmo Data") {
+                beginExport(kind: "data")
+            }
+            QuietButton("Export Redacted Diagnostics") {
+                beginExport(kind: "diagnostics")
+            }
+            QuietButton("Delete All Data") {
+                showingDeleteConfirmation = true
+            }
+            .foregroundStyle(Color.red.opacity(0.85))
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .confirmationDialog(
+            "Delete all Flowmo data?",
+            isPresented: $showingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete All Data", role: .destructive) {
+                controller.deleteAllData()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes your current local Flowmo data. This cannot be undone.")
+        }
+        .fileExporter(
+            isPresented: $exporting,
+            document: exportDocument,
+            contentType: .json,
+            defaultFilename: exportKind == "diagnostics" ? "flowmo-diagnostics" : "flowmo-data"
+        ) { result in
+            switch result {
+            case .success:
+                controller.exportFinished(kind: exportKind, succeeded: true)
+            case .failure(let error):
+                if !FlowmoExportResult.isUserCancellation(error) {
+                    controller.exportFinished(kind: exportKind, succeeded: false)
+                }
+            }
+            exportDocument = nil
+        }
+    }
+
+    private func beginExport(kind: String) {
+        let data =
+            kind == "diagnostics"
+            ? controller.prepareDiagnosticExport()
+            : controller.prepareFullDataExport()
+        guard let data else { return }
+        exportKind = kind
+        exportDocument = FlowmoJSONDocument(data: data)
+        exporting = true
+    }
+}
+
 private struct BreakPane: View {
     @ObservedObject var controller: FlowmoSessionController
     var status: SessionStatus
@@ -324,11 +544,13 @@ private struct BreakPane: View {
         PhaseColumn {
             PhaseCaption("Time to recharge", tone: Look.mute)
         } hole: {
-            Aperture(ring: .timed(
-                progress: ringProgress(status),
-                rest: true,
-                race: !status.isPaused && (status.remaining ?? 0) <= 10
-            )) {
+            Aperture(
+                ring: .timed(
+                    progress: ringProgress(status),
+                    rest: true,
+                    race: !status.isPaused && (status.remaining ?? 0) <= 10
+                )
+            ) {
                 InstrumentClock(Format.remainingClock(status.remaining ?? 0))
                     .breakRace(
                         remaining: status.remaining ?? 0,
@@ -430,56 +652,66 @@ private struct GuardConfig: View {
     var body: some View {
         let config = controller.world.config.focusGuard
         VStack(spacing: 6) {
-            Button {
-                controller.showGuardConfig.toggle()
-            } label: {
-                Text(guardLabel(config))
-                    .font(.system(.caption, design: .rounded).weight(.medium))
-                    .underline(false)
-                    .modifier(QuietHoverInk())
-            }
-            .buttonStyle(PressStyle())
-            if controller.showGuardConfig {
-                Toggle("On", isOn: Binding(
-                    get: { config.enabled },
-                    set: { controller.setGuardEnabled($0) }
-                ))
+            HStack(spacing: 10) {
+                Button {
+                    controller.showGuardConfig.toggle()
+                } label: {
+                    Text(guardLabel(config))
+                        .font(.system(.caption, design: .rounded).weight(.medium))
+                        .underline(false)
+                        .modifier(QuietHoverInk())
+                }
+                .buttonStyle(PressStyle())
+                Toggle(
+                    "On",
+                    isOn: Binding(
+                        get: { config.enabled },
+                        set: { controller.setGuardEnabled($0) }
+                    )
+                )
                 .toggleStyle(.switch)
                 .labelsHidden()
+                .controlSize(.mini)
                 .tint(atmo.mute)
-                ForEach(config.bundleIdentifiers, id: \.self) { id in
-                    HStack {
-                        Text(displayName(id))
-                            .font(.system(.caption, design: .rounded))
-                            .lineLimit(1)
-                        Spacer()
-                        Button {
-                            controller.removeGuardedApp(bundleIdentifier: id)
-                        } label: {
-                            Text("Remove")
-                                .font(.system(.caption, design: .rounded).weight(.medium))
-                                .underline(false)
-                                .modifier(QuietHoverInk())
+            }
+            if controller.showGuardConfig {
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(config.bundleIdentifiers, id: \.self) { id in
+                            HStack {
+                                Text(displayName(id))
+                                    .font(.system(.caption, design: .rounded))
+                                    .lineLimit(1)
+                                Spacer()
+                                Button {
+                                    controller.removeGuardedApp(bundleIdentifier: id)
+                                } label: {
+                                    Text("Remove")
+                                        .font(.system(.caption, design: .rounded).weight(.medium))
+                                        .underline(false)
+                                        .modifier(QuietHoverInk())
+                                }
+                                .buttonStyle(PressStyle())
+                            }
                         }
-                        .buttonStyle(PressStyle())
                     }
                 }
+                .frame(maxHeight: 72)
                 QuietButton("Add app") { pickApp() }
             }
         }
     }
 
     private func guardLabel(_ config: FocusGuardConfiguration) -> String {
-        if !config.enabled || config.bundleIdentifiers.isEmpty {
-            return "Guard: Off"
-        }
         let n = config.bundleIdentifiers.count
+        if n == 0 { return "Guard" }
         return n == 1 ? "Guard: 1 app" : "Guard: \(n) apps"
     }
 
     private func displayName(_ id: String) -> String {
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id),
-           let name = Bundle(url: url)?.object(forInfoDictionaryKey: "CFBundleName") as? String {
+            let name = Bundle(url: url)?.object(forInfoDictionaryKey: "CFBundleName") as? String
+        {
             return name
         }
         return id

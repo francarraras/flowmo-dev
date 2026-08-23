@@ -20,11 +20,16 @@ public enum FlowmoRuntime {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static var retained: AppDelegate?
 
-    let controller = FlowmoSessionController()
+    let controller: FlowmoSessionController
     var window: NSWindow?
     private let glance = StatusGlance()
     private var signalSources: [DispatchSourceSignal] = []
     private var modeCancellables = Set<AnyCancellable>()
+
+    init(controller: FlowmoSessionController = FlowmoSessionController()) {
+        self.controller = controller
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller.startRunning()
@@ -36,13 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             self?.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
-        controller.$displayMode
-            .dropFirst()
-            .removeDuplicates()
-            .sink { [weak self] _ in
-                self?.applyWindowMode()
-            }
-            .store(in: &modeCancellables)
+        observeWindowContentSize()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         watchSleep()
@@ -53,7 +52,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         controller.prepareForTermination()
         return .terminateNow
     }
-
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
@@ -106,9 +104,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     /// Both modes are fixed-size. Free resizing is gone on purpose: every
     /// pane is laid out against these exact bounds.
-    private func makeWindow() -> NSWindow {
+    func makeWindow() -> NSWindow {
         let hosting = NSHostingView(rootView: FlowmoRootView(controller: controller))
-        let size = controller.displayMode.windowContentSize
+        let size = controller.effectiveWindowContentSize
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
@@ -132,12 +130,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return window
     }
 
+    /// Observe every published input to `effectiveWindowContentSize`. Keeping
+    /// this binding beside the computed size prevents recovery-only changes
+    /// from leaving the fixed NSWindow at its previous dimensions.
+    func observeWindowContentSize() {
+        Publishers.CombineLatest3(
+            controller.$displayMode,
+            controller.$storeNeedsRecovery,
+            controller.$lifecycleNeedsRecovery
+        )
+        .map { mode, storeNeedsRecovery, lifecycleNeedsRecovery in
+            FlowmoSessionController.windowContentSize(
+                displayMode: mode,
+                storeNeedsRecovery: storeNeedsRecovery,
+                lifecycleNeedsRecovery: lifecycleNeedsRecovery
+            )
+        }
+        .removeDuplicates()
+        .sink { [weak self] size in
+            self?.applyWindowMode(size)
+        }
+        .store(in: &modeCancellables)
+    }
+
     /// Switches size without offering a resize grip. Equal min/max while
     /// `.resizable` is off makes AppKit ignore size changes, so unlock, size,
     /// lock. Top-left stays put.
-    private func applyWindowMode() {
+    private func applyWindowMode(_ size: CGSize) {
         guard let window else { return }
-        let size = controller.displayMode.windowContentSize
         let pinnedTopLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
         window.contentMinSize = NSSize(width: 1, height: 1)
         window.contentMaxSize = NSSize(width: 10_000, height: 10_000)
