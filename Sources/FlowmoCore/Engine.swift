@@ -25,6 +25,9 @@ public struct Engine: Equatable, Sendable {
         case .`continue`:
             try continuePaused(now: now)
             return
+        case .restart:
+            try restart(now: now)
+            return
         default:
             break
         }
@@ -55,7 +58,7 @@ public struct Engine: Equatable, Sendable {
             world.config.cuesEnabled = enabled
         case .setLastIntention(let text):
             try setLastIntention(text)
-        case .pauseForRecovery, .`continue`:
+        case .pauseForRecovery, .`continue`, .restart:
             break
         }
     }
@@ -296,6 +299,14 @@ public struct Engine: Equatable, Sendable {
     private mutating func cancel() throws {
         guard world.live != nil else { throw EngineError.nothingRunning }
         world.live = nil
+    }
+
+    private mutating func restart(now: Date) throws {
+        guard let live = world.live else { throw EngineError.nothingRunning }
+        guard live.isPaused else { throw EngineError.notPaused }
+        let intention = live.intention
+        world.live = nil
+        try start(intention: intention, now: now)
     }
 
     private mutating func setLastIntention(_ text: String) throws {

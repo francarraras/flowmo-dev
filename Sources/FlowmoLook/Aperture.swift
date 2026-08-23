@@ -609,6 +609,27 @@ public struct QuietButton: View {
     }
 }
 
+/// Recovery only. Restart drops the frozen session. Continue resumes it.
+public struct RecoveryVerbs: View {
+    var compact: Bool
+    var onRestart: () -> Void
+    var onContinue: () -> Void
+
+    public init(compact: Bool = false, onRestart: @escaping () -> Void, onContinue: @escaping () -> Void) {
+        self.compact = compact
+        self.onRestart = onRestart
+        self.onContinue = onContinue
+    }
+
+    public var body: some View {
+        HStack(spacing: compact ? 8 : 10) {
+            QuietButton("Restart", minHeight: compact ? 26 : PhaseGrid.verb, action: onRestart)
+            InkButton("Continue", compact: compact, action: onContinue)
+                .keyboardShortcut(.defaultAction)
+        }
+    }
+}
+
 public enum PhaseGrid {
     public static let head: CGFloat = 44
     #if os(iOS)

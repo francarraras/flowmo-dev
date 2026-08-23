@@ -86,7 +86,7 @@ The Mac **window is the product**.
 
 | State | On screen | Actions |
 |---|---|---|
-| **Idle** | Last intention in the field, or **Intention**. **Start**. Today, **History**, **New**. | Edit the line, Start, inspect history, or New (clears the last line). |
+| **Idle** | Empty field, placeholder **Intention**. **Start**. Today, **History**, **New**. | Type a line, Start, inspect history, or New (clears a typed line). |
 | **Prime (2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Sit. Skip. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **+** opens capture; **Park** / **Discard** replace + / Stop. | Work. Park a thought. Stop. |
 | **Break** | **Time to recharge**. Countdown + determinate gold ring. | Sit. Skip. |
@@ -113,7 +113,7 @@ Not an always-visible field. A small **+** on the focus state opens one line. En
 Pause exists only as **recovery**:
 
 - Quit the app, or the Mac sleeps → on return the session is **paused**.
-- On return: same phase, clock frozen, one **Continue**. Bringing the window forward does not resume. Continue resumes from the frozen time.
+- On return: same phase, clock frozen, **Continue** or **Restart**. Bringing the window forward does not resume. Continue resumes from the frozen time. Restart drops the frozen session (not recorded) and starts Prime with the same line.
 
 ### Window lifetime
 
@@ -287,15 +287,15 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
-| Idle | Last intention + Start + today + History + New (clears the line) |
+| Idle | Empty Intention + Start + today + History + New (clears a typed line) |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |
 | Close / hide window | Session keeps running |
 | Quit / sleep | Restore **paused** |
-| Resume after quit / sleep | One **Continue**. Window appearing does not resume. |
+| Resume after quit / sleep | **Continue** or **Restart**. Window appearing does not resume. Restart primes the same intention. |
 | Pause button | No |
 | After recall | Quiet close beat; tap the frame (Skip = dismiss). Then idle |
-| History UI | Local list from Idle: intention, Focus duration, date, parked lines, reflection |
+| History UI | Local list from Idle. Collapsed: intention, date, focus clock, writing count. Tap expands that session: Focused / Rested, parked lines, reflection. |
 | Window delivery | SwiftPM launcher (`swift run`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
 | Mini | Aperture + verb. Mute and pin on the left, expand on the right. Typing expands to Classic. |

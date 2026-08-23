@@ -395,6 +395,7 @@ public enum Event: Equatable, Sendable {
     case setRecallText(String)
     case pauseForRecovery
     case `continue`
+    case restart
     case cancel
     case configureFocusGuard(FocusGuardConfiguration)
     case setCuesEnabled(Bool)

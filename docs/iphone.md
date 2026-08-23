@@ -20,7 +20,7 @@ One iPhone app that runs:
 
 idle → type once → prime (2:00) → focus (count up, you stop) → earned break → reflection (3:00) → close beat → idle.
 
-Kill the app → paused + one **Continue**. Opening the app does not Continue by itself.
+Kill the app → paused with **Continue** and **Restart**. Opening the app does not Continue by itself.
 
 Copy does not claim productivity, well-being, or flow.
 
@@ -28,7 +28,7 @@ Copy does not claim productivity, well-being, or flow.
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
 - Same `world.json` schema. File lives in the app container (not `~/.flowmo`). Same lock + atomic write.
-- Same controls as Mac: Start, Skip, Stop, +, Continue, mute. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
+- Same controls as Mac: Start, Skip, Stop, +, Continue, Restart, mute. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
 - Same look rules: black field, cyan on Start and timed rings, clock-in-ring on prime/break/recall, Focus is a count-up plus earned strip. No focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Phase end while you are not looking: a local notification. Tap opens the app; it does not Continue.
 
@@ -50,7 +50,7 @@ WHEN the app is idle
 THE SYSTEM SHALL show 00:00, last intention, Start, today’s focus total, and History.
 
 WHEN the user opens History from Idle
-THE SYSTEM SHALL show completed sessions newest-first with intention, Focus duration, and local date. Back SHALL return to Idle.
+THE SYSTEM SHALL show completed sessions newest-first. Each card shows intention, Focus duration, and local date. Tapping a card SHALL expand that session in place with Focused, Rested, parked lines, and reflection when present. Back SHALL return to Idle.
 
 WHEN the user starts
 THE SYSTEM SHALL enter Prime for 120s with that intention and SHALL NOT ask for it again during Prime.
@@ -62,7 +62,7 @@ WHEN the user backgrounds the app during a live session
 THE SYSTEM SHALL not pause. On return the same phase is still moving (or already advanced if a timed beat ran out).
 
 WHEN the process is killed during a live session
-THE SYSTEM SHALL restore paused with one Continue. Appearing SHALL NOT resume.
+THE SYSTEM SHALL restore paused with Continue and Restart. Appearing SHALL NOT resume. Restart SHALL drop the frozen session and start Prime with the same intention.
 
 WHEN a timed phase (prime, break, recall) will end while the app is not foreground
 THE SYSTEM SHALL schedule a local notification for that end. Skip, Stop, or an earlier phase change SHALL cancel it. Activating the notification SHALL open the app and SHALL NOT Continue.

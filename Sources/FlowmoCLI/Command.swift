@@ -4,7 +4,7 @@ import FlowmoCore
 public enum FlowmoCLI {
     public static let verbs: Set<String> = [
         "help", "-h", "--help",
-        "start", "stop", "skip", "continue", "cancel",
+        "start", "stop", "skip", "continue", "restart", "cancel",
         "capture", "log", "recall", "status", "live", "check",
         "pause", "resume",
     ]
@@ -63,9 +63,15 @@ public enum FlowmoCLI {
             }
             print("Continued.")
             return 0
+        case "restart":
+            try mutate { engine, now in
+                try engine.apply(.restart, now: now)
+            }
+            print("Priming.")
+            return 0
         case "pause", "resume":
             FileHandle.standardError.write(Data(
-                ("pause/resume are not flow controls. Quit or sleep pauses for recovery; continue resumes that phase.\n").utf8
+                ("pause/resume are not flow controls. Quit or sleep pauses for recovery; continue resumes that phase, restart primes the same intention again.\n").utf8
             ))
             return 2
         case "cancel":
@@ -153,6 +159,7 @@ public enum FlowmoCLI {
     stop
     skip
     continue                 recovery after quit/sleep
+    restart                  drop the frozen session and prime again
     capture <text>
     recall <text>
     cancel

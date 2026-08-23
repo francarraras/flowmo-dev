@@ -27,6 +27,7 @@ public final class PhoneSessionController: ObservableObject {
 
     private var timer: Timer?
     private var applying = false
+    private var sessionWasLive = false
 
     public var status: SessionStatus {
         Engine.sessionStatus(world, now: now)
@@ -48,7 +49,8 @@ public final class PhoneSessionController: ObservableObject {
             }
         }
         self.world = loaded
-        self.intentionDraft = loaded.profile.lastIntention
+        self.intentionDraft = ""
+        self.sessionWasLive = loaded.live != nil
         if loaded.live?.phase == .recall {
             self.recallDraft = loaded.live?.recallText ?? ""
         }
@@ -84,6 +86,7 @@ public final class PhoneSessionController: ObservableObject {
     public func skip() { apply(.skip) }
     public func stopFocus() { apply(.stopFocus) }
     public func continueSession() { apply(.`continue`) }
+    public func restartSession() { apply(.restart) }
 
     public func submitCapture() {
         let trimmed = captureDraft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -173,12 +176,24 @@ public final class PhoneSessionController: ObservableObject {
                 recallDraft = stored
             }
         }
-        if world.live == nil {
-            intentionDraft = world.profile.lastIntention
+        let isLive = world.live != nil
+        if !isLive {
+            if sessionWasLive {
+                intentionDraft = ""
+            }
             showCapture = false
             captureDraft = ""
             recallDraft = ""
+        } else {
+            if world.live?.phase != .focus {
+                showCapture = false
+                captureDraft = ""
+            }
+            if world.live?.phase != .recall {
+                recallDraft = ""
+            }
         }
+        sessionWasLive = isLive
     }
 
     private func reloadGlance() {

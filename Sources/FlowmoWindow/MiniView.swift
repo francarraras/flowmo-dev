@@ -75,8 +75,11 @@ struct MiniView: View {
                 InkButton("Open once", compact: true) { controller.openOnce() }
             }
         } else if status.isPaused {
-            InkButton("Continue", compact: true) { controller.continueSession() }
-                .keyboardShortcut(.defaultAction)
+            RecoveryVerbs(
+                compact: true,
+                onRestart: { controller.restartSession() },
+                onContinue: { controller.continueSession() }
+            )
         } else {
             switch status.phase {
             case nil:

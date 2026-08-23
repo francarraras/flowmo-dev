@@ -118,6 +118,39 @@ do {
     Check.expect(false, "focus pause/continue threw \(error)")
 }
 
+
+do {
+    var engine = Engine()
+    try engine.apply(.start(intention: "rewrite"), now: t0)
+    try engine.apply(.skip, now: t0)
+    try engine.apply(.capture("parked"), now: t0.addingTimeInterval(20))
+    try engine.apply(.pauseForRecovery, now: t0.addingTimeInterval(90))
+    let pausedID = engine.world.live?.id
+    try engine.apply(.restart, now: t0.addingTimeInterval(190))
+    Check.expect(engine.world.live?.phase == .prime, "restart begins prime")
+    Check.expectEqual(engine.world.live?.intention ?? "", "rewrite", "restart keeps intention")
+    Check.expect(engine.world.live?.isPaused == false, "restart is live")
+    Check.expect(engine.world.live?.id != pausedID, "restart is a new session")
+    Check.expect(engine.world.live?.captures.isEmpty == true, "restart drops parked lines")
+    Check.expect(engine.world.history.isEmpty, "restart does not record")
+    Check.expectNear(engine.status(now: t0.addingTimeInterval(190)).elapsed, 0, "restart clocks are new")
+    do {
+        try engine.apply(.restart, now: t0.addingTimeInterval(191))
+        Check.expect(false, "restart while live should fail")
+    } catch let error as EngineError {
+        Check.expect(error == .notPaused, "restart while live is notPaused")
+    }
+    engine.world.live = nil
+    do {
+        try engine.apply(.restart, now: t0.addingTimeInterval(192))
+        Check.expect(false, "restart while idle should fail")
+    } catch let error as EngineError {
+        Check.expect(error == .nothingRunning, "restart while idle is nothingRunning")
+    }
+} catch {
+    Check.expect(false, "focus pause/restart threw \(error)")
+}
+
 do {
     var engine = Engine()
     try engine.apply(.start(intention: "code"), now: t0)

@@ -12,7 +12,7 @@ Product behavior lives in [`docs/PROJECT.md`](docs/PROJECT.md). If chat, old cod
 
 ## Do not add
 
-- Pause during Focus. Quit or sleep recovery returns paused with one Continue; showing a window never resumes by itself.
+- Pause during Focus. Quit or sleep recovery returns paused with Continue and Restart; showing a window never resumes by itself.
 - A 0–100% Focus ring or fixed Focus deadline.
 - Home, tabs, setup screens, scores, streaks, flashcards, or a history dashboard.
 - Accessibility control, process killing, or a helper for Focus Guard. If `hide()` fails, fail open.

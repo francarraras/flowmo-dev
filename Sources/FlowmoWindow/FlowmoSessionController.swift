@@ -37,6 +37,7 @@ public final class FlowmoSessionController: ObservableObject {
     private var timer: Timer?
     private var watcher: WorldWatcher?
     private var applying = false
+    private var sessionWasLive = false
     private var cancellables = Set<AnyCancellable>()
 
     public var status: SessionStatus {
@@ -62,7 +63,8 @@ public final class FlowmoSessionController: ObservableObject {
 
         let loaded = (try? store.load()) ?? .empty
         self.world = loaded
-        self.intentionDraft = loaded.profile.lastIntention
+        self.intentionDraft = ""
+        self.sessionWasLive = loaded.live != nil
         self.displayMode = DisplayMode(
             rawValue: UserDefaults.standard.string(forKey: "FlowmoDisplayMode") ?? ""
         ) ?? .classic
@@ -120,6 +122,10 @@ public final class FlowmoSessionController: ObservableObject {
 
     public func continueSession() {
         apply(.`continue`)
+    }
+
+    public func restartSession() {
+        apply(.restart)
     }
 
     @discardableResult
@@ -320,14 +326,25 @@ public final class FlowmoSessionController: ObservableObject {
                 recallDraft = stored
             }
         }
-        if world.live == nil {
-            intentionDraft = world.profile.lastIntention
+        let isLive = world.live != nil
+        if !isLive {
+            if sessionWasLive {
+                intentionDraft = ""
+            }
             showCapture = false
             captureDraft = ""
             recallDraft = ""
         } else {
             showGuardConfig = false
+            if world.live?.phase != .focus {
+                showCapture = false
+                captureDraft = ""
+            }
+            if world.live?.phase != .recall {
+                recallDraft = ""
+            }
         }
+        sessionWasLive = isLive
     }
 
     private func reconcileGuard() {

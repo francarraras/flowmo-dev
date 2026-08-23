@@ -127,6 +127,7 @@ private struct HistoryPane: View {
     @Environment(\.atmosphere) private var atmo
     var sessions: [CompletedSession]
     var dismiss: () -> Void
+    @State private var expandedID: UUID?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -145,7 +146,14 @@ private struct HistoryPane: View {
                 ScrollView {
                     LazyVStack(spacing: 10) {
                         ForEach(sessions, id: \.id) { session in
-                            HistorySessionCard(session: session)
+                            HistorySessionCard(
+                                session: session,
+                                expanded: expandedID == session.id
+                            ) {
+                                withAnimation(Motion.phase) {
+                                    expandedID = expandedID == session.id ? nil : session.id
+                                }
+                            }
                         }
                     }
                 }
@@ -168,7 +176,10 @@ private struct PrimePane: View {
             }
         } verb: {
             if status.isPaused {
-                InkButton("Continue") { controller.continueSession() }
+                RecoveryVerbs(
+                    onRestart: { controller.restartSession() },
+                    onContinue: { controller.continueSession() }
+                )
             } else {
                 QuietButton("Skip", minHeight: 44) { controller.skip() }
             }
@@ -202,7 +213,10 @@ private struct FocusPane: View {
             }
         } verb: {
             if status.isPaused {
-                InkButton("Continue") { controller.continueSession() }
+                RecoveryVerbs(
+                    onRestart: { controller.restartSession() },
+                    onContinue: { controller.continueSession() }
+                )
             } else if controller.showCapture {
                 HStack(spacing: 10) {
                     QuietButton("Discard", minHeight: 44) { controller.discardCapture() }
@@ -248,7 +262,10 @@ private struct BreakPane: View {
             }
         } verb: {
             if status.isPaused {
-                InkButton("Continue") { controller.continueSession() }
+                RecoveryVerbs(
+                    onRestart: { controller.restartSession() },
+                    onContinue: { controller.continueSession() }
+                )
             } else {
                 QuietButton("Skip", minHeight: 44) { controller.skip() }
             }
@@ -278,7 +295,10 @@ private struct RecallPane: View {
             }
         } verb: {
             if status.isPaused {
-                InkButton("Continue") { controller.continueSession() }
+                RecoveryVerbs(
+                    onRestart: { controller.restartSession() },
+                    onContinue: { controller.continueSession() }
+                )
             } else {
                 QuietButton("Skip", minHeight: 44) { controller.skip() }
             }
@@ -299,7 +319,10 @@ private struct CloseBeatPane: View {
             }
         } verb: {
             if status.isPaused {
-                InkButton("Continue") { controller.continueSession() }
+                RecoveryVerbs(
+                    onRestart: { controller.restartSession() },
+                    onContinue: { controller.continueSession() }
+                )
             } else {
                 Color.clear
             }
