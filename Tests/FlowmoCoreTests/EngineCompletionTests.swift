@@ -42,7 +42,7 @@ final class EngineCompletionTests: XCTestCase {
         XCTAssertEqual(engine.world.profile, originalProfile)
     }
 
-    func testCancellingCloseBeatDiscardsWithoutProfileAdaptation() throws {
+    func testCancellingCloseBeatDiscardsWithoutRecordingCompletion() throws {
         var engine = try closeBeatEngine()
         let originalProfile = engine.world.profile
 
@@ -53,8 +53,26 @@ final class EngineCompletionTests: XCTestCase {
         XCTAssertEqual(engine.world.profile, originalProfile)
     }
 
-    private func closeBeatEngine() throws -> Engine {
-        var engine = Engine()
+    func testCompletionPreservesRatioAndLegacySamplesWhileClearingMovementNote() throws {
+        var profile = Profile.default
+        profile.breakRatio = 4.75
+        profile.recentFocusSeconds = [3_000, 3_000]
+        profile.lastNote = "Legacy ratio movement note."
+        var engine = try closeBeatEngine(profile: profile)
+
+        try engine.apply(.skip, now: start.addingTimeInterval(604))
+
+        XCTAssertEqual(engine.world.profile.breakRatio, 4.75)
+        XCTAssertEqual(engine.world.profile.recentFocusSeconds, [3_000, 3_000])
+        XCTAssertNil(engine.world.profile.lastNote)
+        XCTAssertEqual(engine.world.profile.sessionCount, 1)
+        XCTAssertEqual(engine.world.profile.totalFocusSeconds, 600)
+    }
+
+    private func closeBeatEngine(profile: Profile = .default) throws -> Engine {
+        var world = World.empty
+        world.profile = profile
+        var engine = Engine(world: world)
         try engine.apply(.start(intention: "writing"), now: start)
         try engine.apply(.skip, now: start)
         try engine.apply(.stopFocus, now: start.addingTimeInterval(600))

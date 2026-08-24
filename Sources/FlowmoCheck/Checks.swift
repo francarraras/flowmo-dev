@@ -433,38 +433,22 @@ public func runFlowmoChecks() -> Int32 {
             engine.status(now: now, calendar: calendar).todayFocusSeconds, 180, "today total uses local midnight")
     }
 
-    var longProfile = Profile.default
+    var recordedProfile = Profile.default
+    recordedProfile.breakRatio = 4.75
+    recordedProfile.recentFocusSeconds = [50 * 60, 50 * 60]
+    recordedProfile.lastNote = "Legacy ratio movement note."
     for _ in 0..<3 {
-        longProfile = ProfileLearner.apply(longProfile, focusSeconds: 50 * 60)
+        recordedProfile = ProfileRecorder.apply(recordedProfile, focusSeconds: 50 * 60)
     }
-    Check.expectNear(longProfile.breakRatio, 4.75, "three long sessions lengthen next break")
-    Check.expect(longProfile.lastNote != nil, "learning note set")
-
-    var shortProfile = Profile.default
-    for _ in 0..<3 {
-        shortProfile = ProfileLearner.apply(shortProfile, focusSeconds: 10 * 60)
-    }
-    Check.expectNear(shortProfile.breakRatio, 5.25, "three short sessions shorten next break")
-
-    var floorProfile = Profile.default
-    floorProfile.breakRatio = 3
-    for _ in 0..<3 {
-        floorProfile = ProfileLearner.apply(floorProfile, focusSeconds: 50 * 60)
-    }
-    Check.expectNear(floorProfile.breakRatio, 3, "ratio floor 3")
-
-    var ceilingProfile = Profile.default
-    ceilingProfile.breakRatio = 8
-    for _ in 0..<3 {
-        ceilingProfile = ProfileLearner.apply(ceilingProfile, focusSeconds: 10 * 60)
-    }
-    Check.expectNear(ceilingProfile.breakRatio, 8, "ratio ceiling 8")
-
-    var mixed = Profile.default
-    mixed = ProfileLearner.apply(mixed, focusSeconds: 50 * 60)
-    mixed = ProfileLearner.apply(mixed, focusSeconds: 10 * 60)
-    mixed = ProfileLearner.apply(mixed, focusSeconds: 50 * 60)
-    Check.expectNear(mixed.breakRatio, 5, "mixed last-3 leaves ratio")
+    Check.expectNear(recordedProfile.breakRatio, 4.75, "completed sessions preserve the profile ratio")
+    Check.expectEqual(recordedProfile.sessionCount, 3, "completed sessions still increment the profile count")
+    Check.expectNear(recordedProfile.totalFocusSeconds, 150 * 60, "completed focus still aggregates")
+    Check.expectEqual(
+        recordedProfile.recentFocusSeconds,
+        [50 * 60, 50 * 60],
+        "completions do not collect a new rolling duration sample"
+    )
+    Check.expect(recordedProfile.lastNote == nil, "completion clears legacy ratio movement notes")
 
     do {
         let root = FileManager.default.temporaryDirectory

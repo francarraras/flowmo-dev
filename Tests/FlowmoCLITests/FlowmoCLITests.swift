@@ -17,7 +17,7 @@ final class FlowmoCLITests: XCTestCase {
 
     func testStatusEnvelopeCarriesStableVersionAndGenerationMetadata() throws {
         var world = World.empty
-        world.profile.lastNote = "Ratio changed after three long sessions."
+        world.profile.lastNote = "Legacy ratio movement note."
         let payload = StatusEnvelope(
             status: StatusPayload(world: world, now: Date(timeIntervalSince1970: 1_700_000_000)),
             generatedAt: Date(timeIntervalSince1970: 1_700_000_001)
@@ -27,7 +27,7 @@ final class FlowmoCLITests: XCTestCase {
         XCTAssertEqual(json["schemaVersion"] as? Int, 1)
         XCTAssertNotNil(json["generatedAt"] as? String)
         let status = try XCTUnwrap(json["status"] as? [String: Any])
-        XCTAssertEqual(status["ratioReason"] as? String, "Ratio changed after three long sessions.")
+        XCTAssertNil(status["ratioReason"])
     }
 
     func testActionEnvelopeDoesNotEchoPrivateText() throws {

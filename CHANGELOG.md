@@ -4,6 +4,10 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Removed automatic break-ratio movement based only on the last three Focus
+  durations. Existing valid ratios are preserved; new/reset profiles use 5,
+  completed-session totals still update, and no new rolling duration samples or
+  ratio-movement reasons are created.
 - Sharpened Reflection to **What did you do, and what comes next?** across Mac,
   iPhone, CLI, and the living terminal. It combines concrete retrieval with a
   resumption cue without claiming a memory or productivity benefit.

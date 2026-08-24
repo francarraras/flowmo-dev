@@ -386,7 +386,7 @@ public struct Engine: Equatable, Sendable {
             captures: live.captures
         )
         world.history.append(completed)
-        world.profile = ProfileLearner.apply(world.profile, focusSeconds: focus)
+        world.profile = ProfileRecorder.apply(world.profile, focusSeconds: focus)
     }
 
     private static func clearFreeze(_ live: inout SessionSnapshot) {
@@ -453,13 +453,7 @@ public struct Engine: Equatable, Sendable {
     }
 }
 
-public enum ProfileLearner {
-    public static let longSession: TimeInterval = 45 * 60
-    public static let shortSession: TimeInterval = 20 * 60
-    public static let step: Double = 0.25
-    public static let minRatio: Double = 3
-    public static let maxRatio: Double = 8
-
+public enum ProfileRecorder {
     public static func apply(_ profile: Profile, focusSeconds: TimeInterval) -> Profile {
         var next = profile
         if next.sessionCount < WorldPersistenceLimits.maximumCounter {
@@ -473,40 +467,7 @@ public enum ProfileLearner {
         } else {
             next.totalFocusSeconds = total
         }
-        next.recentFocusSeconds = Array(profile.recentFocusSeconds.suffix(4))
-        next.recentFocusSeconds.append(focusSeconds)
-
-        let recent = next.recentFocusSeconds.suffix(3)
-        guard recent.count == 3 else {
-            next.lastNote = nil
-            return next
-        }
-
-        if recent.allSatisfy({ $0 >= longSession }) {
-            let before = next.breakRatio
-            next.breakRatio = max(minRatio, next.breakRatio - step)
-            if next.breakRatio < before {
-                next.lastNote =
-                    "Last three sessions ran long, so the next break will be a bit longer (ratio \(format(next.breakRatio)))."
-            } else {
-                next.lastNote = nil
-            }
-        } else if recent.allSatisfy({ $0 <= shortSession }) {
-            let before = next.breakRatio
-            next.breakRatio = min(maxRatio, next.breakRatio + step)
-            if next.breakRatio > before {
-                next.lastNote =
-                    "Last three sessions were short, so the next break will be a bit shorter (ratio \(format(next.breakRatio)))."
-            } else {
-                next.lastNote = nil
-            }
-        } else {
-            next.lastNote = nil
-        }
+        next.lastNote = nil
         return next
-    }
-
-    private static func format(_ value: Double) -> String {
-        String(format: "%.2g", value)
     }
 }

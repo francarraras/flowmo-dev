@@ -56,7 +56,7 @@ inherits that intervention’s claim.
 | Cognitive offloading | One-line Capture during Focus | A low-friction convenience that may prevent a switch; the current form has no learning claim. |
 | Retrieval and resumption cue | Optional post-break Reflection: “What did you do, and what comes next?” | It asks for concrete retrieval and a next step, but has no proven retention or resumption effect. |
 | Situation design | Optional, fail-open Focus Guard | Precommitted friction is plausible; benefit and stress or autonomy costs must be tested in Flowmo. |
-| Proportional recovery | `break = focus / ratio`, with a duration-based ratio adjustment | A transparent product heuristic. No evidence establishes the formula or its automatic adjustment as cognitively optimal. |
+| Proportional recovery | `break = focus / ratio`, with a fixed per-profile ratio | A transparent product heuristic. New/reset profiles use 5; no evidence establishes that dose as cognitively optimal. |
 
 Evidence rules for future decisions:
 
@@ -285,7 +285,7 @@ Scripts may fire verbs against the same session shown by the window or living te
 - save recall text
 - cancel the current session
 - status as JSON  
-- later: supported config verbs and an explanation of why the ratio moved
+- later: supported ratio configuration verbs; the ratio does not move automatically
 
 Action and error responses use a documented versioned JSON envelope and do not
 echo private session text. `status --json` is the explicit read contract when a
@@ -317,23 +317,22 @@ the app must not claim all data was deleted if either cleanup is incomplete.
 
 ---
 
-## 7. Duration-based break heuristic (current behavior)
+## 7. Fixed break ratio (current behavior)
 
-After each completed session, record focus duration and apply the current
-bounded rule:
+Break remains `focus / ratio`. New and reset profiles use ratio **5** (50 min
+Focus → 10 min Break). Flowmo does not change the ratio from session duration:
+duration says nothing about fatigue, break quality, task type, learning, or
+whether the person felt restored.
 
-- Last **three** sessions all **≥ 45 min** → next `ratio` decreases by **0.25** (longer break). Floor **3**.
-- Last **three** all **≤ 20 min** → next `ratio` increases by **0.25** (shorter break). Ceiling **8**.
-- Otherwise ratio stays.
+Existing valid persisted ratios are preserved to avoid silently changing a
+tester's established break length. Completing a session still records history,
+session count, and total Focus, but it does not move the ratio, append a rolling
+duration sample, or create a ratio-movement note. Legacy rolling samples remain
+readable for store compatibility and are not extended.
 
-This rule observes duration only. It receives no signal about fatigue, break
-quality, task type, learning, or whether the person felt restored, so it is not
-a learned optimum or a scientific personalization model.
-
-Prime stays 2:00. Reflection stays 3:00. The heuristic does **not** turn
-Reflection or Prime on or off in v1.
-
-The profile stays inspectable through `status --json`, including the current ratio and its one-line reason. The idle window does not need a lecture about it.
+Prime stays 2:00. Reflection stays 3:00. The current profile ratio remains
+inspectable through `status --json`; `ratioReason` is absent because there is no
+automatic movement to explain. The idle window does not need a lecture about it.
 
 ---
 
@@ -444,7 +443,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Fake 0–100% focus bar | No |
 | Menu bar | Glance only ([`menu-bar.md`](menu-bar.md)). Window stays the product. |
 | Terminal | `flowmo live` is a ticking view. Verbs stay a side door. |
-| Automatic adjustment in v1 | Duration-based break heuristic only; not described as learning or an optimum. |
+| Automatic adjustment in v1 | None. Preserve an existing valid profile ratio; new/reset profiles use 5. |
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |

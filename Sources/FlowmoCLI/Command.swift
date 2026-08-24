@@ -362,7 +362,7 @@ struct StatusPayload: Encodable {
         breakSeconds = view.breakSeconds
         earnedBreakSeconds = view.phase == .focus ? view.earnedBreakSeconds : nil
         ratio = view.ratio
-        ratioReason = world.profile.lastNote
+        ratioReason = nil
         captures = view.captures.map(\.text)
         recallText = view.recallText.isEmpty ? nil : view.recallText
         todayFocusSeconds = view.todayFocusSeconds

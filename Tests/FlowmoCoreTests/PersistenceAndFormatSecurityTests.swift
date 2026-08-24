@@ -87,13 +87,13 @@ final class PersistenceAndFormatSecurityTests: XCTestCase {
         }
     }
 
-    func testIntMaxCounterIsRejectedAndLearnerDoesNotTrap() throws {
+    func testIntMaxCounterIsRejectedAndRecorderDoesNotTrap() throws {
         var profile = Profile.default
         profile.sessionCount = .max
-        let learned = ProfileLearner.apply(profile, focusSeconds: .greatestFiniteMagnitude)
-        XCTAssertEqual(learned.sessionCount, WorldPersistenceLimits.maximumCounter)
-        XCTAssertEqual(learned.totalFocusSeconds, WorldPersistenceLimits.maximumAggregateSeconds)
-        XCTAssertLessThanOrEqual(learned.recentFocusSeconds.count, 5)
+        let recorded = ProfileRecorder.apply(profile, focusSeconds: .greatestFiniteMagnitude)
+        XCTAssertEqual(recorded.sessionCount, WorldPersistenceLimits.maximumCounter)
+        XCTAssertEqual(recorded.totalFocusSeconds, WorldPersistenceLimits.maximumAggregateSeconds)
+        XCTAssertTrue(recorded.recentFocusSeconds.isEmpty)
 
         try withStore { store in
             var world = World.empty
@@ -105,17 +105,17 @@ final class PersistenceAndFormatSecurityTests: XCTestCase {
         }
     }
 
-    func testLearnerKeepsValidBoundaryProfilePersistable() throws {
+    func testRecorderKeepsValidBoundaryProfilePersistable() throws {
         var profile = Profile.default
         profile.sessionCount = WorldPersistenceLimits.maximumCounter
         profile.totalFocusSeconds = WorldPersistenceLimits.maximumAggregateSeconds
 
-        let learned = ProfileLearner.apply(profile, focusSeconds: 1)
+        let recorded = ProfileRecorder.apply(profile, focusSeconds: 1)
 
-        XCTAssertEqual(learned.sessionCount, WorldPersistenceLimits.maximumCounter)
-        XCTAssertEqual(learned.totalFocusSeconds, WorldPersistenceLimits.maximumAggregateSeconds)
+        XCTAssertEqual(recorded.sessionCount, WorldPersistenceLimits.maximumCounter)
+        XCTAssertEqual(recorded.totalFocusSeconds, WorldPersistenceLimits.maximumAggregateSeconds)
         var world = World.empty
-        world.profile = learned
+        world.profile = recorded
         XCTAssertNoThrow(try world.validateForPersistence())
     }
 
