@@ -43,7 +43,47 @@ not available for the iPhone app or widget.
 This exception makes informal testing possible; it does not satisfy the signed
 distribution requirements later in this document.
 
+### One-command preview candidate
+
+After a change is finished:
+
+1. Add or update the relevant proof, move tester-visible notes from Unreleased
+   into a `VERSION (BUILD)` changelog section, increment both Mac
+   `CURRENT_PROJECT_VERSION` settings, and synchronize
+   `docs/FRIENDS_AND_FAMILY.txt`.
+2. Review and commit the exact candidate. Packaging a dirty worktree is not a
+   release record.
+3. Confirm the version/build is new in `docs/PREVIEW_RELEASES.tsv`, then run:
+
+   ```bash
+   ./Scripts/family-preview
+   ```
+
+The command runs the automated release gates below in fresh Derived Data,
+creates the Mac ZIP without overwriting an earlier build, generates its SHA-256
+file and release manifest, extracts the exact ZIP, and re-verifies its contents,
+metadata, architectures, signature, Hardened Runtime, and entitlements. It does
+not push, tag, notarize, upload, or send anything. After a clean candidate
+succeeds, it appends a `candidate-generated` receipt to
+`docs/PREVIEW_RELEASES.tsv`, immediately reserving that version/build even if
+the output archive is later moved.
+
+`--allow-dirty` exists only for testing the automation itself. Its filename,
+package, tester guide, and manifest are marked **DIRTY / DO NOT DISTRIBUTE**.
+That output must never be sent to a tester.
+
+Before sharing the generated candidate, commit its appended ledger receipt and
+complete every manual gate listed in its manifest and steps 7–9 below. After
+owner review, change the receipt status to `distributed` or `withdrawn` and
+commit that decision. Keep the previous ZIP and checksum available for rollback.
+The ledger reserves old build numbers even if `dist/` is cleared or an archive
+is moved elsewhere.
+
 ## Required verification
+
+`./Scripts/family-preview` is the executable form of the automated checks and
+packaging rules in this section. The commands remain documented here so CI and
+the release contract are independently reviewable.
 
 From a clean checkout of the candidate revision:
 
@@ -98,9 +138,11 @@ Developer ID signing or notarization.
    a new build number with concise retest steps. Keep the previous signed build
    available for rollback.
 
-## Before friends receive a build
+## Before TestFlight or Apple-trusted external distribution
 
-These are blocking, not optional polish:
+These are blocking for TestFlight, a Developer ID Mac beta, or any broader
+release described as Apple-trusted. They do not block the explicitly scoped,
+ad-hoc friends-and-family Mac preview above:
 
 - Enroll the legal owner in the paid Apple Developer Program. Apple currently
   lists it as US$99/year. Create the app identifiers, App Group, certificates,

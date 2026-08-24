@@ -29,6 +29,15 @@ Product behavior lives in [`docs/PROJECT.md`](docs/PROJECT.md). If chat, old cod
 - iPhone widget: [`docs/widget.md`](docs/widget.md). It is a glance over the phone App Group store, not a session controller.
 - Roadmap only: [`docs/v2.md`](docs/v2.md).
 
+## Change and preview loop
+
+- For a bug or behavior change, reproduce with an isolated store or simulator, add a regression proof when practical, make the smallest fix, and run the relevant format, test, and core-proof gates. Update `CHANGELOG.md` for tester-visible changes.
+- Keep intentions, full exports, store paths, and other private tester data out of prompts, logs, screenshots, commits, and issues; use redacted diagnostics.
+- Before adding a dependency, SDK, action, snippet, asset, or font, verify its source, license, redistribution terms, privacy impact, and maintenance risk; update `PROVENANCE.md`, `THIRD_PARTY_NOTICES.md`, and privacy declarations when their facts change.
+- CI must pass on every pushed candidate. A passing CI run is evidence, not permission to distribute.
+- When the owner asks to prepare or redeploy a friends-and-family preview, increment the Mac build number, synchronize the changelog and tester guide, review and commit the candidate, then run `./Scripts/family-preview`. Commit its appended ledger receipt and mark it distributed or withdrawn only after owner review.
+- Never overwrite a previous preview or automatically push, tag, notarize, upload, or share one. The owner approves every distributed build after the manual smoke checks in `docs/release.md`.
+
 ## Run
 
 - Window: `swift run`

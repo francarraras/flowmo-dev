@@ -1,0 +1,557 @@
+#!/bin/bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ./Scripts/family-preview [--allow-dirty] [--output-dir PATH]
+
+Build and verify a Mac friends-and-family preview from the current revision.
+
+By default, the command requires a clean Git worktree and writes to ./dist.
+It never overwrites an existing ZIP, checksum, or release manifest.
+After a clean candidate succeeds, it reserves that build in the release ledger.
+
+Options:
+  --allow-dirty       Allow an uncommitted engineering test build. Never share it.
+  --output-dir PATH   Write artifacts somewhere other than ./dist.
+  -h, --help          Show this help.
+EOF
+}
+
+fail() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+step() {
+  printf '\n==> %s\n' "$*"
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
+}
+
+unique_project_value() {
+  local key="$1"
+  local values
+  local count
+
+  values="$(sed -n "s/^[[:space:]]*${key} = \([^;]*\);/\1/p" "$mac_project" | sort -u)"
+  [ -n "$values" ] || fail "${key} is missing from $mac_project"
+  count="$(printf '%s\n' "$values" | wc -l | tr -d '[:space:]')"
+  [ "$count" = "1" ] || fail "${key} differs across Mac build configurations: $values"
+  printf '%s' "$values"
+}
+
+plist_value() {
+  /usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist"
+}
+
+validate_mac_app() {
+  local app="$1"
+  local identifier
+  local app_version
+  local app_build
+  local minimum_system
+  local executable
+  local architectures
+  local signature_info
+  local entitlements
+
+  [ -d "$app" ] || fail "Mac app not found: $app"
+  [ -f "$app/Contents/Info.plist" ] || fail "Info.plist not found in $app"
+
+  identifier="$(plist_value "$app" CFBundleIdentifier)"
+  app_version="$(plist_value "$app" CFBundleShortVersionString)"
+  app_build="$(plist_value "$app" CFBundleVersion)"
+  minimum_system="$(plist_value "$app" LSMinimumSystemVersion)"
+  executable="$(plist_value "$app" CFBundleExecutable)"
+
+  [ "$identifier" = "app.flowmo.mac" ] || fail "unexpected bundle identifier: $identifier"
+  [ "$app_version" = "$version" ] || fail "built version $app_version does not match project version $version"
+  [ "$app_build" = "$build" ] || fail "built build $app_build does not match project build $build"
+  [ "$minimum_system" = "13.0" ] || fail "unexpected minimum macOS version: $minimum_system"
+  [ -f "$app/Contents/MacOS/$executable" ] || fail "app executable is missing"
+
+  architectures="$(lipo -archs "$app/Contents/MacOS/$executable")"
+  case " $architectures " in
+    *" arm64 "*) ;;
+    *) fail "Mac app is missing the arm64 architecture: $architectures" ;;
+  esac
+  case " $architectures " in
+    *" x86_64 "*) ;;
+    *) fail "Mac app is missing the x86_64 architecture: $architectures" ;;
+  esac
+
+  codesign --verify --deep --strict --verbose=2 "$app"
+  signature_info="$(codesign -dv --verbose=4 "$app" 2>&1)"
+  printf '%s\n' "$signature_info" | grep -Fq 'Signature=adhoc' \
+    || fail "Mac app is not ad-hoc signed as documented"
+  printf '%s\n' "$signature_info" | grep -Eq 'flags=.*\(.*runtime.*\)' \
+    || fail "Mac Release app does not have Hardened Runtime enabled"
+
+  if ! entitlements="$(codesign -d --entitlements - "$app" 2>&1)"; then
+    fail "could not read Mac app entitlements"
+  fi
+  if printf '%s\n' "$entitlements" | grep -Fq 'com.apple.security.get-task-allow'; then
+    fail "Mac Release app unexpectedly contains get-task-allow"
+  fi
+
+  validated_architectures="$architectures"
+}
+
+allow_dirty=0
+output_dir=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --allow-dirty)
+      allow_dirty=1
+      shift
+      ;;
+    --output-dir)
+      [ "$#" -ge 2 ] || fail "--output-dir requires a path"
+      output_dir="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      fail "unknown argument: $1"
+      ;;
+  esac
+done
+
+script_dir="$(cd "$(dirname "$0")" && pwd -P)"
+repo_root="$(cd "$script_dir/.." && pwd -P)"
+cd "$repo_root"
+
+mac_project="Apps/Flowmo.xcodeproj/project.pbxproj"
+friend_guide="docs/FRIENDS_AND_FAMILY.txt"
+release_ledger="docs/PREVIEW_RELEASES.tsv"
+
+if [ -z "$output_dir" ]; then
+  output_dir="$repo_root/dist"
+elif [ "${output_dir#/}" = "$output_dir" ]; then
+  output_dir="$repo_root/$output_dir"
+fi
+
+for command_name in git swift ruby xcodebuild codesign lipo ditto shasum plutil spctl tar; do
+  require_command "$command_name"
+done
+[ -x /usr/libexec/PlistBuddy ] || fail "/usr/libexec/PlistBuddy is unavailable"
+
+output_dir="$(ruby -e 'puts File.expand_path(ARGV.fetch(0))' "$output_dir")"
+
+git_root="$(git rev-parse --show-toplevel 2>/dev/null)" \
+  || fail "this command must run inside the Flowmo Git repository"
+[ "$(cd "$git_root" && pwd -P)" = "$repo_root" ] \
+  || fail "resolved Git root does not match the Flowmo repository"
+
+case "$output_dir" in
+  "$repo_root")
+    fail "the repository root cannot be used as the release output directory"
+    ;;
+  "$repo_root"/*)
+    relative_output="${output_dir#"$repo_root"/}"
+    git check-ignore -q -- "$relative_output" \
+      || fail "an output directory inside the repository must be Git-ignored: $relative_output"
+    ;;
+esac
+
+git diff --check
+git diff --cached --check
+worktree_state="$(git status --porcelain --untracked-files=normal)"
+start_revision="$(git rev-parse HEAD)"
+if [ -z "$worktree_state" ] && [ "$allow_dirty" -eq 1 ]; then
+  fail "--allow-dirty is only valid when the worktree is actually dirty"
+fi
+if [ -n "$worktree_state" ] && [ "$allow_dirty" -ne 1 ]; then
+  printf '%s\n' "$worktree_state" >&2
+  fail "the release candidate is not committed and clean; commit it first"
+fi
+
+version="$(unique_project_value MARKETING_VERSION)"
+build="$(unique_project_value CURRENT_PROJECT_VERSION)"
+case "$version" in
+  ''|*[!0-9.]*) fail "unsupported marketing version: $version" ;;
+esac
+case "$build" in
+  ''|*[!0-9]*) fail "unsupported build number: $build" ;;
+esac
+
+grep -Fq "## $version ($build)" CHANGELOG.md \
+  || fail "CHANGELOG.md has no release section for $version ($build)"
+guide_version_count="$(grep -F -c "$version (build $build)" "$friend_guide" || true)"
+[ "$guide_version_count" -ge 2 ] \
+  || fail "$friend_guide does not consistently identify $version (build $build)"
+
+[ -f "$release_ledger" ] || fail "preview release ledger is missing: $release_ledger"
+
+work_root=""
+output_staging=""
+release_lock=""
+release_lock_held=0
+
+cleanup() {
+  if [ -n "${work_root:-}" ] && [ -d "$work_root" ]; then
+    case "$work_root" in
+      */flowmo-family-preview.*) rm -rf -- "$work_root" ;;
+    esac
+  fi
+  if [ -n "${output_staging:-}" ] && [ -d "$output_staging" ]; then
+    case "$output_staging" in
+      */.flowmo-family-preview.*) rm -rf -- "$output_staging" ;;
+    esac
+  fi
+  if [ "${release_lock_held:-0}" -eq 1 ] && [ -n "${release_lock:-}" ]; then
+    case "$release_lock" in
+      "$git_dir/flowmo-preview-release.lock")
+        rm -f -- "$release_lock/owner"
+        rmdir "$release_lock" 2>/dev/null || true
+        ;;
+    esac
+    release_lock_held=0
+  fi
+}
+
+handle_signal() {
+  local status="$1"
+  cleanup
+  trap - EXIT
+  exit "$status"
+}
+
+trap cleanup EXIT
+trap 'handle_signal 130' INT
+trap 'handle_signal 143' TERM
+
+git_dir="$(git rev-parse --absolute-git-dir)"
+release_lock="$git_dir/flowmo-preview-release.lock"
+if ! mkdir "$release_lock" 2>/dev/null; then
+  fail "another preview release is running, or a stale lock needs review: $release_lock"
+fi
+release_lock_held=1
+printf 'pid=%s revision=%s version=%s build=%s\n' "$$" "$start_revision" "$version" "$build" \
+  >"$release_lock/owner"
+
+if awk -F '\t' -v version="$version" -v build="$build" \
+  'NR > 1 && $1 == version && $2 == build { found = 1 } END { exit(found ? 0 : 1) }' \
+  "$release_ledger"; then
+  if [ "$allow_dirty" -ne 1 ]; then
+    fail "$version ($build) is already reserved in $release_ledger; increment the build number"
+  fi
+fi
+if [ "$allow_dirty" -ne 1 ] && awk -F '\t' -v version="$version" -v build="$build" \
+  'NR > 1 && $1 == version && ($2 + 0) >= (build + 0) { blocked = 1 } END { exit(blocked ? 0 : 1) }' \
+  "$release_ledger"; then
+  fail "$version build $build is not greater than every recorded build for that version"
+fi
+
+archive_base="Flowmo-${version}-build${build}-macOS-universal-family-preview"
+if [ -n "$worktree_state" ]; then
+  archive_base="$archive_base-DIRTY-DO-NOT-DISTRIBUTE"
+fi
+archive_name="$archive_base.zip"
+checksum_name="$archive_name.sha256"
+manifest_name="$archive_base.manifest.txt"
+
+mkdir -p "$output_dir"
+[ -w "$output_dir" ] || fail "output directory is not writable: $output_dir"
+for candidate in "$archive_name" "$checksum_name" "$manifest_name"; do
+  [ ! -e "$output_dir/$candidate" ] \
+    || fail "refusing to overwrite existing release artifact: $output_dir/$candidate"
+done
+
+work_root="$(mktemp -d "${TMPDIR:-/private/tmp}/flowmo-family-preview.XXXXXX")"
+output_staging="$(mktemp -d "$output_dir/.flowmo-family-preview.XXXXXX")"
+
+assert_candidate_unchanged() {
+  local current_revision
+  local current_state
+
+  current_revision="$(git -C "$repo_root" rev-parse HEAD)"
+  [ "$current_revision" = "$start_revision" ] \
+    || fail "HEAD changed while the preview was being built"
+  current_state="$(git -C "$repo_root" status --porcelain --untracked-files=normal)"
+  [ "$current_state" = "$worktree_state" ] \
+    || fail "the worktree changed while the preview was being built"
+}
+
+publish_without_overwrite() {
+  local source="$1"
+  local name="$2"
+  local destination="$output_dir/$name"
+
+  [ -f "$source" ] || fail "staged release file is missing: $source"
+  [ ! -e "$destination" ] || fail "refusing to overwrite release artifact: $destination"
+  mv -n "$source" "$destination"
+  [ ! -e "$source" ] && [ -f "$destination" ] \
+    || fail "release artifact was not published without overwrite: $destination"
+}
+
+source_root="$repo_root"
+if [ -z "$worktree_state" ]; then
+  source_root="$work_root/source"
+  mkdir -p "$source_root"
+  git -C "$repo_root" archive --format=tar "$start_revision" -o "$work_root/source.tar"
+  tar -xf "$work_root/source.tar" -C "$source_root"
+fi
+cd "$source_root"
+
+derived_data="$work_root/DerivedData"
+cli_store="$work_root/cli-store"
+mkdir -p "$cli_store"
+
+step "Strict format check"
+swift format lint --strict --recursive Package.swift Sources Tests Apps
+
+step "Swift tests with warnings as errors"
+swift test -Xswiftc -warnings-as-errors
+
+step "Core proofs"
+swift run -Xswiftc -warnings-as-errors flowmo check
+
+step "CLI JSON and privacy smoke"
+status_json="$(FLOWMO_HOME="$cli_store" swift run flowmo status --json)"
+ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["schemaVersion"] == 1 && j.dig("status", "running") == false' \
+  <<<"$status_json"
+
+action_json="$(FLOWMO_HOME="$cli_store" swift run flowmo start "preview-private-intention" --json)"
+ruby -rjson -e 'raw = STDIN.read; j = JSON.parse(raw); abort unless j["ok"] == true && j["command"] == "start" && !raw.include?("preview-private-intention")' \
+  <<<"$action_json"
+
+set +e
+error_json="$(FLOWMO_HOME="$cli_store" swift run flowmo pause --json)"
+error_status=$?
+set -e
+[ "$error_status" -eq 1 ] || fail "unsupported pause control returned status $error_status"
+ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["ok"] == false && j.dig("error", "code") == "unsupported_control"' \
+  <<<"$error_json"
+
+step "SwiftPM Release build"
+swift build -c release -Xswiftc -warnings-as-errors
+
+step "Fresh universal Mac Release build"
+xcodebuild -quiet \
+  -project Apps/Flowmo.xcodeproj \
+  -scheme Flowmo \
+  -configuration Release \
+  -sdk macosx \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath "$derived_data" \
+  CODE_SIGN_IDENTITY=- \
+  AD_HOC_CODE_SIGNING_ALLOWED=YES \
+  SWIFT_SUPPRESS_WARNINGS=NO \
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+  'ARCHS=arm64 x86_64' \
+  ONLY_ACTIVE_ARCH=NO \
+  build
+
+step "Mac Debug analysis"
+xcodebuild -quiet \
+  -project Apps/Flowmo.xcodeproj \
+  -scheme Flowmo \
+  -configuration Debug \
+  -sdk macosx \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath "$derived_data" \
+  CODE_SIGN_IDENTITY=- \
+  AD_HOC_CODE_SIGNING_ALLOWED=YES \
+  SWIFT_SUPPRESS_WARNINGS=NO \
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+  analyze
+
+mac_app="$derived_data/Build/Products/Release/Flowmo.app"
+step "Mac identity, architecture, and signature verification"
+validate_mac_app "$mac_app"
+
+step "iPhone and widget Release simulator build"
+xcodebuild -quiet \
+  -project Apps/FlowmoPhone.xcodeproj \
+  -scheme FlowmoPhone \
+  -configuration Release \
+  -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath "$derived_data" \
+  CODE_SIGN_IDENTITY=- \
+  AD_HOC_CODE_SIGNING_ALLOWED=YES \
+  SWIFT_SUPPRESS_WARNINGS=NO \
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+  build
+
+phone_app="$derived_data/Build/Products/Release-iphonesimulator/Flowmo.app"
+[ -d "$phone_app" ] || fail "built iPhone app not found: $phone_app"
+widget="$(find "$phone_app/PlugIns" -maxdepth 1 -type d -name '*.appex' -print -quit)"
+[ -f "$phone_app/PrivacyInfo.xcprivacy" ] || fail "iPhone privacy manifest is missing"
+[ -n "$widget" ] || fail "built widget extension is missing"
+[ -f "$widget/PrivacyInfo.xcprivacy" ] || fail "widget privacy manifest is missing"
+plutil -lint "$phone_app/PrivacyInfo.xcprivacy" "$widget/PrivacyInfo.xcprivacy"
+
+step "iPhone and widget Debug analysis"
+xcodebuild -quiet \
+  -project Apps/FlowmoPhone.xcodeproj \
+  -scheme FlowmoPhone \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath "$derived_data" \
+  CODE_SIGN_IDENTITY=- \
+  AD_HOC_CODE_SIGNING_ALLOWED=YES \
+  SWIFT_SUPPRESS_WARNINGS=NO \
+  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+  analyze
+
+assert_candidate_unchanged
+
+package_root="Flowmo $version Build $build Family Preview"
+if [ -n "$worktree_state" ]; then
+  package_root="$package_root - DIRTY DO NOT DISTRIBUTE"
+fi
+package_dir="$work_root/$package_root"
+mkdir -p "$package_dir"
+ditto "$mac_app" "$package_dir/Flowmo.app"
+if [ -n "$worktree_state" ]; then
+  {
+    printf 'DIRTY ENGINEERING TEST — DO NOT DISTRIBUTE\n'
+    printf 'This package was built from uncommitted files and is not a release candidate.\n\n'
+    cat "$friend_guide"
+  } >"$package_dir/READ ME FIRST.txt"
+  printf 'DIRTY ENGINEERING TEST — DO NOT DISTRIBUTE\n' \
+    >"$package_dir/DO NOT DISTRIBUTE.txt"
+else
+  cp "$friend_guide" "$package_dir/READ ME FIRST.txt"
+fi
+cp PRIVACY.md "$package_dir/PRIVACY.md"
+
+step "Package exact preview archive"
+staged_archive="$output_staging/$archive_name"
+ditto -c -k --sequesterRsrc --keepParent "$package_dir" "$staged_archive"
+
+extract_root="$work_root/extracted"
+mkdir -p "$extract_root"
+ditto -x -k "$staged_archive" "$extract_root"
+extracted_package="$extract_root/$package_root"
+extracted_app="$extracted_package/Flowmo.app"
+[ -f "$extracted_package/READ ME FIRST.txt" ] || fail "tester guide is missing from the ZIP"
+[ -f "$extracted_package/PRIVACY.md" ] || fail "privacy policy is missing from the ZIP"
+cmp "$package_dir/READ ME FIRST.txt" "$extracted_package/READ ME FIRST.txt"
+cmp PRIVACY.md "$extracted_package/PRIVACY.md"
+if [ -n "$worktree_state" ]; then
+  [ -f "$extracted_package/DO NOT DISTRIBUTE.txt" ] \
+    || fail "dirty-build warning is missing from the ZIP"
+fi
+
+step "Verify the exact extracted app"
+validate_mac_app "$extracted_app"
+
+checksum="$(shasum -a 256 "$staged_archive" | awk '{print $1}')"
+printf '%s  %s\n' "$checksum" "$archive_name" \
+  >"$output_staging/$checksum_name"
+
+set +e
+gatekeeper_output="$(spctl --assess --type execute "$extracted_app" 2>&1)"
+gatekeeper_status=$?
+set -e
+if [ "$gatekeeper_status" -eq 0 ]; then
+  gatekeeper_result="accepted on this Mac; still treat the build as ad-hoc and not notarized"
+elif printf '%s\n' "$gatekeeper_output" | grep -Eiq '(^|:)[[:space:]]*rejected([[:space:]]|$)'; then
+  gatekeeper_result="rejected as expected for this ad-hoc, non-notarized preview"
+else
+  gatekeeper_result="assessment unavailable or failed unexpectedly (status $gatekeeper_status)"
+  if [ -z "$worktree_state" ]; then
+    fail "Gatekeeper assessment failed without a recognizable rejection: $gatekeeper_output"
+  fi
+fi
+
+revision="$start_revision"
+created_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+macos_version="$(sw_vers -productVersion)"
+xcode_version="$(xcodebuild -version | paste -sd ';' -)"
+if [ -n "$worktree_state" ]; then
+  candidate_state="DIRTY OVERRIDE — engineering test only; do not distribute"
+else
+  candidate_state="clean committed revision"
+fi
+
+{
+  printf 'Flowmo friends-and-family preview release manifest\n\n'
+  printf 'Created (UTC): %s\n' "$created_at"
+  printf 'Git revision: %s\n' "$revision"
+  printf 'Candidate state: %s\n' "$candidate_state"
+  printf 'Product: Flowmo %s (build %s)\n' "$version" "$build"
+  printf 'Bundle identifier: app.flowmo.mac\n'
+  printf 'Minimum macOS: 13.0\n'
+  printf 'Architectures: %s\n' "$validated_architectures"
+  printf 'Signing: ad-hoc with Hardened Runtime; not Developer ID; not notarized\n'
+  printf 'Gatekeeper assessment: %s\n' "$gatekeeper_result"
+  if [ -n "$gatekeeper_output" ]; then
+    printf 'Gatekeeper detail: %s\n' "$(printf '%s' "$gatekeeper_output" | tr '\n' ' ')"
+  fi
+  printf 'Build host macOS: %s\n' "$macos_version"
+  printf 'Xcode: %s\n' "$xcode_version"
+  printf 'Archive: %s\n' "$archive_name"
+  printf 'SHA-256: %s\n\n' "$checksum"
+  printf 'Automated gates: PASS\n'
+  printf -- '- strict Swift format\n'
+  printf -- '- warnings-as-errors tests and core proofs\n'
+  printf -- '- CLI JSON/privacy smoke and SwiftPM Release build\n'
+  printf -- '- fresh universal Mac Release build and Debug analysis\n'
+  printf -- '- Mac metadata, Hardened Runtime, signature, and entitlement checks\n'
+  printf -- '- iPhone/widget Release simulator build, privacy manifests, and Debug analysis\n'
+  printf -- '- exact ZIP extraction, content comparison, checksum, and app re-verification\n\n'
+  printf 'Manual gates still required before sharing a clean candidate:\n'
+  printf -- '- set FLOWMO_HOME to a fresh disposable directory for every Mac/CLI manual check; never use the owner store\n'
+  printf -- '- cold-launch the exact extracted Mac app on the intended latest macOS and smoke-test isolated `flowmo status --json`\n'
+  printf -- '- exercise every phase plus quit/sleep recovery; confirm Focus only counts up and has no pause or progress ring\n'
+  printf -- '- exercise invalid-store repair, redacted diagnostics, full export, confirmed deletion, and Focus Guard failure\n'
+  printf -- '- confirm a second Mac process cannot mutate the first session and immediate CLI Continue survives crash recovery\n'
+  printf -- '- launch the latest-iOS iPhone 15, 16, and 17 simulator matrix; check phone unavailable behavior and widget glance\n'
+  printf -- '- review CHANGELOG, PRIVACY, SECURITY, PROVENANCE, THIRD_PARTY_NOTICES, and the tester retest note\n'
+  printf -- '- archive the exact manual results, simulator runtime/devices, and this manifest; re-confirm the candidate revision is clean\n'
+  printf -- '- commit the automatically appended candidate receipt in docs/PREVIEW_RELEASES.tsv\n'
+  printf -- '- after owner review, change that receipt status to distributed or withdrawn and commit the decision\n'
+} >"$output_staging/$manifest_name"
+
+assert_candidate_unchanged
+if [ -z "$worktree_state" ]; then
+  printf '%s\t%s\t%s\t%s\tcandidate-generated\tGenerated %s; manual gates and owner distribution decision remain pending; manifest %s.\n' \
+    "$version" \
+    "$build" \
+    "$checksum" \
+    "$revision" \
+    "$created_at" \
+    "$manifest_name" \
+    >>"$repo_root/$release_ledger"
+  git -C "$repo_root" diff --check -- "$release_ledger"
+fi
+
+step "Publish non-overwriting local artifacts"
+publish_without_overwrite "$output_staging/$checksum_name" "$checksum_name"
+publish_without_overwrite "$output_staging/$manifest_name" "$manifest_name"
+publish_without_overwrite "$staged_archive" "$archive_name"
+
+(
+  cd "$output_dir"
+  shasum -a 256 -c "$checksum_name"
+)
+
+if [ -n "$worktree_state" ]; then
+  printf '\nDirty engineering rehearsal created. DO NOT DISTRIBUTE IT.\n'
+else
+  printf '\nPreview candidate created from committed revision %s. It has not been distributed.\n' "$revision"
+fi
+printf 'ZIP: %s/%s\n' "$output_dir" "$archive_name"
+printf 'SHA-256: %s\n' "$checksum"
+printf 'Checksum file: %s/%s\n' "$output_dir" "$checksum_name"
+printf 'Release manifest: %s/%s\n' "$output_dir" "$manifest_name"
+if [ -n "$worktree_state" ]; then
+  printf 'Next: use this output only to inspect the automation; create a clean, incremented build for testers.\n'
+else
+  printf 'Ledger receipt: %s/%s (candidate-generated; commit it)\n' "$repo_root" "$release_ledger"
+  printf 'Next: complete every manual gate, then mark the receipt distributed or withdrawn after owner review.\n'
+fi

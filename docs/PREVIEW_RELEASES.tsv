@@ -1,0 +1,3 @@
+version	build	sha256	source_revision	status	notes
+1.0	1	1f86fdf32a6d9b8d7df8d4f81ef6f38d865d96ff39055fff6bd4a076eef19f01	unrecorded	historical-pre-automation	Exact dirty source revision was not recorded; build number is reserved and must not be reused.
+1.0	2	13f386d6ee5f78946d621495dc819c7cfcd4d0e633c41dd93a3428baa9cf25cb	ac8ea1381041977df280185607329a405adaa41d-plus-uncommitted-release-metadata	historical-pre-automation	Build number is reserved; use the retained archive only for rollback and do not recreate it.
