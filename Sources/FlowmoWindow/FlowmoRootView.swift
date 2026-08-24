@@ -558,7 +558,7 @@ private struct BreakPane: View {
 
     var body: some View {
         PhaseColumn {
-            PhaseCaption("Time to recharge", tone: Look.mute)
+            PhaseCaption("Break", tone: Look.mute)
         } hole: {
             Aperture(
                 ring: .timed(
@@ -581,7 +581,7 @@ private struct BreakPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Skip") { controller.skip() }
+                QuietButton("Continue") { controller.skip() }
             }
         }
     }

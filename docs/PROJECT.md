@@ -183,13 +183,15 @@ You type **once**. That line is the intention. Prime does not ask again.
 1. **Idle → type (or keep last line) → Start**
 2. **Prime — 2:00** — still with that line on screen. Skip allowed.
 3. **Focus — count up** — work until you stop. **+** parks one line. No pause button.
-4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Skip allowed.
+4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Continue whenever ready.
 5. **Reflection — 3:00** — “What did you just do?” Optional lines. Skip allowed.
 6. **Quiet close beat** — focus time, break taken, anything you wrote — then idle again.
 
 Encoding (focus) is the only required open-ended phase. Prime and recall have ends. Break is **not** a protocol phase in the old sense; it is the earned interlude between focus and recall.
 
-**Skip** is always available on timed beats (prime, break, recall). Skip during focus is the same as Stop (you have chosen to end focus).
+Timed beats always have an advance action: **Skip** on Prime and Reflection,
+and **Continue** on Break. The CLI keeps the stable `skip` verb for all three.
+Skip during Focus is the same as Stop (you have chosen to end Focus).
 
 ---
 
@@ -209,7 +211,7 @@ The Mac **window is the product**.
 | **Idle** | Empty field, placeholder **Intention**. **Start**. Today, **History**, **Data**, **New**. | Type a line, Start, inspect history, export/delete data, or New (clears a typed line). |
 | **Prime (2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Sit. Skip. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **+** opens capture; **Park** / **Discard** replace + / Stop. | Work. Park a thought. Stop. |
-| **Break** | **Time to recharge**. Countdown + determinate gold ring. | Sit. Skip. |
+| **Break** | Neutral **Break** caption. Recommended countdown + determinate gold ring. | Rest, or Continue whenever ready. |
 | **Reflection (3:00)** | The question: **What did you just do?** Optional text. Countdown + ring. | Write, sit, or skip. |
 | **Close beat** | Intention. Two labeled clocks: Focused and Rested. No score, no share. | Tap the frame. Then idle. |
 
@@ -460,7 +462,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Store recovery | Preserve invalid bytes before reset; never silently replace them |
 | Data controls | Idle-only full export, redacted diagnostics, confirmed Delete All |
 | Mini | Aperture + verb. Mute and pin on the left, expand on the right. Typing expands to Classic. |
-| Guide | Process names the beat: Prepare / Focus / Time to recharge / Reflection. |
+| Guide | Process names the beat: Prepare / Focus / Break / Reflection. |
 
 ---
 

@@ -4,6 +4,9 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Made Break neutral and explicitly self-directed: the caption is now **Break**
+  and the existing early-exit action is labeled **Continue** on Mac and iPhone.
+  The earned proportional countdown and CLI `skip` contract are unchanged.
 - Added the WP3 Focus Guard resumption implementation. After **Stay focused**
   commits, Flowmo can reactivate the exact prior unguarded process instance and
   counts it as confirmed only when the matching activation notification arrives

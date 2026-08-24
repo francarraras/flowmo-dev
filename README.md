@@ -36,7 +36,9 @@ swift run flowmo skip                    # Idle
 swift run flowmo status
 ```
 
-**Skip** jumps Prime (2:00) and Reflection (3:00) so you are not sitting through them.
+**Skip** jumps Prime (2:00) and Reflection (3:00) so you are not sitting through
+them. During Break, the app labels the same advance action **Continue**; the CLI
+keeps the stable `skip` verb.
 
 What should happen:
 
