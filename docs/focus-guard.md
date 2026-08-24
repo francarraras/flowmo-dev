@@ -93,6 +93,23 @@ eligible-to-terminal reconciliation invalidates the run. Fewer than 60 eligible
 attempts is inconclusive. The supervised attempt tally must equal the exported
 eligible delta; raw unsupervised counts cannot pass the gate.
 
+Evaluate a completed supervised run with the repository-only engineering tool:
+
+```bash
+swift run flowmo-wp3-gate START.json END.json 60 \
+  2026-08-25T09:00:00Z clean
+```
+
+The timestamp is the separately noted first eligible attempt, not an event
+timestamp added to either export. Use `incident` instead of `clean` if the run
+had a recorder, store, export, crash, or other integrity problem. The evaluator
+checks the frozen plan and limits, snapshot chronology, 30-day window, exact
+counter set, monotonicity, saturation, supervised tally, complete terminal
+reconciliation, mismatch/rollback, and the fixed reliability rule. It exits 0
+only for a pass, 1 for fail or invalid, 2 for inconclusive, and 64 for bad
+arguments. It reads bounded regular files without following symlinks and does
+not start, fabricate, or upload attempts.
+
 WP2 reports only a possibly saturated lower bound on recorded Stay-focused
 choices. That can inform rough feasibility, but WP3 measures its own eligibility
 and WP2 did not select WP3's threshold. WP3 treatment counters remain

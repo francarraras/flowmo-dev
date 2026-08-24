@@ -13,6 +13,9 @@ All notable changes to this private beta are recorded here.
 - Froze the aggregate-only `focus_guard_resumption_v1` engineering plan and its
   supervised 60-attempt acceptance rule. It uses a new evidence schema/plan and
   does not merge pre-WP3 counts.
+- Added a repository-only `flowmo-wp3-gate` evaluator for chronological start
+  and end exports. It rejects malformed, incomplete, saturated, mismatched, or
+  integrity-affected runs and does not create or upload treatment attempts.
 - Added the WP2 local instrumentation foundation on Mac. Focus Guard records
   only six bounded aggregate path counts in a separate store: prompt offered
   after confirmed hide, Stay focused chosen, Open once chosen, activation

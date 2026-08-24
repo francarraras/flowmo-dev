@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "FlowmoWindow", targets: ["FlowmoWindow"]),
         .library(name: "FlowmoPhone", targets: ["FlowmoPhone"]),
         .executable(name: "flowmo", targets: ["FlowmoApp"]),
+        .executable(name: "flowmo-wp3-gate", targets: ["FlowmoGate"]),
     ],
     targets: [
         .target(name: "FlowmoCore"),
@@ -23,6 +24,7 @@ let package = Package(
         .target(name: "FlowmoPhone", dependencies: ["FlowmoCore", "FlowmoLook"]),
         .target(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoCheck", dependencies: ["FlowmoCore"]),
+        .executableTarget(name: "FlowmoGate", dependencies: ["FlowmoCore"]),
         .executableTarget(
             name: "FlowmoApp",
             dependencies: ["FlowmoWindow", "FlowmoCLI", "FlowmoCheck"],

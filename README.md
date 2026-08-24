@@ -58,6 +58,7 @@ second is required before that attempt counts as confirmed.
 ```bash
 swift run flowmo live      # ticking view of that session
 swift run flowmo check     # core proofs
+swift run flowmo-wp3-gate --help  # local WP3 engineering-gate evaluator
 ```
 
 ## Script integration

@@ -526,6 +526,46 @@ public func runFlowmoChecks() -> Int32 {
         Check.expect(false, "local evidence proof threw \(error)")
     }
 
+    do {
+        func gateReport(
+            at generatedAt: Date,
+            counts: [EvidenceSignal: UInt64]
+        ) -> FlowmoEvidenceReport {
+            FlowmoEvidenceReport(
+                generatedAt: generatedAt,
+                counters: EvidenceSignal.allCases.map { signal in
+                    FlowmoEvidenceReport.Counter(
+                        signal: signal,
+                        count: counts[signal, default: 0]
+                    )
+                }
+            )
+        }
+
+        let endCounts: [EvidenceSignal: UInt64] = [
+            .guardStayFocusedChosen: 60,
+            .guardResumptionEligible: 60,
+            .guardResumptionRequestAccepted: 60,
+            .guardResumptionConfirmed: 60,
+        ]
+        let gate = FocusGuardResumptionGate.evaluate(
+            start: gateReport(at: t0, counts: [:]),
+            end: gateReport(at: t0.addingTimeInterval(2), counts: endCounts),
+            supervisedEligibleAttempts: 60,
+            firstEligibleAttemptAt: t0.addingTimeInterval(1),
+            integrityIncident: false
+        )
+        Check.expectEqual(
+            gate.decision,
+            .pass,
+            "WP3 frozen gate accepts 60 exact confirmations"
+        )
+        Check.expect(
+            gate.oneSidedFailureUpperBound.map { $0 < 0.05 } == true,
+            "WP3 pass keeps the one-sided failure bound below five percent"
+        )
+    }
+
     Check.expectEqual(Format.clock(0.4), "00:00", "elapsed rounds 0.4s down")
     Check.expectEqual(Format.clock(0.6), "00:01", "elapsed rounds 0.6s up")
     Check.expectEqual(Format.remainingClock(0), "00:00", "remaining zero")
