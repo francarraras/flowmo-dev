@@ -4,10 +4,17 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
-- Kept the Guard switch and deletion notices inside the idle chrome so they
-  no longer sit on each other or draw past the window.
-- Dropped Guard Off/On copy; the switch is the on/off, the label only names
+## 1.0 (2) — Friends & family preview
+
+- Kept the Guard switch and deletion notices inside the idle chrome so they no
+  longer sit on each other or draw past the window.
+- Dropped Guard Off/On copy; the switch is the on/off, and the label only names
   Guard or the app count.
+- Stabilized the shared phase chrome so bottom controls are not pushed outside
+  the Mac or phone layout.
+
+## 1.0 (1) — Initial friends & family preview
+
 - Added a versioned JSON CLI contract and structured action responses.
 - Hardened local-store reads, validation, atomic writes, quarantine, export,
   exact non-recursive deletion, numeric handling, and terminal rendering against
