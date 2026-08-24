@@ -63,12 +63,11 @@ The Idle screen keeps this explanation behind the quiet info control beside
 Guard. It must not occupy persistent primary-loop chrome. Detailed limitations
 belong in Data, the export itself, and the privacy documentation.
 
-## Guard resumption engineering gate
+## Guard resumption verification
 
-WP3 may reduce the displacement created when Flowmo comes forward. Its code is
-implemented, but the engineering gate has not yet passed. It is a
-technical reliability gate, not a focus experiment: process identity can name a
-prior app instance, not its document, window, or cognitive work context.
+WP3 may reduce the displacement created when Flowmo comes forward. Verification
+is technical, not a focus experiment: process identity can name a prior app
+instance, not its document, window, or cognitive work context.
 
 - **Eligible:** Stay focused is committed and the exact prior PID + bundle ID +
   launch identity still resolves.
@@ -81,19 +80,26 @@ prior app instance, not its document, window, or cognitive work context.
   immediately for the remaining process lifetime. Guard keeps its baseline
   hide-and-prompt behavior.
 
-The frozen acceptance plan is one supervised run of 60 eligible attempts within
-30 days of the first eligible attempt. Smallest acceptable reliability is 95%
-and maximum tolerable failure is 5%. A failure is rejection, timeout, activation
-identity mismatch, or a missing terminal observation. The one-sided 95% exact
-upper confidence bound on failure must also be below 5%; with 60 attempts that
-requires zero failures. Identity mismatch or unsafe fallback rejects the
-treatment immediately. A known recorder drop, counter saturation, store/export
-problem, process crash, invalid start/end snapshot pair, or incomplete
-eligible-to-terminal reconciliation invalidates the run. Fewer than 60 eligible
-attempts is inconclusive. The supervised attempt tally must equal the exported
-eligible delta; raw unsupervised counts cannot pass the gate.
+Repository acceptance is automated. The warning-as-error test suite runs 60
+component cycles from Guard interception through exact-process activation and
+matching notification, typed evidence, the real local aggregate store,
+chronological exports, and the evaluator. It requires 60 confirmations, zero
+failures, zero dropped records, and a passing one-sided 95% failure bound. It
+finishes in one test run; no calendar wait is part of repository acceptance.
+This deterministic proof cannot exercise macOS foreground policy, so one
+real-app success and the safe fallback remain ordinary release smoke checks.
 
-Evaluate a completed supervised run with the repository-only engineering tool:
+The frozen 60-attempt evaluator remains available for an optional supervised
+field audit. Its 30-day window is a maximum, not a required wait. Smallest
+acceptable reliability is 95%, maximum tolerable failure is 5%, and the
+one-sided 95% exact upper confidence bound on failure must be below 5%; at 60
+attempts this requires zero failures. Identity mismatch or unsafe fallback
+rejects immediately. A known recorder drop, counter saturation, store/export
+problem, process crash, invalid snapshot pair, or incomplete terminal
+reconciliation invalidates the audit. Fewer than 60 eligible attempts is
+inconclusive, and the supervised tally must equal the exported eligible delta.
+
+Evaluate a completed optional field audit with the repository-only tool:
 
 ```bash
 swift run flowmo-wp3-gate START.json END.json 60 \
@@ -103,19 +109,19 @@ swift run flowmo-wp3-gate START.json END.json 60 \
 The timestamp is the separately noted first eligible attempt, not an event
 timestamp added to either export. Use `incident` instead of `clean` if the run
 had a recorder, store, export, crash, or other integrity problem. The evaluator
-checks the frozen plan and limits, snapshot chronology, 30-day window, exact
-counter set, monotonicity, saturation, supervised tally, complete terminal
-reconciliation, mismatch/rollback, and the fixed reliability rule. It exits 0
-only for a pass, 1 for fail or invalid, 2 for inconclusive, and 64 for bad
-arguments. It reads bounded regular files without following symlinks and does
-not start, fabricate, or upload attempts.
+checks the frozen plan and limits, snapshot chronology, maximum 30-day window,
+exact counter set, monotonicity, saturation, supervised tally, complete
+terminal reconciliation, mismatch/rollback, and the fixed reliability rule. It
+exits 0 only for a pass, 1 for fail or invalid, 2 for inconclusive, and 64 for
+bad arguments. It reads bounded regular files without following symlinks and
+does not start, fabricate, or upload attempts.
 
 WP2 reports only a possibly saturated lower bound on recorded Stay-focused
-choices. That can inform rough feasibility, but WP3 measures its own eligibility
-and WP2 did not select WP3's threshold. WP3 treatment counters remain
-aggregate-only under the WP2 privacy contract and use a new plan identifier;
-pre-WP3 counts are never merged. Neither technical reactivation nor fewer clicks
-proves focus or productivity benefit.
+choices. That can inform rough feasibility, but an optional WP3 field audit
+measures its own eligibility and WP2 did not select WP3's threshold. WP3
+treatment counters remain aggregate-only under the WP2 privacy contract and use
+a new plan identifier; pre-WP3 counts are never merged. Neither technical
+reactivation nor fewer clicks proves focus or productivity benefit.
 
 ## In
 

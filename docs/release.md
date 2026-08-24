@@ -111,6 +111,8 @@ From a clean checkout of the candidate revision:
    iPhone 15, 16, and 17 simulators. Exercise each product phase, quit/sleep
    recovery, invalid-store repair, redacted diagnostics, full export, confirmed
    deletion, Focus Guard failure, phone unavailable state, and widget glance.
+   For WP3, confirm one real-app **Stay focused** path returns to the exact prior
+   app, and confirm an unavailable prior app preserves the safe hidden fallback.
    Confirm a second Mac process cannot mutate the first process's lifecycle and
    an immediate CLI Continue survives crash recovery without losing frozen
    time. Confirm Focus always counts up with no pause or progress ring.

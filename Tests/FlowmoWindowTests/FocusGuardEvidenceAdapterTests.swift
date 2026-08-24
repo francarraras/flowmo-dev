@@ -371,6 +371,83 @@ final class FocusGuardEvidenceAdapterTests: XCTestCase {
         XCTAssertNil(adapter.runtime.allowedProcessIdentity)
     }
 
+    func testSixtyCycleAutomatedPipelinePassesWithoutCalendarWait() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("flowmo-wp3-pipeline-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let evidence = LocalEvidence(root: root)
+        let startTime = Date(timeIntervalSince1970: 1_800_000_000)
+        let start = try JSONDecoder.flowmo.decode(
+            FlowmoEvidenceReport.self,
+            from: evidence.export(generatedAt: startTime)
+        )
+        let priorIdentity = FocusGuardProcessIdentity(
+            processIdentifier: 7,
+            bundleIdentifier: "app.flowmo.tests.work",
+            launchDate: identity.launchDate
+        )
+        let guardedApplication = FakeApplication(identity: identity)
+        let priorApplication = FakeApplication(identity: priorIdentity)
+        let adapter = FocusGuardAdapter { requested in
+            switch requested {
+            case self.identity: guardedApplication
+            case priorIdentity: priorApplication
+            default: nil
+            }
+        }
+        var recordResults: [EvidenceRecordResult] = []
+        adapter.attach(
+            bringForward: {},
+            observeEvidence: { event in
+                recordResults.append(evidence.record(event))
+            }
+        )
+        adapter.reconcile(world: try guardedFocusWorld())
+        defer { adapter.reconcile(world: .empty) }
+
+        for _ in 0..<FocusGuardResumptionGate.requiredEligibleAttempts {
+            adapter.handleActivation(
+                processIdentity: priorIdentity,
+                displayName: "Work",
+                isSelf: false
+            )
+            adapter.handleActivation(
+                processIdentity: identity,
+                displayName: "Guarded",
+                isSelf: false
+            )
+            adapter.stayFocused()
+            adapter.handleActivation(
+                processIdentity: priorIdentity,
+                displayName: "Work",
+                isSelf: false
+            )
+        }
+
+        XCTAssertEqual(priorApplication.activationCount, 60)
+        XCTAssertEqual(recordResults.count, 180)
+        XCTAssertTrue(recordResults.allSatisfy { $0 == .recorded })
+
+        let end = try JSONDecoder.flowmo.decode(
+            FlowmoEvidenceReport.self,
+            from: evidence.export(generatedAt: startTime.addingTimeInterval(2))
+        )
+        let result = FocusGuardResumptionGate.evaluate(
+            start: start,
+            end: end,
+            supervisedEligibleAttempts: 60,
+            firstEligibleAttemptAt: startTime.addingTimeInterval(1),
+            integrityIncident: false
+        )
+
+        XCTAssertEqual(result.decision, .pass)
+        XCTAssertEqual(result.recordedEligibleAttempts, 60)
+        XCTAssertEqual(result.confirmedAttempts, 60)
+        XCTAssertEqual(result.recordedFailures, 0)
+    }
+
     private func guardedFocusWorld() throws -> World {
         let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
         var engine = Engine()

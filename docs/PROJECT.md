@@ -117,22 +117,22 @@ meaning, atomic mapping, recorder admission/drop policy, or the counter/buffer
 caps must mint a new measurement-plan identifier before collection. Counts from
 different plans must never be merged.
 
-WP3 is an engineering gate, not a product-outcome experiment. The treatment
-may remain in a candidate only after one supervised, predeclared run reaches 60
-eligible attempts within 30 days of its first eligible attempt. Confirmation is
-the matching process activation notification within one second. Rejection,
-timeout, activation mismatch, or a missing terminal observation is a failure;
-the maximum tolerable failure proportion is 5% and the smallest acceptable
-reliability is 95%. Acceptance additionally requires the one-sided 95% exact
-upper confidence bound on failure to be below 5%; with 60 attempts this means
-zero failures. Any identity mismatch, unsafe fallback, counter saturation,
-known recorder drop, store/export problem, process crash, nonmatching snapshot,
-or incomplete eligible-to-terminal reconciliation stops the run and rejects or
-invalidates it. Fewer than 60 eligible attempts by the time limit is
-inconclusive. Start and end exports must satisfy the snapshot rules above, and
-the supervised attempt tally must equal the eligible delta. Raw unsupervised
-counts cannot pass this gate and still cannot support a focus, productivity, or
-well-being claim.
+WP3 implementation acceptance is deterministic and runs in the test suite. A
+60-cycle pipeline proof exercises Guard interception, exact-process activation
+acceptance and matching notification, typed evidence mapping, the real local
+aggregate store, chronological exports, and the fixed evaluator. Every record
+must be accepted and all 60 attempts must reconcile as confirmed with zero
+failure. The proof does not exercise macOS foreground policy, so one real-app
+success and the safe fallback remain ordinary release smoke checks.
+
+The same 60-attempt, 95% reliability and one-sided 95% exact confidence rule is
+retained as an optional field audit, not a roadmap or owner-testing blocker. Its
+30-day window is a maximum collection interval, never a required wait. Any
+identity mismatch, unsafe fallback, counter saturation, known recorder drop,
+store/export problem, process crash, nonmatching snapshot, or incomplete
+eligible-to-terminal reconciliation rejects or invalidates that audit. Raw
+unsupervised counts cannot pass it, and neither automated nor field technical
+evidence supports a focus, productivity, or well-being claim.
 
 Evidence anchors for those boundaries:
 

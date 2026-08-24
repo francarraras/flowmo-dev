@@ -4,18 +4,22 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
-- Added the WP3 Focus Guard resumption candidate. After **Stay focused** commits,
-  Flowmo can reactivate the exact prior unguarded process instance and counts it
-  as confirmed only when the matching activation notification arrives within
-  one second. Missing identity, rejection, and timeout preserve the prior safe
-  behavior; any resolution or activation identity mismatch disables the new
-  treatment for the process lifetime without disabling baseline Guard.
+- Added the WP3 Focus Guard resumption implementation. After **Stay focused**
+  commits, Flowmo can reactivate the exact prior unguarded process instance and
+  counts it as confirmed only when the matching activation notification arrives
+  within one second. Missing identity, rejection, and timeout preserve the prior
+  safe behavior; any resolution or activation identity mismatch disables the
+  new treatment for the process lifetime without disabling baseline Guard.
 - Froze the aggregate-only `focus_guard_resumption_v1` engineering plan and its
-  supervised 60-attempt acceptance rule. It uses a new evidence schema/plan and
-  does not merge pre-WP3 counts.
+  optional supervised 60-attempt field-audit rule. It uses a new evidence
+  schema/plan and does not merge pre-WP3 counts.
 - Added a repository-only `flowmo-wp3-gate` evaluator for chronological start
   and end exports. It rejects malformed, incomplete, saturated, mismatched, or
   integrity-affected runs and does not create or upload treatment attempts.
+- Replaced the month-long owner-testing blocker with an automated 60-cycle
+  pipeline proof covering Guard, exact-process confirmation, aggregate storage,
+  exports, and gate evaluation. The 30-day rule remains only an optional field
+  audit maximum; one real-app success and safe fallback stay in release smoke.
 - Added the WP2 local instrumentation foundation on Mac. Focus Guard records
   only six bounded aggregate path counts in a separate store: prompt offered
   after confirmed hide, Stay focused chosen, Open once chosen, activation

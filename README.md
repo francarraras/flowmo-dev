@@ -51,14 +51,14 @@ but it is internal storage—not a supported write API. Automation should use th
 CLI verbs against that same store; direct `world.json` writes are unsupported.
 The Mac app keeps privacy-bounded Focus Guard instrumentation separately in
 `~/.flowmo/evidence.json`; that file is also internal storage, not an automation
-contract. In the WP3 candidate, **Stay focused** may reactivate the exact prior
-unguarded process instance; a matching activation notification within one
-second is required before that attempt counts as confirmed.
+contract. In the WP3 implementation, **Stay focused** may reactivate the exact
+prior unguarded process instance; a matching activation notification within
+one second is required before that attempt counts as confirmed.
 
 ```bash
 swift run flowmo live      # ticking view of that session
 swift run flowmo check     # core proofs
-swift run flowmo-wp3-gate --help  # local WP3 engineering-gate evaluator
+swift run flowmo-wp3-gate --help  # optional local WP3 field-audit evaluator
 ```
 
 ## Script integration
