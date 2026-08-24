@@ -54,7 +54,7 @@ inherits that intervention’s claim.
 | Process and autonomy | Count **up**; the person chooses when to Stop or Skip | A product value and behavior hypothesis, not proof of greater productivity or flow. |
 | Stable starting cue | Up-to-two-minute Prime with the chosen intention | A settling ritual. Two minutes is a hypothesis; Focus now remains available. |
 | Cognitive offloading | One-line Capture during Focus | A low-friction convenience that may prevent a switch; the current form has no learning claim. |
-| Retrieval and self-explanation | Optional post-break Reflection | Retrieval practice is well supported for defined material, but the generic Flowmo prompt is only retrieval-adjacent and has no proven retention effect. |
+| Retrieval and resumption cue | Optional post-break Reflection: “What did you do, and what comes next?” | It asks for concrete retrieval and a next step, but has no proven retention or resumption effect. |
 | Situation design | Optional, fail-open Focus Guard | Precommitted friction is plausible; benefit and stress or autonomy costs must be tested in Flowmo. |
 | Proportional recovery | `break = focus / ratio`, with a duration-based ratio adjustment | A transparent product heuristic. No evidence establishes the formula or its automatic adjustment as cognitively optimal. |
 
@@ -184,7 +184,7 @@ You type **once**. That line is the intention. Prime does not ask again.
 2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready.
 3. **Focus — count up** — work until you stop. **+** parks one line. No pause button.
 4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Continue whenever ready.
-5. **Reflection — 3:00** — “What did you just do?” Optional lines. Skip allowed.
+5. **Reflection — 3:00** — “What did you do, and what comes next?” Optional lines. Skip allowed.
 6. **Quiet close beat** — focus time, break taken, anything you wrote — then idle again.
 
 Encoding (focus) is the only required open-ended phase. Prime and recall have ends. Break is **not** a protocol phase in the old sense; it is the earned interlude between focus and recall.
@@ -212,7 +212,7 @@ The Mac **window is the product**.
 | **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, or Focus now whenever ready. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **+** opens capture; **Park** / **Discard** replace + / Stop. | Work. Park a thought. Stop. |
 | **Break** | Neutral **Break** caption. Recommended countdown + determinate gold ring. | Rest, or Continue whenever ready. |
-| **Reflection (3:00)** | The question: **What did you just do?** Optional text. Countdown + ring. | Write, sit, or skip. |
+| **Reflection (3:00)** | **What did you do, and what comes next?** Optional text. Countdown + ring. | Write, sit, or skip. |
 | **Close beat** | Intention. Two labeled clocks: Focused and Rested. No score, no share. | Tap the frame. Then idle. |
 
 ### Focus visual (important)

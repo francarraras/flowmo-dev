@@ -11,7 +11,7 @@ One charcoal square. One circular aperture that does not move. Phase is what the
 - **Prime.** Intention in the caption, cue **Prepare**. Clock in a graphite ring. **Focus now** makes the immediate path explicit.
 - **Focus.** Intention in the caption, cue **Focus**. No ring. Numerals fill the hole. Gold accrual with **no end cap**. `+` and Stop share the verb slot. Capture replaces that row with **Park** / **Discard**.
 - **Break.** Neutral caption: **Break**. Same ring geometry; progress is gold.
-- **Reflection — 3:00.** Writing lives in the caption slot (same field as Intention), not inside the circle. Clock fills the hole like Prime. Skip stays in the verb slot. Return ends the beat.
+- **Reflection — 3:00.** Prompt: **What did you do, and what comes next?** Writing lives in the caption slot (same field as Intention), not inside the circle. Clock fills the hole like Prime. Skip stays in the verb slot. Return ends the beat.
 - **Close.** Intention in the caption. Two named figures in the hole — **Focused** and **Rested**. Tap the frame to leave. No receipt. No “click to dismiss.”
 - **Paused.** Aperture frozen. **Restart** and **Continue** occupy the verb slot. Restart primes the same intention again. Continue resumes the frozen clocks. No Paused banner.
 - **Chrome.** Hidden title, traffic lights. Classic: mute, pin, shrink on the right. Mini: mute + pin on the left (clear of the traffic lights), expand on the right. Focus chrome opacity 0.35 on Classic; Mini chrome stays at 1. The wall does not fade.

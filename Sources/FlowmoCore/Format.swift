@@ -99,7 +99,7 @@ public enum Format {
         case .recall:
             return """
                 Flowmo  reflection\(paused)  \(terminalText(view.intention))
-                What did you just do?
+                \(FlowmoCopy.reflectionPrompt)
                 \(remainingClock(view.remaining ?? 0)) remaining
                 """
         case .closeBeat:

@@ -4,6 +4,9 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Sharpened Reflection to **What did you do, and what comes next?** across Mac,
+  iPhone, CLI, and the living terminal. It combines concrete retrieval with a
+  resumption cue without claiming a memory or productivity benefit.
 - Made Prime's existing immediate path explicit with **Focus now** on Mac and
   iPhone. Prime remains an optional settling beat of up to two minutes, and the
   underlying timing and CLI `skip` contract are unchanged.

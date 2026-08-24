@@ -490,7 +490,7 @@ private struct RecallPane: View {
             if status.isPaused {
                 PhaseCaption(status.recallText.isEmpty ? "Reflection" : status.recallText, tone: atmo.mute)
             } else {
-                HairlineField("What did you just do?", text: $controller.recallDraft, centered: true)
+                HairlineField(FlowmoCopy.reflectionPrompt, text: $controller.recallDraft, centered: true)
                     .onChange(of: controller.recallDraft) { _ in
                         controller.persistRecall()
                     }

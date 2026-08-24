@@ -598,7 +598,7 @@ private struct RecallPane: View {
                 PhaseCaption(status.recallText.isEmpty ? "Reflection" : status.recallText, tone: atmo.mute)
             } else {
                 FlowField(
-                    "What did you just do?",
+                    FlowmoCopy.reflectionPrompt,
                     text: $controller.recallDraft,
                     centered: true,
                     autofocus: true,

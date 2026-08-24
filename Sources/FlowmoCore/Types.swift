@@ -1,5 +1,9 @@
 import Foundation
 
+public enum FlowmoCopy {
+    public static let reflectionPrompt = "What did you do, and what comes next?"
+}
+
 public struct Config: Equatable, Sendable {
     public var primeSeconds: TimeInterval
     public var recallSeconds: TimeInterval

@@ -83,7 +83,10 @@ final class FlowmoCLITests: XCTestCase {
         XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Break started.")
 
         try engine.apply(.skip, now: start.addingTimeInterval(101))
-        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Reflection: what did you just do?")
+        XCTAssertEqual(
+            FlowmoCLI.skipMessage(for: engine),
+            "Reflection: What did you do, and what comes next?"
+        )
 
         try engine.apply(.skip, now: start.addingTimeInterval(102))
         XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Close beat.")
