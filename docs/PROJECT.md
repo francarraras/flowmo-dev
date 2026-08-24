@@ -52,7 +52,7 @@ inherits that intervention’s claim.
 |---|---|---|
 | Focus and disengagement | Open-ended Focus, then a break | A break creates an opportunity to disengage; it does not prove a discrete “diffuse mode” or an optimal break dose. |
 | Process and autonomy | Count **up**; the person chooses when to Stop or Skip | A product value and behavior hypothesis, not proof of greater productivity or flow. |
-| Stable starting cue | Two-minute Prime with the chosen intention | A settling ritual. Two minutes is a hypothesis; Skip remains available. |
+| Stable starting cue | Up-to-two-minute Prime with the chosen intention | A settling ritual. Two minutes is a hypothesis; Focus now remains available. |
 | Cognitive offloading | One-line Capture during Focus | A low-friction convenience that may prevent a switch; the current form has no learning claim. |
 | Retrieval and self-explanation | Optional post-break Reflection | Retrieval practice is well supported for defined material, but the generic Flowmo prompt is only retrieval-adjacent and has no proven retention effect. |
 | Situation design | Optional, fail-open Focus Guard | Precommitted friction is plausible; benefit and stress or autonomy costs must be tested in Flowmo. |
@@ -181,7 +181,7 @@ The product must stay:
 You type **once**. That line is the intention. Prime does not ask again.
 
 1. **Idle → type (or keep last line) → Start**
-2. **Prime — 2:00** — still with that line on screen. Skip allowed.
+2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready.
 3. **Focus — count up** — work until you stop. **+** parks one line. No pause button.
 4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Continue whenever ready.
 5. **Reflection — 3:00** — “What did you just do?” Optional lines. Skip allowed.
@@ -189,9 +189,9 @@ You type **once**. That line is the intention. Prime does not ask again.
 
 Encoding (focus) is the only required open-ended phase. Prime and recall have ends. Break is **not** a protocol phase in the old sense; it is the earned interlude between focus and recall.
 
-Timed beats always have an advance action: **Skip** on Prime and Reflection,
-and **Continue** on Break. The CLI keeps the stable `skip` verb for all three.
-Skip during Focus is the same as Stop (you have chosen to end Focus).
+Timed beats always have an advance action: **Focus now** on Prime, **Continue**
+on Break, and **Skip** on Reflection. The CLI keeps the stable `skip` verb for
+all three. Skip during Focus is the same as Stop (you have chosen to end Focus).
 
 ---
 
@@ -209,7 +209,7 @@ The Mac **window is the product**.
 | State | On screen | Actions |
 |---|---|---|
 | **Idle** | Empty field, placeholder **Intention**. **Start**. Today, **History**, **Data**, **New**. | Type a line, Start, inspect history, export/delete data, or New (clears a typed line). |
-| **Prime (2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Sit. Skip. |
+| **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, or Focus now whenever ready. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **+** opens capture; **Park** / **Discard** replace + / Stop. | Work. Park a thought. Stop. |
 | **Break** | Neutral **Break** caption. Recommended countdown + determinate gold ring. | Rest, or Continue whenever ready. |
 | **Reflection (3:00)** | The question: **What did you just do?** Optional text. Countdown + ring. | Write, sit, or skip. |
@@ -341,7 +341,7 @@ The profile stays inspectable through `status --json`, including the current rat
 
 | Thing | Value | Notes |
 |---|---|---|
-| Prime | 120 s | Skip allowed |
+| Prime | 120 s | Focus now allowed |
 | Focus | open | Count up |
 | Break | `focus / ratio` | Ratio starts at 5 |
 | Reflection | 180 s | Skip allowed |

@@ -386,7 +386,7 @@ private struct PrimePane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Skip", minHeight: 44) { controller.skip() }
+                QuietButton("Focus now", minHeight: 44) { controller.skip() }
             }
         }
     }

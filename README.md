@@ -36,9 +36,8 @@ swift run flowmo skip                    # Idle
 swift run flowmo status
 ```
 
-**Skip** jumps Prime (2:00) and Reflection (3:00) so you are not sitting through
-them. During Break, the app labels the same advance action **Continue**; the CLI
-keeps the stable `skip` verb.
+In the app, Prime offers **Focus now**, Break offers **Continue**, and Reflection
+offers **Skip**. The CLI keeps the stable `skip` verb for all three timed beats.
 
 What should happen:
 

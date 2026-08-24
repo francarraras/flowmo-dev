@@ -85,7 +85,9 @@ struct MiniView: View {
             case nil:
                 InkButton("Start", compact: true) { controller.start() }
                     .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            case .prime, .recall:
+            case .prime:
+                QuietButton("Focus now", minHeight: 26) { controller.skip() }
+            case .recall:
                 QuietButton("Skip", minHeight: 26) { controller.skip() }
             case .onBreak:
                 QuietButton("Continue", minHeight: 26) { controller.skip() }

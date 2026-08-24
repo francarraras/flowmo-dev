@@ -290,7 +290,7 @@ private struct PrimePane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Skip") { controller.skip() }
+                QuietButton("Focus now") { controller.skip() }
             }
         }
     }

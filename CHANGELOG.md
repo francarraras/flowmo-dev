@@ -4,6 +4,9 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Made Prime's existing immediate path explicit with **Focus now** on Mac and
+  iPhone. Prime remains an optional settling beat of up to two minutes, and the
+  underlying timing and CLI `skip` contract are unchanged.
 - Made Break neutral and explicitly self-directed: the caption is now **Break**
   and the existing early-exit action is labeled **Continue** on Mac and iPhone.
   The earned proportional countdown and CLI `skip` contract are unchanged.
