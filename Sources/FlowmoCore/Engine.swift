@@ -16,6 +16,15 @@ public struct Engine: Equatable, Sendable {
     }
 
     public mutating func apply(_ event: Event, now: Date) throws {
+        if world.live?.isPaused == true {
+            switch event {
+            case .pauseForRecovery, .`continue`, .restart, .setCuesEnabled:
+                break
+            default:
+                throw EngineError.recoveryPaused
+            }
+        }
+
         switch event {
         case .pauseForRecovery:
             if world.live?.isPaused != true {

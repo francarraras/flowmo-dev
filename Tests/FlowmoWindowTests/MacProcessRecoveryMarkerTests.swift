@@ -714,6 +714,10 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
                 attention: AttentionAdapter(canNotify: false)
             )
             controller.beginMacProcessLifetime()
+            XCTAssertEqual(
+                LocalEvidence(root: store.root).record(.promptOfferedAfterConfirmedHide),
+                .recorded
+            )
 
             let plantedID = UUID()
             try plantSessionID(plantedID, in: store)
@@ -735,6 +739,11 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
             XCTAssertEqual(controller.userNotice, "All Flowmo data was deleted.")
             XCTAssertFalse(controller.lifecycleNeedsRecovery)
             XCTAssertNil(try readRecord(from: store).liveSessionID)
+            XCTAssertFalse(
+                FileManager.default.fileExists(
+                    atPath: store.root.appendingPathComponent("evidence.json").path
+                )
+            )
             XCTAssertFalse(FileManager.default.fileExists(atPath: exact.path))
             XCTAssertTrue(FileManager.default.fileExists(atPath: badUUID.path))
             XCTAssertTrue(FileManager.default.fileExists(atPath: extraSuffix.path))

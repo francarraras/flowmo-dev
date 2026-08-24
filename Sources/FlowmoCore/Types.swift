@@ -423,6 +423,7 @@ public enum EngineError: Error, Equatable, CustomStringConvertible {
     case nothingRunning
     case notFocus
     case notPaused
+    case recoveryPaused
     case cannotCapture
     case emptyCapture
     case cannotSetRecallText
@@ -434,6 +435,7 @@ public enum EngineError: Error, Equatable, CustomStringConvertible {
         case .nothingRunning: return "No session is running."
         case .notFocus: return "You can only stop while focusing."
         case .notPaused: return "Session is not paused."
+        case .recoveryPaused: return "The session is paused for recovery. Continue or restart it first."
         case .cannotCapture: return "You can only park a thought while focusing."
         case .emptyCapture: return "Capture text is empty."
         case .cannotSetRecallText: return "You can only write recall during recall."

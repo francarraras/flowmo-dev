@@ -218,16 +218,23 @@ public func runFlowmoChecks() -> Int32 {
         try engine.apply(.capture("  email the accountant  "), now: t0.addingTimeInterval(5))
         Check.expect(engine.world.live?.captures.map(\.text) == ["email the accountant"], "capture trimmed")
         try engine.apply(.pauseForRecovery, now: t0.addingTimeInterval(6))
-        try engine.apply(.capture("while frozen"), now: t0.addingTimeInterval(7))
-        Check.expect(
-            engine.world.live?.captures.map(\.text) == ["email the accountant", "while frozen"],
-            "capture while paused focus")
-        try engine.apply(.stopFocus, now: t0.addingTimeInterval(8))
-        try engine.apply(.skip, now: t0.addingTimeInterval(9))
-        try engine.apply(.skip, now: t0.addingTimeInterval(10))
+        let pausedWorld = engine.world
+        var recoveryBlocked = false
+        do {
+            try engine.apply(.capture("while frozen"), now: t0.addingTimeInterval(7))
+        } catch EngineError.recoveryPaused {
+            recoveryBlocked = true
+        }
+        Check.expect(recoveryBlocked, "capture blocked during recovery pause")
+        Check.expectEqual(engine.world, pausedWorld, "blocked recovery event leaves world unchanged")
+        try engine.apply(.`continue`, now: t0.addingTimeInterval(8))
+        try engine.apply(.capture("after continue"), now: t0.addingTimeInterval(9))
+        try engine.apply(.stopFocus, now: t0.addingTimeInterval(10))
         try engine.apply(.skip, now: t0.addingTimeInterval(11))
+        try engine.apply(.skip, now: t0.addingTimeInterval(12))
+        try engine.apply(.skip, now: t0.addingTimeInterval(13))
         Check.expect(
-            engine.world.history[0].captures.map(\.text) == ["email the accountant", "while frozen"],
+            engine.world.history[0].captures.map(\.text) == ["email the accountant", "after continue"],
             "history keeps parked lines")
     } catch {
         Check.expect(false, "capture threw \(error)")
@@ -481,6 +488,44 @@ public func runFlowmoChecks() -> Int32 {
         Check.expect(false, "store threw \(error)")
     }
 
+    do {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("flowmo-evidence-check-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let evidence = LocalEvidence(root: root)
+        Check.expectEqual(
+            evidence.record(.promptOfferedAfterConfirmedHide),
+            .recorded,
+            "evidence records a prompt observation"
+        )
+        Check.expectEqual(
+            evidence.record(.stayFocusedResumptionIneligible),
+            .recorded,
+            "evidence records a choice observation"
+        )
+        let report = try JSONDecoder.flowmo.decode(
+            FlowmoEvidenceReport.self,
+            from: evidence.export(generatedAt: t0)
+        )
+        let counts = Dictionary(uniqueKeysWithValues: report.counters.map { ($0.signal, $0.count) })
+        Check.expectEqual(counts[.guardPromptOffered], 1, "evidence exports prompt count")
+        Check.expectEqual(counts[.guardStayFocusedChosen], 1, "evidence exports choice count")
+        Check.expectEqual(counts[.guardOpenOnceChosen], 0, "evidence export includes zero counts")
+
+        let deletion = try Store(root: root).deleteAllData()
+        Check.expectEqual(deletion.removedEvidenceArtifactCount, 1, "Delete All removes local evidence")
+        let emptyReport = try JSONDecoder.flowmo.decode(
+            FlowmoEvidenceReport.self,
+            from: evidence.export(generatedAt: t0)
+        )
+        Check.expect(
+            emptyReport.counters.allSatisfy { $0.count == 0 },
+            "evidence export is empty after Delete All"
+        )
+    } catch {
+        Check.expect(false, "local evidence proof threw \(error)")
+    }
+
     Check.expectEqual(Format.clock(0.4), "00:00", "elapsed rounds 0.4s down")
     Check.expectEqual(Format.clock(0.6), "00:01", "elapsed rounds 0.6s up")
     Check.expectEqual(Format.remainingClock(0), "00:00", "remaining zero")
@@ -602,6 +647,11 @@ public func runFlowmoChecks() -> Int32 {
             "unselected app ignored"
         )
         Check.expectEqual(
+            runtime.lastResumableProcessIdentity,
+            mail,
+            "unguarded app becomes the transient resumption candidate"
+        )
+        Check.expectEqual(
             runtime.activated(processIdentity: safari, displayName: "Safari", isSelf: true),
             .ignore,
             "self ignored"
@@ -612,6 +662,11 @@ public func runFlowmoChecks() -> Int32 {
             "selected app intercepted"
         )
         Check.expectEqual(runtime.interception?.processIdentity, safari, "full interception identity stored")
+        Check.expectEqual(
+            runtime.interception?.resumptionProcessIdentity,
+            mail,
+            "interception captures the prior unguarded process identity"
+        )
         runtime.allowOnce()
         Check.expect(runtime.interception == nil, "open once clears intercept")
         Check.expectEqual(runtime.allowedProcessIdentity, safari, "open once stores full process identity")
@@ -640,6 +695,10 @@ public func runFlowmoChecks() -> Int32 {
         )
         runtime.setDemand(.inactive)
         Check.expect(runtime.interception == nil, "inactive clears intercept")
+        Check.expect(
+            runtime.lastResumableProcessIdentity == nil,
+            "inactive clears the transient resumption candidate"
+        )
         Check.expectEqual(
             runtime.activated(processIdentity: safari, displayName: "Safari", isSelf: false),
             .ignore,

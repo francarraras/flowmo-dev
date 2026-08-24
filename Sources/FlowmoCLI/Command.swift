@@ -258,6 +258,7 @@ extension EngineError {
         case .nothingRunning: return "nothing_running"
         case .notFocus: return "not_focusing"
         case .notPaused: return "not_paused"
+        case .recoveryPaused: return "recovery_paused"
         case .cannotCapture: return "cannot_capture"
         case .emptyCapture: return "empty_capture"
         case .cannotSetRecallText: return "cannot_set_recall"

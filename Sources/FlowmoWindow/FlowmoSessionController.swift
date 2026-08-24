@@ -37,6 +37,7 @@ public final class FlowmoSessionController: ObservableObject {
     let store: Store
     let attention: AttentionAdapter
     let focusGuard: FocusGuardAdapter
+    private let evidence: LocalEvidenceRecorder
     private let macRecovery: MacProcessRecoveryMarker
 
     private var timer: Timer?
@@ -93,6 +94,7 @@ public final class FlowmoSessionController: ObservableObject {
         self.store = store
         self.attention = attention
         self.focusGuard = focusGuard
+        self.evidence = LocalEvidenceRecorder(root: store.root)
         self.macRecovery = MacProcessRecoveryMarker(store: store)
 
         let loaded: World
@@ -132,10 +134,15 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func startRunning() {
-        focusGuard.attach { [weak self] in
-            self?.attention.window?.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-        }
+        focusGuard.attach(
+            bringForward: { [weak self] in
+                self?.attention.window?.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            },
+            observeEvidence: { [evidence = self.evidence] event in
+                evidence.record(event)
+            }
+        )
         if !storeNeedsRecovery {
             beginMacProcessLifetime()
         }
@@ -356,10 +363,23 @@ public final class FlowmoSessionController: ObservableObject {
         }
     }
 
+    public func prepareEvidenceExport() -> Data? {
+        guard status.isIdle, !storeNeedsRecovery, !lifecycleNeedsRecovery else { return nil }
+        do {
+            return try evidence.export(generatedAt: Date())
+        } catch {
+            presentIssue(.evidenceExportFailed, operation: .evidenceExport)
+            return nil
+        }
+    }
+
     public func deleteAllData() {
         guard status.isIdle, !storeNeedsRecovery, !lifecycleNeedsRecovery else { return }
         userNotice = nil
         var deletionIncomplete = false
+        // Idle makes new Guard observations ineligible while this barrier and
+        // the following deletion run, so no queued write can recreate the file.
+        evidence.flush()
         do {
             _ = try store.deleteAllData()
         } catch is StoreDataDeletionError {
@@ -395,13 +415,11 @@ public final class FlowmoSessionController: ObservableObject {
         }
     }
 
-    public func exportFinished(kind: String, succeeded: Bool) {
+    public func exportFinished(kind: FlowmoExportKind, succeeded: Bool) {
         if succeeded {
-            userNotice = kind == "diagnostics" ? "Diagnostic report exported." : "Flowmo data exported."
+            userNotice = kind.successMessage
         } else {
-            let code: FlowmoIssueCode = kind == "diagnostics" ? .diagnosticExportFailed : .dataExportFailed
-            let operation: FlowmoDiagnosticOperation = kind == "diagnostics" ? .diagnosticExport : .dataExport
-            presentIssue(code, operation: operation)
+            presentIssue(kind.failureCode, operation: kind.diagnosticOperation)
         }
     }
 
@@ -410,7 +428,7 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     /// Claims the Mac process marker and recovers only a session owned by a
-    /// dead Mac host. This runs before the window is constructed.
+    /// dead Mac host. This runs before the already-wired window is shown.
     func beginMacProcessLifetime() {
         guard !didClaimMacProcessLifetime else { return }
         applying = true

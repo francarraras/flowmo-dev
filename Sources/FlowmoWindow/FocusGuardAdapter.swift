@@ -16,18 +16,67 @@ private func processIdentity(
 }
 
 @MainActor
+protocol FocusGuardApplication: AnyObject {
+    var focusGuardProcessIdentity: FocusGuardProcessIdentity? { get }
+    var focusGuardIsHidden: Bool { get }
+    func focusGuardHide() -> Bool
+    func focusGuardUnhide() -> Bool
+    func focusGuardActivate() -> Bool
+}
+
+extension NSRunningApplication: FocusGuardApplication {
+    var focusGuardProcessIdentity: FocusGuardProcessIdentity? { processIdentity(for: self) }
+
+    var focusGuardIsHidden: Bool { isHidden }
+
+    func focusGuardHide() -> Bool { hide() }
+
+    func focusGuardUnhide() -> Bool { unhide() }
+
+    func focusGuardActivate() -> Bool {
+        activate(options: [.activateIgnoringOtherApps])
+    }
+}
+
+@MainActor
 public final class FocusGuardAdapter: ObservableObject {
+    static let resumptionConfirmationTimeout: TimeInterval = 1
+
     @Published public private(set) var runtime = FocusGuardRuntime()
     @Published public private(set) var observing = false
+    @Published public private(set) var resumptionTreatmentEnabled = true
 
     nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
     private var bringForward: () -> Void = {}
+    private var observeEvidence: (FocusGuardEvidenceEvent) -> Void = { _ in }
     private var ownBundleIDs: Set<String> = []
+    private let resolveApplication: (FocusGuardProcessIdentity) -> (any FocusGuardApplication)?
+    private var pendingResumption: PendingResumption?
+    private var resumptionTimeoutTask: Task<Void, Never>?
 
-    public init() {}
+    private struct PendingResumption {
+        let id: UUID
+        let processIdentity: FocusGuardProcessIdentity
+    }
 
-    public func attach(bringForward: @escaping () -> Void) {
+    public init() {
+        self.resolveApplication = { identity in
+            NSRunningApplication(processIdentifier: identity.processIdentifier)
+        }
+    }
+
+    init(
+        resolveApplication: @escaping (FocusGuardProcessIdentity) -> (any FocusGuardApplication)?
+    ) {
+        self.resolveApplication = resolveApplication
+    }
+
+    public func attach(
+        bringForward: @escaping () -> Void,
+        observeEvidence: @escaping (FocusGuardEvidenceEvent) -> Void = { _ in }
+    ) {
         self.bringForward = bringForward
+        self.observeEvidence = observeEvidence
         var ids = FocusGuard.forbiddenBundleIdentifiers
         if let mine = Bundle.main.bundleIdentifier {
             ids.insert(mine)
@@ -42,7 +91,7 @@ public final class FocusGuardAdapter: ObservableObject {
         runtime = next
         switch runtime.demand {
         case .inactive:
-            stopObserving()
+            stopObservingIfIdle()
         case .active:
             startObserving()
             if runtime.demandGeneration != previousGeneration {
@@ -52,15 +101,46 @@ public final class FocusGuardAdapter: ObservableObject {
     }
 
     public func stayFocused() {
+        guard let work = runtime.currentWork else { return }
         var next = runtime
         next.stayFocused()
         runtime = next
+
+        guard resumptionTreatmentEnabled else {
+            observeEvidence(.stayFocusedResumptionTreatmentDisabled)
+            return
+        }
+        guard let identity = work.resumptionProcessIdentity else {
+            observeEvidence(.stayFocusedResumptionIneligible)
+            return
+        }
+        guard let application = resolveApplication(identity) else {
+            observeEvidence(.stayFocusedResumptionIneligible)
+            return
+        }
+        guard application.focusGuardProcessIdentity == identity else {
+            resumptionTreatmentEnabled = false
+            observeEvidence(.stayFocusedResumptionResolutionMismatch)
+            return
+        }
+
+        let attempt = PendingResumption(id: UUID(), processIdentity: identity)
+        pendingResumption = attempt
+        guard application.focusGuardActivate() else {
+            pendingResumption = nil
+            observeEvidence(.stayFocusedResumptionRejected)
+            stopObservingIfIdle()
+            return
+        }
+
+        scheduleResumptionTimeout(for: attempt)
+        observeEvidence(.stayFocusedResumptionAttemptAccepted)
     }
 
     public func openOnce() {
         guard let work = runtime.currentWork else { return }
-        guard resolve(work.processIdentity) != nil else {
-            failOpen(work)
+        guard exactApplication(for: work.processIdentity) != nil else {
+            failOpen(work, recording: .openOnceNotAccepted)
             return
         }
 
@@ -68,18 +148,25 @@ public final class FocusGuardAdapter: ObservableObject {
         next.allowOnce()
         runtime = next
 
-        guard let app = resolve(work.processIdentity) else {
-            failOpenAllowedProcess(work.processIdentity)
+        guard let app = exactApplication(for: work.processIdentity) else {
+            failOpenAllowedProcess(
+                work.processIdentity,
+                recording: .openOnceNotAccepted
+            )
             return
         }
-        _ = app.unhide()
-        guard let app = resolve(work.processIdentity),
-            app.activate(options: [.activateIgnoringOtherApps])
+        _ = app.focusGuardUnhide()
+        guard let app = exactApplication(for: work.processIdentity),
+            app.focusGuardActivate()
         else {
-            failOpenAllowedProcess(work.processIdentity)
+            failOpenAllowedProcess(
+                work.processIdentity,
+                recording: .openOnceNotAccepted
+            )
             return
         }
         runtime.degraded = false
+        observeEvidence(.openOnceActivationAccepted)
     }
 
     private func startObserving() {
@@ -143,12 +230,16 @@ public final class FocusGuardAdapter: ObservableObject {
         observing = false
     }
 
-    private func handleActivation(
+    func handleActivation(
         processIdentity: FocusGuardProcessIdentity,
         displayName: String,
         isSelf: Bool
     ) {
         let selfID = ownBundleIDs.contains(processIdentity.bundleIdentifier)
+        resolvePendingResumption(
+            activatedProcessIdentity: processIdentity,
+            isSelf: isSelf || selfID
+        )
         var next = runtime
         let decision = next.activated(
             processIdentity: processIdentity,
@@ -167,20 +258,21 @@ public final class FocusGuardAdapter: ObservableObject {
 
     private func hideGuardedApp(_ work: FocusGuardWork, attempt: Int = 0) {
         guard runtime.isCurrent(work) else { return }
-        guard let app = resolve(work.processIdentity) else {
+        guard let app = exactApplication(for: work.processIdentity) else {
             failOpen(work)
             return
         }
-        _ = app.hide()
+        _ = app.focusGuardHide()
 
         guard runtime.isCurrent(work) else { return }
-        guard let app = resolve(work.processIdentity) else {
+        guard let app = exactApplication(for: work.processIdentity) else {
             failOpen(work)
             return
         }
-        if app.isHidden {
+        if app.focusGuardIsHidden {
             runtime.degraded = false
             bringForward()
+            observeEvidence(.promptOfferedAfterConfirmedHide)
             return
         }
         if attempt < 3 {
@@ -192,36 +284,90 @@ public final class FocusGuardAdapter: ObservableObject {
         failOpen(work)
     }
 
-    private func failOpen(_ work: FocusGuardWork) {
+    private func failOpen(
+        _ work: FocusGuardWork,
+        recording event: FocusGuardEvidenceEvent = .interceptionFailedBeforePrompt
+    ) {
         guard runtime.isCurrent(work) else { return }
         var next = runtime
         next.degraded = true
         next.interception = nil
         runtime = next
+        observeEvidence(event)
     }
 
-    private func failOpenAllowedProcess(_ identity: FocusGuardProcessIdentity) {
+    private func failOpenAllowedProcess(
+        _ identity: FocusGuardProcessIdentity,
+        recording event: FocusGuardEvidenceEvent
+    ) {
         guard runtime.allowedProcessIdentity == identity else { return }
         var next = runtime
         next.allowedProcessIdentity = nil
         next.degraded = true
         runtime = next
-    }
-
-    private func resolve(
-        _ identity: FocusGuardProcessIdentity
-    ) -> NSRunningApplication? {
-        guard
-            let app = NSRunningApplication(
-                processIdentifier: identity.processIdentifier
-            ), processIdentity(for: app) == identity
-        else { return nil }
-        return app
+        observeEvidence(event)
     }
 
     private func handleDeactivation(processIdentity: FocusGuardProcessIdentity) {
         var next = runtime
         next.deactivated(processIdentity: processIdentity)
         runtime = next
+    }
+
+    private func exactApplication(
+        for identity: FocusGuardProcessIdentity
+    ) -> (any FocusGuardApplication)? {
+        guard let application = resolveApplication(identity),
+            application.focusGuardProcessIdentity == identity
+        else { return nil }
+        return application
+    }
+
+    private func scheduleResumptionTimeout(for attempt: PendingResumption) {
+        resumptionTimeoutTask?.cancel()
+        resumptionTimeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(
+                for: .seconds(Self.resumptionConfirmationTimeout)
+            )
+            guard !Task.isCancelled else { return }
+            self?.handleResumptionTimeout(attemptID: attempt.id)
+        }
+    }
+
+    private func resolvePendingResumption(
+        activatedProcessIdentity: FocusGuardProcessIdentity,
+        isSelf: Bool
+    ) {
+        guard !isSelf, let pendingResumption else { return }
+        self.pendingResumption = nil
+        resumptionTimeoutTask?.cancel()
+        resumptionTimeoutTask = nil
+
+        if activatedProcessIdentity == pendingResumption.processIdentity {
+            observeEvidence(.resumptionConfirmed)
+        } else {
+            resumptionTreatmentEnabled = false
+            observeEvidence(.resumptionActivationMismatch)
+        }
+        stopObservingIfIdle()
+    }
+
+    func expirePendingResumptionForTesting() {
+        guard let pendingResumption else { return }
+        handleResumptionTimeout(attemptID: pendingResumption.id)
+    }
+
+    private func handleResumptionTimeout(attemptID: UUID) {
+        guard pendingResumption?.id == attemptID else { return }
+        pendingResumption = nil
+        resumptionTimeoutTask?.cancel()
+        resumptionTimeoutTask = nil
+        observeEvidence(.resumptionTimedOut)
+        stopObservingIfIdle()
+    }
+
+    private func stopObservingIfIdle() {
+        guard case .inactive = runtime.demand, pendingResumption == nil else { return }
+        stopObserving()
     }
 }

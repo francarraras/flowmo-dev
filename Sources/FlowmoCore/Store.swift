@@ -147,9 +147,10 @@ public struct Store: Sendable {
     }
 
     /// Explicit privacy deletion. Unlike `resetToEmpty`, this removes every
-    /// Store-owned invalid-world recovery copy and crash-orphaned atomic-write
-    /// file after atomically resetting the current world. A partial cleanup is
-    /// surfaced with exact remaining URLs.
+    /// Store-owned invalid-world recovery copy, crash-orphaned atomic-write
+    /// file, and local aggregate-evidence artifact after atomically resetting
+    /// the current world. A partial cleanup is surfaced with exact remaining
+    /// URLs.
     @discardableResult
     public func deleteAllData() throws -> StoreDeletionResult {
         try withLock {
@@ -157,47 +158,70 @@ public struct Store: Sendable {
             guard world.live == nil else { throw StoreError.liveSessionPreventsReset }
             try saveUnlocked(.empty)
 
-            let artifacts: [URL]
+            var removedRecoveryArtifacts: [URL] = []
+            var remainingRecoveryArtifacts: [URL] = []
+            var remainingRecoveryArtifactsKnown = true
+            var failureReasons: [String] = []
             do {
-                artifacts = try recoveryArtifactURLs()
+                let artifacts = try recoveryArtifactURLs()
+                for artifact in artifacts {
+                    if unlink(artifact.path) == 0 {
+                        removedRecoveryArtifacts.append(artifact)
+                    } else if errno != ENOENT {
+                        remainingRecoveryArtifacts.append(artifact)
+                        failureReasons.append(
+                            "\(artifact.lastPathComponent): \(Self.posixMessage())"
+                        )
+                    }
+                }
             } catch {
-                throw StoreDataDeletionError(
-                    removedRecoveryArtifactURLs: [],
-                    remainingRecoveryArtifactURLs: [],
-                    removedQuarantineURLs: [],
-                    remainingQuarantineURLs: [],
-                    remainingRecoveryArtifactsKnown: false,
-                    reason:
-                        "world.json was reset, but recovery artifacts could not be enumerated: \(error.localizedDescription)"
+                remainingRecoveryArtifactsKnown = false
+                failureReasons.append(
+                    "Recovery artifacts could not be enumerated: \(error.localizedDescription)"
                 )
             }
 
-            var removed: [URL] = []
-            var failures: [(url: URL, reason: String)] = []
-            for artifact in artifacts {
-                if unlink(artifact.path) == 0 {
-                    removed.append(artifact)
-                } else {
-                    failures.append((artifact, Self.posixMessage()))
+            var removedEvidenceArtifacts: [URL] = []
+            var remainingEvidenceArtifacts: [URL] = []
+            var remainingEvidenceArtifactsKnown = true
+            #if os(macOS)
+                do {
+                    let deletion = try LocalEvidence(root: root).deleteOwnedData()
+                    removedEvidenceArtifacts = deletion.removedArtifactURLs
+                } catch let error as LocalEvidenceDeletionError {
+                    removedEvidenceArtifacts = error.removedArtifactURLs
+                    remainingEvidenceArtifacts = error.remainingArtifactURLs
+                    remainingEvidenceArtifactsKnown = error.remainingArtifactsKnown
+                    failureReasons.append(error.reason)
+                } catch {
+                    remainingEvidenceArtifactsKnown = false
+                    failureReasons.append(
+                        "Evidence deletion could not be completed: \(error.localizedDescription)"
+                    )
                 }
-            }
+            #endif
 
-            guard failures.isEmpty else {
-                let remaining = failures.map(\.url)
+            if !remainingRecoveryArtifactsKnown || !remainingEvidenceArtifactsKnown
+                || !remainingRecoveryArtifacts.isEmpty || !remainingEvidenceArtifacts.isEmpty
+            {
                 throw StoreDataDeletionError(
-                    removedRecoveryArtifactURLs: removed,
-                    remainingRecoveryArtifactURLs: remaining,
-                    removedQuarantineURLs: removed.filter(Self.isStoreOwnedQuarantine),
-                    remainingQuarantineURLs: remaining.filter(Self.isStoreOwnedQuarantine),
-                    remainingRecoveryArtifactsKnown: true,
-                    reason: failures.map { "\($0.url.lastPathComponent): \($0.reason)" }.joined(separator: "; ")
+                    removedRecoveryArtifactURLs: removedRecoveryArtifacts,
+                    remainingRecoveryArtifactURLs: remainingRecoveryArtifacts,
+                    removedQuarantineURLs: removedRecoveryArtifacts.filter(Self.isStoreOwnedQuarantine),
+                    remainingQuarantineURLs: remainingRecoveryArtifacts.filter(Self.isStoreOwnedQuarantine),
+                    remainingRecoveryArtifactsKnown: remainingRecoveryArtifactsKnown,
+                    removedEvidenceArtifactURLs: removedEvidenceArtifacts,
+                    remainingEvidenceArtifactURLs: remainingEvidenceArtifacts,
+                    remainingEvidenceArtifactsKnown: remainingEvidenceArtifactsKnown,
+                    reason: failureReasons.joined(separator: "; ")
                 )
             }
             return StoreDeletionResult(
                 worldURL: worldURL,
                 deletedAt: Date(),
-                removedRecoveryArtifactURLs: removed,
-                removedQuarantineURLs: removed.filter(Self.isStoreOwnedQuarantine)
+                removedRecoveryArtifactURLs: removedRecoveryArtifacts,
+                removedQuarantineURLs: removedRecoveryArtifacts.filter(Self.isStoreOwnedQuarantine),
+                removedEvidenceArtifactURLs: removedEvidenceArtifacts
             )
         }
     }
@@ -492,9 +516,11 @@ public struct StoreDeletionResult: Equatable, Sendable {
     public let deletedAt: Date
     public let removedRecoveryArtifactURLs: [URL]
     public let removedQuarantineURLs: [URL]
+    public let removedEvidenceArtifactURLs: [URL]
 
     public var removedRecoveryArtifactCount: Int { removedRecoveryArtifactURLs.count }
     public var removedQuarantineCount: Int { removedQuarantineURLs.count }
+    public var removedEvidenceArtifactCount: Int { removedEvidenceArtifactURLs.count }
 }
 
 public struct StoreDataDeletionError: LocalizedError, Equatable, Sendable {
@@ -503,18 +529,24 @@ public struct StoreDataDeletionError: LocalizedError, Equatable, Sendable {
     public let removedQuarantineURLs: [URL]
     public let remainingQuarantineURLs: [URL]
     public let remainingRecoveryArtifactsKnown: Bool
+    public let removedEvidenceArtifactURLs: [URL]
+    public let remainingEvidenceArtifactURLs: [URL]
+    public let remainingEvidenceArtifactsKnown: Bool
     public let reason: String
 
     public var removedRecoveryArtifactCount: Int { removedRecoveryArtifactURLs.count }
     public var remainingRecoveryArtifactCount: Int { remainingRecoveryArtifactURLs.count }
     public var removedQuarantineCount: Int { removedQuarantineURLs.count }
+    public var removedEvidenceArtifactCount: Int { removedEvidenceArtifactURLs.count }
+    public var remainingEvidenceArtifactCount: Int { remainingEvidenceArtifactURLs.count }
 
     public var errorDescription: String? {
-        if remainingRecoveryArtifactsKnown {
+        if remainingRecoveryArtifactsKnown, remainingEvidenceArtifactsKnown {
+            let remainingCount = remainingRecoveryArtifactCount + remainingEvidenceArtifactCount
             return
-                "Flowmo data was reset, but only \(removedRecoveryArtifactCount) recovery artifacts were deleted; \(remainingRecoveryArtifactCount) remain: \(reason)."
+                "Flowmo data was reset, but \(remainingCount) owned data artifacts remain: \(reason)."
         }
-        return "Flowmo data was reset, but recovery-artifact cleanup could not be verified: \(reason)."
+        return "Flowmo data was reset, but owned-data cleanup could not be verified: \(reason)."
     }
 }
 

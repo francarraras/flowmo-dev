@@ -57,15 +57,18 @@ public struct FocusGuardProcessIdentity: Equatable, Hashable, Sendable {
 
 public struct FocusGuardWork: Equatable, Sendable {
     public var processIdentity: FocusGuardProcessIdentity
+    public var resumptionProcessIdentity: FocusGuardProcessIdentity?
     public var demand: FocusGuardDemand
     public var demandGeneration: UInt64
 
     public init(
         processIdentity: FocusGuardProcessIdentity,
+        resumptionProcessIdentity: FocusGuardProcessIdentity?,
         demand: FocusGuardDemand,
         demandGeneration: UInt64
     ) {
         self.processIdentity = processIdentity
+        self.resumptionProcessIdentity = resumptionProcessIdentity
         self.demand = demand
         self.demandGeneration = demandGeneration
     }
@@ -76,6 +79,7 @@ public struct FocusGuardRuntime: Equatable, Sendable {
     public private(set) var demandGeneration: UInt64 = 0
     public var allowedProcessIdentity: FocusGuardProcessIdentity?
     public var interception: FocusGuardInterception?
+    public private(set) var lastResumableProcessIdentity: FocusGuardProcessIdentity?
     public var degraded: Bool = false
 
     public init() {}
@@ -84,6 +88,7 @@ public struct FocusGuardRuntime: Equatable, Sendable {
         guard case .active = demand, let interception else { return nil }
         return FocusGuardWork(
             processIdentity: interception.processIdentity,
+            resumptionProcessIdentity: interception.resumptionProcessIdentity,
             demand: demand,
             demandGeneration: demandGeneration
         )
@@ -100,6 +105,7 @@ public struct FocusGuardRuntime: Equatable, Sendable {
             demandGeneration &+= 1
             allowedProcessIdentity = nil
             interception = nil
+            lastResumableProcessIdentity = nil
             degraded = false
         }
         demand = next
@@ -115,13 +121,17 @@ public struct FocusGuardRuntime: Equatable, Sendable {
         isSelf: Bool
     ) -> FocusGuardDecision {
         guard case .active(_, let ids) = demand, !isSelf else { return .ignore }
-        guard ids.contains(processIdentity.bundleIdentifier) else { return .ignore }
+        guard ids.contains(processIdentity.bundleIdentifier) else {
+            lastResumableProcessIdentity = processIdentity
+            return .ignore
+        }
         if allowedProcessIdentity == processIdentity {
             return .allowedOnce
         }
         interception = FocusGuardInterception(
             processIdentity: processIdentity,
-            displayName: displayName
+            displayName: displayName,
+            resumptionProcessIdentity: lastResumableProcessIdentity
         )
         return .intercept
     }
@@ -147,10 +157,16 @@ public struct FocusGuardRuntime: Equatable, Sendable {
 public struct FocusGuardInterception: Equatable, Sendable {
     public var processIdentity: FocusGuardProcessIdentity
     public var displayName: String
+    public var resumptionProcessIdentity: FocusGuardProcessIdentity?
 
-    public init(processIdentity: FocusGuardProcessIdentity, displayName: String) {
+    public init(
+        processIdentity: FocusGuardProcessIdentity,
+        displayName: String,
+        resumptionProcessIdentity: FocusGuardProcessIdentity? = nil
+    ) {
         self.processIdentity = processIdentity
         self.displayName = displayName
+        self.resumptionProcessIdentity = resumptionProcessIdentity
     }
 
     public var bundleIdentifier: String { processIdentity.bundleIdentifier }

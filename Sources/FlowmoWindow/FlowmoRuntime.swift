@@ -32,11 +32,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        controller.startRunning()
         let window = makeWindow()
         self.window = window
         controller.attention.window = window
         window.delegate = self
+        controller.startRunning()
         glance.attach(controller: controller) { [weak self] in
             self?.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)

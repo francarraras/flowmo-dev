@@ -71,7 +71,7 @@ struct MiniView: View {
     private var verbRow: some View {
         if controller.focusGuard.runtime.interception != nil, !status.isPaused {
             HStack(spacing: 6) {
-                QuietButton("Stay", minHeight: 26) { controller.stayFocused() }
+                QuietButton("Stay focused", minHeight: 26) { controller.stayFocused() }
                 InkButton("Open once", compact: true) { controller.openOnce() }
             }
         } else if status.isPaused {

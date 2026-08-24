@@ -333,7 +333,7 @@ private struct FocusPane: View {
         } verb: {
             if controller.focusGuard.runtime.interception != nil, !status.isPaused {
                 HStack(spacing: 12) {
-                    QuietButton("Stay") { controller.stayFocused() }
+                    QuietButton("Stay focused") { controller.stayFocused() }
                     InkButton("Open once") { controller.openOnce() }
                 }
             } else if status.isPaused {
@@ -398,14 +398,14 @@ private struct StoreRecoveryPane: View {
             isPresented: $exportingDiagnostics,
             document: diagnosticDocument,
             contentType: .json,
-            defaultFilename: "flowmo-diagnostics"
+            defaultFilename: FlowmoExportKind.diagnostics.defaultFilename
         ) { result in
             switch result {
             case .success:
-                controller.exportFinished(kind: "diagnostics", succeeded: true)
+                controller.exportFinished(kind: .diagnostics, succeeded: true)
             case .failure(let error):
                 if !FlowmoExportResult.isUserCancellation(error) {
-                    controller.exportFinished(kind: "diagnostics", succeeded: false)
+                    controller.exportFinished(kind: .diagnostics, succeeded: false)
                 }
             }
             diagnosticDocument = nil
@@ -444,14 +444,14 @@ private struct LifecycleRecoveryPane: View {
             isPresented: $exportingDiagnostics,
             document: diagnosticDocument,
             contentType: .json,
-            defaultFilename: "flowmo-diagnostics"
+            defaultFilename: FlowmoExportKind.diagnostics.defaultFilename
         ) { result in
             switch result {
             case .success:
-                controller.exportFinished(kind: "diagnostics", succeeded: true)
+                controller.exportFinished(kind: .diagnostics, succeeded: true)
             case .failure(let error):
                 if !FlowmoExportResult.isUserCancellation(error) {
-                    controller.exportFinished(kind: "diagnostics", succeeded: false)
+                    controller.exportFinished(kind: .diagnostics, succeeded: false)
                 }
             }
             diagnosticDocument = nil
@@ -465,7 +465,7 @@ private struct DataControlsPane: View {
     var dismiss: () -> Void
     @State private var showingDeleteConfirmation = false
     @State private var exporting = false
-    @State private var exportKind = "data"
+    @State private var exportKind: FlowmoExportKind = .data
     @State private var exportDocument: FlowmoJSONDocument?
 
     var body: some View {
@@ -482,11 +482,20 @@ private struct DataControlsPane: View {
                 .foregroundStyle(atmo.mute)
                 .multilineTextAlignment(.center)
             InkButton("Export Flowmo Data") {
-                beginExport(kind: "data")
+                beginExport(kind: .data)
             }
             QuietButton("Export Redacted Diagnostics") {
-                beginExport(kind: "diagnostics")
+                beginExport(kind: .diagnostics)
             }
+            QuietButton("Export Focus Guard Counts") {
+                beginExport(kind: .evidence)
+            }
+            Text(
+                "Best-effort descriptive counts only—no app identities, learning outcomes, or productivity outcomes."
+            )
+            .font(.system(.caption2, design: .rounded))
+            .foregroundStyle(atmo.faint)
+            .multilineTextAlignment(.center)
             QuietButton("Delete All Data") {
                 showingDeleteConfirmation = true
             }
@@ -504,13 +513,15 @@ private struct DataControlsPane: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently deletes your current local Flowmo data. This cannot be undone.")
+            Text(
+                "This permanently deletes your current local Flowmo data, including Focus Guard counts. This cannot be undone."
+            )
         }
         .fileExporter(
             isPresented: $exporting,
             document: exportDocument,
             contentType: .json,
-            defaultFilename: exportKind == "diagnostics" ? "flowmo-diagnostics" : "flowmo-data"
+            defaultFilename: exportKind.defaultFilename
         ) { result in
             switch result {
             case .success:
@@ -524,11 +535,16 @@ private struct DataControlsPane: View {
         }
     }
 
-    private func beginExport(kind: String) {
-        let data =
-            kind == "diagnostics"
-            ? controller.prepareDiagnosticExport()
-            : controller.prepareFullDataExport()
+    private func beginExport(kind: FlowmoExportKind) {
+        let data: Data?
+        switch kind {
+        case .data:
+            data = controller.prepareFullDataExport()
+        case .diagnostics:
+            data = controller.prepareDiagnosticExport()
+        case .evidence:
+            data = controller.prepareEvidenceExport()
+        }
         guard let data else { return }
         exportKind = kind
         exportDocument = FlowmoJSONDocument(data: data)
@@ -648,6 +664,7 @@ private func ringProgress(_ status: SessionStatus) -> Double {
 private struct GuardConfig: View {
     @Environment(\.atmosphere) private var atmo
     @ObservedObject var controller: FlowmoSessionController
+    @State private var showingCountsInfo = false
 
     var body: some View {
         let config = controller.world.config.focusGuard
@@ -662,6 +679,33 @@ private struct GuardConfig: View {
                         .modifier(QuietHoverInk())
                 }
                 .buttonStyle(PressStyle())
+                Button {
+                    showingCountsInfo.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(.caption, design: .rounded).weight(.medium))
+                        .foregroundStyle(atmo.faint)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .help("About Focus Guard counts")
+                .accessibilityLabel("About Focus Guard counts")
+                .popover(isPresented: $showingCountsInfo, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Focus Guard counts")
+                            .font(.system(.headline, design: .rounded))
+                        Text(
+                            "Flowmo keeps bounded aggregate Guard and resumption counts on this Mac. They contain no app identity and are never uploaded. Turning Guard off stops new counts; Delete All erases prior counts."
+                        )
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(atmo.mute)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(14)
+                    .frame(width: 260)
+                    .environment(\.atmosphere, atmo)
+                }
                 Toggle(
                     "On",
                     isOn: Binding(

@@ -4,7 +4,7 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 Owner: Fran Carrara  
 Status: 1.0 close-beta candidate; external Apple distribution remains gated.
 
@@ -12,11 +12,15 @@ Status: 1.0 close-beta candidate; external Apple distribution remains gated.
 
 ## 1. What Flowmo is now
 
-Flowmo is a Flowmodoro — a Pomodoro with the science left in — that gets more accurate to the person using it.
+Flowmo is a Flowmodoro inspired by Barbara Oakley’s practical learning
+principles, research on habit and attention, and the owner’s experience. It
+provides an open-ended focus ritual; it does not claim that one timer pattern is
+universally optimal for learning or productivity.
 
 You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
 
-**Tagline (kept):** Stop counting down. Start flowing up.
+**Working copy:** Stop counting down. Start flowing up. The product name and
+tagline are placeholders; branding is not a roadmap dependency.
 
 **One-line test:** if it feels like another 25/5 timer, it failed. If you need a setup wizard or a command list to start focusing, it also failed.
 
@@ -34,18 +38,134 @@ You work until **you** stop (count up). You rest in proportion to how long you a
 
 ## 3. Why it exists (updated vision)
 
-Rigid Pomodoro fights flow: it stops you when you are in it, and holds you when you are not. Flowmodoro (Flowtime) inverts that. Flowmo keeps that core and adds the learning science the first iPhone prototype was built around — Oakley / *Learning How to Learn* — without putting a protocol in front of the clock.
+Rigid Pomodoro can interrupt work at an arbitrary deadline. Flowmodoro
+(Flowtime) inverts that relationship: the person chooses when Focus ends.
+Flowmo combines that core with ideas popularized by Oakley / *Learning How to
+Learn*, habit research, and the owner’s experience without putting a protocol
+lecture in front of the clock.
 
-| Idea | What it means in Flowmo |
-|---|---|
-| Focused vs diffuse | Open-ended focus, then a real break |
-| Process, not product | Count **up**. You choose when to stop. |
-| Prime | Two minutes to still, with the intention already chosen |
-| Park the intrusion | One-line capture during focus |
-| Active recall | After the break: “What did you just do?” |
-| Adaptation | The **break ratio** shifts from your recent sessions |
+Those sources are design inputs, not proof that Flowmo’s complete loop improves
+learning. The implementation must match a studied intervention before it
+inherits that intervention’s claim.
 
-Spaced repetition, flashcards, consolidation, written reflection, flow scores, and streaks are **not** in this version. They can return later as optional depth. They are not the identity of the app.
+| Design input | Current Flowmo translation | Evidence stance |
+|---|---|---|
+| Focus and disengagement | Open-ended Focus, then a break | A break creates an opportunity to disengage; it does not prove a discrete “diffuse mode” or an optimal break dose. |
+| Process and autonomy | Count **up**; the person chooses when to Stop or Skip | A product value and behavior hypothesis, not proof of greater productivity or flow. |
+| Stable starting cue | Two-minute Prime with the chosen intention | A settling ritual. Two minutes is a hypothesis; Skip remains available. |
+| Cognitive offloading | One-line Capture during Focus | A low-friction convenience that may prevent a switch; the current form has no learning claim. |
+| Retrieval and self-explanation | Optional post-break Reflection | Retrieval practice is well supported for defined material, but the generic Flowmo prompt is only retrieval-adjacent and has no proven retention effect. |
+| Situation design | Optional, fail-open Focus Guard | Precommitted friction is plausible; benefit and stress or autonomy costs must be tested in Flowmo. |
+| Proportional recovery | `break = focus / ratio`, with a duration-based ratio adjustment | A transparent product heuristic. No evidence establishes the formula or its automatic adjustment as cognitively optimal. |
+
+Evidence rules for future decisions:
+
+- A neural mechanism such as neuroplasticity does not by itself establish a
+  product outcome.
+- A whole-loop claim requires a Flowmo-specific comparison and the relevant
+  delayed or behavioral outcome.
+- Test one mechanism at a time. Before implementation, freeze the construct,
+  operational definition, denominator, comparator, observation window,
+  missingness rule, benefit, harm, meaningful threshold, stopping rule, and
+  uncertainty analysis.
+- Session duration, fewer bypasses, or repeated app use are not automatically
+  learning, well-being, or productivity gains.
+
+WP2 shipped privacy-bounded instrumentation plumbing on Mac, not a study result.
+It uses a separate `evidence.json`, not `world.json`, so instrumentation failure
+cannot invalidate the session store. A serial utility queue preserves local
+event order without doing file I/O on the product actor; export and deletion
+drain pending writes, and cross-process lock contention fails fast.
+
+WP3 extends that plumbing under the new, frozen `focus_guard_resumption_v1`
+plan. It retains the original six operational paths and adds aggregate-only
+resumption eligibility and terminal outcomes. The pre-WP3 plan is not merged
+into this one.
+
+| Counter | Exact trigger | What it does not prove |
+|---|---|---|
+| Prompt offered | The selected app is confirmed hidden, then Flowmo requests foreground presentation | That the prompt was visible or seen |
+| Stay focused chosen | Stay focused first clears a current interception | That focus resumed or improved |
+| Open once chosen | An Open once path reaches either accepted or not accepted; recorded atomically with that outcome | Why the person chose it |
+| Activation accepted | macOS returns success for activation of the same PID + bundle ID + launch identity | That the app became frontmost or the prior document/window returned |
+| Open once not accepted | The exact identity no longer resolves or macOS declines its activation request | Whether macOS received a request, a user harm, or a productivity loss |
+| Interception failed before prompt | Identity resolution or hiding fails and Guard commits fail-open before offering a prompt | Any rate; it is only a raw technical count |
+| Resumption eligible / ineligible | After Stay focused commits, the remembered prior unguarded PID + bundle ID + launch identity does or does not still resolve | A useful work context or document |
+| Resumption treatment disabled | Stay focused commits after an earlier mismatch disabled WP3 for the process lifetime | That baseline Guard is unavailable |
+| Resumption request accepted / rejected | macOS accepts or rejects one request for the exact eligible process instance | Foreground activation |
+| Resumption confirmed | A matching activation notification arrives within one second | A restored window, document, or cognitive context |
+| Resumption timed out | No non-Flowmo activation notification arrives within one second | Why activation was not observed |
+| Resolution / activation identity mismatch | Resolution returns a different identity, or the first non-Flowmo activation notification names a different identity | User intent; either mismatch disables the treatment for the process lifetime |
+
+It stores no typed text, session identifier, app identity, PID, bundle
+identifier, path, raw duration, or event timestamp, and it has no network
+client, analytics SDK, or automatic upload. Recording completeness is unknown:
+the recorder accepts at most 16 outstanding writes and drops overflow, and
+counters saturate at the maximum declared in the export. Counts are therefore
+only possibly saturated lower bounds on paths successfully observed by this
+recorder, not rates or estimates of actual technical-event volume.
+
+A valid planned comparison uses predeclared start and end exports from the same
+local store and frozen plan, with the start actually before the end, increasing
+`generatedAt`, no intervening deletion/reset/store replacement, and no end
+counter below its start. A counter at the declared cap is censored and has no
+exact delta. `generatedAt` is export time, not event time. These counts cannot
+establish learning, productivity, well-being, or causal Focus Guard benefit.
+
+Any code change that can alter event eligibility, emission timing, signal
+meaning, atomic mapping, recorder admission/drop policy, or the counter/buffer
+caps must mint a new measurement-plan identifier before collection. Counts from
+different plans must never be merged.
+
+WP3 is an engineering gate, not a product-outcome experiment. The treatment
+may remain in a candidate only after one supervised, predeclared run reaches 60
+eligible attempts within 30 days of its first eligible attempt. Confirmation is
+the matching process activation notification within one second. Rejection,
+timeout, activation mismatch, or a missing terminal observation is a failure;
+the maximum tolerable failure proportion is 5% and the smallest acceptable
+reliability is 95%. Acceptance additionally requires the one-sided 95% exact
+upper confidence bound on failure to be below 5%; with 60 attempts this means
+zero failures. Any identity mismatch, unsafe fallback, counter saturation,
+known recorder drop, store/export problem, process crash, nonmatching snapshot,
+or incomplete eligible-to-terminal reconciliation stops the run and rejects or
+invalidates it. Fewer than 60 eligible attempts by the time limit is
+inconclusive. Start and end exports must satisfy the snapshot rules above, and
+the supervised attempt tally must equal the eligible delta. Raw unsupervised
+counts cannot pass this gate and still cannot support a focus, productivity, or
+well-being claim.
+
+Evidence anchors for those boundaries:
+
+- One 94-student, two-hour comparison found no overall differences in endpoint
+  productivity, task completion, flow, motivation, or fatigue. Motivation
+  declined faster under both Flowtime and Pomodoro than under self-regulated
+  breaks, and fatigue rose faster under Pomodoro; this supports testing break
+  autonomy, not validating or invalidating Flowmo’s whole loop
+  ([study](https://pmc.ncbi.nlm.nih.gov/articles/PMC12292963/)).
+- Retrieval practice has robust classroom evidence when people retrieve defined
+  material and later learning is tested
+  ([systematic review](https://pubmed.ncbi.nlm.nih.gov/33683913/)).
+- Incubation effects exist but vary with the problem, preparation, interruption,
+  and intervening task
+  ([meta-analysis](https://doi.org/10.1037/a0014212)).
+- Micro-breaks show small average benefits for vigor and fatigue, but not a
+  reliable overall performance benefit
+  ([meta-analysis](https://doi.org/10.1371/journal.pone.0272460)).
+- Habit formation depends on repeated behavior in stable contexts and varies
+  widely by person and behavior; a short ritual is not itself a formed habit
+  ([systematic review](https://pmc.ncbi.nlm.nih.gov/articles/PMC11641623/)).
+- Experience-dependent neuroplasticity is real, but even neural measurements
+  can be transient or ambiguous; it cannot serve as a proxy for a Flowmo outcome
+  ([systematic review](https://pubmed.ncbi.nlm.nih.gov/42105826/)).
+- An exploratory one-week field study of 32 information workers used largely
+  self-assessed outcomes and found heterogeneous focus, workload, and stress
+  responses to blocking. It supports keeping Guard optional, reversible, and
+  fail-open—not prioritizing Guard as a proven focus intervention
+  ([field study](https://www.microsoft.com/en-us/research/publication/effects-individual-differences-blocking-workplace-distractions/)).
+
+Spaced repetition, flashcards, consolidation protocols, long-form reflection,
+flow scores, and streaks are **not** in this version. They can return later as
+optional depth. They are not the identity of the app.
 
 The product must stay:
 
@@ -114,6 +234,10 @@ Pause exists only as **recovery**:
 
 - Quit the app, or the Mac sleeps → on return the session is **paused**.
 - On return: same phase, clock frozen, **Continue** or **Restart**. Bringing the window forward does not resume. Continue resumes from the frozen time. Restart drops the frozen session (not recorded) and starts Prime with the same line.
+- While recovery-paused, Continue and Restart are the only actions that may
+  mutate the session. Skip, Stop, capture, recall edits, Cancel, and close-beat
+  dismissal are rejected. Mute and presentation-only controls remain available
+  and never resume the session.
 - A persisted Continue boundary protects the frozen clock even when Continue is
   sent through the CLI immediately before a Mac crash.
 - Only one Mac process may own recovery for a store. A kernel-held lifetime lock
@@ -164,7 +288,8 @@ Scripts may fire verbs against the same session shown by the window or living te
 Action and error responses use a documented versioned JSON envelope and do not
 echo private session text. `status --json` is the explicit read contract when a
 script needs those session fields. The internal `world.json` schema is not a
-write contract.
+write contract. While recovery-paused, other action verbs return
+`recovery_paused` without changing the frozen session.
 
 The API talks to the **same** live session as the window. Two clocks is a bug.
 
@@ -176,24 +301,35 @@ contains app/build/OS metadata, phase and counts, and stable issue codes with
 operation categories and timestamps—never intention, capture, recall,
 selected-app identifiers, or store paths.
 
+On Mac, a separate explicit Focus Guard counts export contains only the
+versioned aggregate instrumentation report described above. It does not
+silently join the full-data or diagnostic export, and no export uploads itself.
+
 Invalid stores are never silently discarded. The recovery action preserves the
 original bytes before resetting. **Delete All Data** requires explicit
 confirmation, refuses a live session, and removes the canonical data and exact
 Flowmo-owned recovery artifacts without recursively deleting a planted
-directory. Any incomplete cleanup remains visible to the user. Neither export
-uploads itself.
+directory. On Mac it also removes the separate evidence store and its exact
+owned recovery artifacts. Any incomplete cleanup remains visible to the user;
+the app must not claim all data was deleted if either cleanup is incomplete.
 
 ---
 
-## 7. Learning (locked, narrow)
+## 7. Duration-based break heuristic (current behavior)
 
-After each completed session, record focus duration.
+After each completed session, record focus duration and apply the current
+bounded rule:
 
 - Last **three** sessions all **≥ 45 min** → next `ratio` decreases by **0.25** (longer break). Floor **3**.
 - Last **three** all **≤ 20 min** → next `ratio` increases by **0.25** (shorter break). Ceiling **8**.
 - Otherwise ratio stays.
 
-Prime stays 2:00. Reflection stays 3:00. Learning does **not** turn reflection or prime on/off in v1.
+This rule observes duration only. It receives no signal about fatigue, break
+quality, task type, learning, or whether the person felt restored, so it is not
+a learned optimum or a scientific personalization model.
+
+Prime stays 2:00. Reflection stays 3:00. The heuristic does **not** turn
+Reflection or Prime on or off in v1.
 
 The profile stays inspectable through `status --json`, including the current ratio and its one-line reason. The idle window does not need a lecture about it.
 
@@ -225,7 +361,7 @@ Keep as **ideas and numbers**, not as a codebase to extend:
 - Prime 2 min, reflection 3 min
 - Park a thought mid-session
 - Dark compact session energy (reference only)
-- Tagline and name
+- Tagline shape; “Flowmo” remains a working placeholder, not a branding decision
 
 Leave behind:
 
@@ -244,15 +380,10 @@ GitHub: `https://github.com/francarraras/Flowmo` (private)
 
 ## 10. What is on disk in *this* folder
 
-`/Users/facspro/dev/flowmo` was an **early engine sketch** (Swift package: `FlowmoCore`, a verb-style CLI, a check binary). It was started during brainstorming and is **not** the product.
-
-Treat it as:
-
-- Proof that break math and a file store can be headless
-- **Not** the UX
-- **Not** a mandate to keep the CLI as the daily interface
-
-A future implementation should implement **this brief**, not grow that CLI into the app. Reuse the reducer/store ideas if they still fit; throw away anything that smells like command tennis.
+`/Users/facspro/dev/flowmo` is the current close-beta implementation: the
+deterministic Core, native Mac window, Focus Guard, supporting glances and CLI,
+local iPhone app, widget, recovery paths, and privacy controls. The Mac window
+is the product; the CLI remains a side door.
 
 macOS on this machine is case-insensitive: `~/flowmo` and `~/Flowmo` are the **same path**. New work must stay under `~/dev/flowmo` (or another name that is not `Flowmo`).
 
@@ -260,11 +391,11 @@ Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may
 
 ---
 
-## 11. Technical direction (enough to start, not a spec lock)
+## 11. Technical direction (current)
 
-When implementation begins, the shape that matches this brief:
+The current implementation follows this shape:
 
-1. **One session store** (timestamps + state). Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view.
+1. **One session store** (timestamps + state). Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The separate Mac evidence file contains aggregates only and is never a second session authority.
 2. **One live session**, with a file lock shared by the window and CLI.
 3. **Native session frames** on Mac and iPhone. Menu bar, terminal, CLI, and widget remain supporting views.
 4. Do **not** start by opening a new Xcode clone of `~/Flowmo`.
@@ -279,11 +410,12 @@ The shipped loop remains **idle → prime → focus → break → recall → clo
 
 - Visual identity / themes beyond the shipped compact pass
 - Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
-- iPhone client shipped ([`iphone.md`](iphone.md)); local, no iCloud
-- iPhone widget shipped ([`widget.md`](widget.md)); iCloud and Watch later
-- Flashcards, SM-2, consolidation, reflection
+- Cloud sync between the shipped Mac and iPhone clients
+- Watch and Live Activities
+- Flashcards, SM-2, consolidation protocols, or long-form reflection
 - History dashboard, scoring, or charts
-- Learning anything other than break ratio
+- Domain-specific learning protocols such as spaced repetition, content testing,
+  or interleaving
 - Monetization, licensing, marketing (out of scope for this brief)
 
 Roadmap: [`v2.md`](v2.md).
@@ -296,7 +428,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 
 | Decision | Choice |
 |---|---|
-| Still a scientific Flowmodoro, not a generic timer | Yes |
+| Science lineage | Oakley, habit and attention research, and owner experience guide hypotheses; claims remain evidence-bounded. |
 | Start | Setup then prime; do not drop the fundamentals |
 | Type intention | Once, at idle. Prime only displays it. |
 | After focus | Earned break, then short recall |
@@ -310,7 +442,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Fake 0–100% focus bar | No |
 | Menu bar | Glance only ([`menu-bar.md`](menu-bar.md)). Window stays the product. |
 | Terminal | `flowmo live` is a ticking view. Verbs stay a side door. |
-| Learning in v1 | Quiet; **ratio only** |
+| Automatic adjustment in v1 | Duration-based break heuristic only; not described as learning or an optimum. |
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |

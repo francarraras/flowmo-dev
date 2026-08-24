@@ -4,6 +4,9 @@ Stop counting down. Start flowing up.
 
 A Flowmodoro. You work until you stop. Rest is earned from how long you focused. One charcoal window. One circle that does not move.
 
+The name and tagline are working placeholders. Branding, marketing, and
+commercial decisions are not current product work.
+
 **Behavior:** [`docs/PROJECT.md`](docs/PROJECT.md)
 **Look:** [`docs/visual.md`](docs/visual.md)
 
@@ -46,6 +49,11 @@ What should happen:
 Same session as the window. The current local store is `~/.flowmo/world.json`,
 but it is internal storage—not a supported write API. Automation should use the
 CLI verbs against that same store; direct `world.json` writes are unsupported.
+The Mac app keeps privacy-bounded Focus Guard instrumentation separately in
+`~/.flowmo/evidence.json`; that file is also internal storage, not an automation
+contract. In the WP3 candidate, **Stay focused** may reactivate the exact prior
+unguarded process instance; a matching activation notification within one
+second is required before that attempt counts as confirmed.
 
 ```bash
 swift run flowmo live      # ticking view of that session
@@ -63,7 +71,8 @@ does not echo intentions, captures, or recall text; call `status --json` only
 when that text is needed.
 
 `pause` and `resume` are not CLI flow controls. Recovery uses `continue` or
-`restart` after quit/sleep. There is no Focus pause command.
+`restart` after quit/sleep. There is no Focus pause command. Other action
+commands return `recovery_paused` until recovery is resolved.
 
 iPhone is a separate local app (`Apps/FlowmoPhone.xcodeproj`). The old tree in `~/Flowmo` is reference only.
 
@@ -77,6 +86,8 @@ swift build -c release -Xswiftc -warnings-as-errors
 ```
 
 The Mac and iPhone apps also provide redacted diagnostic export, full-data
-export, invalid-store recovery, and confirmed deletion while Idle. See the
+export, invalid-store recovery, and confirmed deletion while Idle. The Mac Data
+view separately exports its best-effort aggregate Focus Guard counts; nothing
+is uploaded automatically, and **Delete All Data** removes them. See the
 [`release procedure`](docs/release.md), [`privacy policy`](PRIVACY.md), and
 [`security policy`](SECURITY.md) before sharing a build.

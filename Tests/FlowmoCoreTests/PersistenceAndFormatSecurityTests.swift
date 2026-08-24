@@ -267,6 +267,84 @@ final class PersistenceAndFormatSecurityTests: XCTestCase {
         }
     }
 
+    func testDeleteAllDataRemovesLocalEvidenceAndItsExactCrashTemp() throws {
+        try withStore { store in
+            var world = World.empty
+            world.profile.lastIntention = "private canonical text"
+            try store.save(world)
+
+            let evidence = LocalEvidence(root: store.root)
+            XCTAssertEqual(evidence.record(.promptOfferedAfterConfirmedHide), .recorded)
+            let exactTemporary = store.root.appendingPathComponent(
+                ".evidence.write-\(UUID().uuidString).tmp"
+            )
+            let similarlyNamed = store.root.appendingPathComponent(".evidence.write-not-a-uuid.tmp")
+            try Data("private aggregate state".utf8).write(to: exactTemporary)
+            try Data("not owned".utf8).write(to: similarlyNamed)
+
+            let deletion = try store.deleteAllData()
+
+            XCTAssertEqual(deletion.removedEvidenceArtifactCount, 2)
+            XCTAssertEqual(
+                Set(deletion.removedEvidenceArtifactURLs.map(\.lastPathComponent)),
+                Set(["evidence.json", exactTemporary.lastPathComponent])
+            )
+            XCTAssertFalse(FileManager.default.fileExists(atPath: exactTemporary.path))
+            XCTAssertFalse(
+                FileManager.default.fileExists(
+                    atPath: store.root.appendingPathComponent("evidence.json").path
+                )
+            )
+            XCTAssertTrue(FileManager.default.fileExists(atPath: similarlyNamed.path))
+            XCTAssertEqual(try store.load(), .empty)
+
+            let report = try JSONDecoder.flowmo.decode(
+                FlowmoEvidenceReport.self,
+                from: evidence.export(generatedAt: Date(timeIntervalSince1970: 1))
+            )
+            XCTAssertEqual(report.counters.map(\.count), Array(repeating: 0, count: EvidenceSignal.allCases.count))
+        }
+    }
+
+    func testDeleteAllDataReportsEvidenceArtifactWithoutRecursing() throws {
+        try withStore { store in
+            var world = World.empty
+            world.profile.lastIntention = "private canonical text"
+            try store.save(world)
+
+            let evidence = LocalEvidence(root: store.root)
+            XCTAssertEqual(evidence.record(.promptOfferedAfterConfirmedHide), .recorded)
+            let directory = store.root.appendingPathComponent(
+                ".evidence.write-\(UUID().uuidString).tmp"
+            )
+            let child = directory.appendingPathComponent("keep.txt")
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try Data("child must survive".utf8).write(to: child)
+
+            XCTAssertThrowsError(try store.deleteAllData()) { error in
+                guard let deletionError = error as? StoreDataDeletionError else {
+                    return XCTFail("unexpected error: \(error)")
+                }
+                XCTAssertTrue(deletionError.remainingEvidenceArtifactsKnown)
+                XCTAssertEqual(deletionError.removedEvidenceArtifactCount, 1)
+                XCTAssertEqual(deletionError.remainingEvidenceArtifactCount, 1)
+                XCTAssertEqual(
+                    deletionError.remainingEvidenceArtifactURLs.first?.lastPathComponent,
+                    directory.lastPathComponent
+                )
+            }
+
+            XCTAssertEqual(try store.load(), .empty)
+            XCTAssertFalse(
+                FileManager.default.fileExists(
+                    atPath: store.root.appendingPathComponent("evidence.json").path
+                )
+            )
+            XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
+            XCTAssertEqual(try Data(contentsOf: child), Data("child must survive".utf8))
+        }
+    }
+
     func testMigrationPreservesCorruptDestinationBeforeReplacement() throws {
         let fm = FileManager.default
         let oldRoot = fm.temporaryDirectory

@@ -50,11 +50,14 @@ final class FlowmoCLITests: XCTestCase {
 
     func testEngineAndUnsupportedControlErrorsUseStableEnvelopes() throws {
         let engine = FlowmoCLI.errorEnvelope(for: EngineError.nothingRunning)
+        let paused = FlowmoCLI.errorEnvelope(for: EngineError.recoveryPaused)
         let control = FlowmoCLI.errorEnvelope(for: CLIError.unsupportedControl("not a flow control"))
 
         let engineJSON = try object(engine)
+        let pausedJSON = try object(paused)
         let controlJSON = try object(control)
         XCTAssertEqual(errorCode(in: engineJSON), "nothing_running")
+        XCTAssertEqual(errorCode(in: pausedJSON), "recovery_paused")
         XCTAssertEqual(errorCode(in: controlJSON), "unsupported_control")
         XCTAssertEqual(engineJSON["ok"] as? Bool, false)
         XCTAssertNotNil(engineJSON["generatedAt"] as? String)

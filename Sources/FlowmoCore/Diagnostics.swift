@@ -10,6 +10,7 @@ public enum FlowmoIssueCode: String, Codable, CaseIterable, Sendable {
     case recoveryUnavailable = "FLOWMO-RECOVERY-001"
     case diagnosticExportFailed = "FLOWMO-EXPORT-001"
     case dataExportFailed = "FLOWMO-EXPORT-002"
+    case evidenceExportFailed = "FLOWMO-EXPORT-003"
     case resetFailed = "FLOWMO-RESET-001"
     case preserveAndResetFailed = "FLOWMO-RESET-002"
     case dataDeletionIncomplete = "FLOWMO-RESET-003"
@@ -27,8 +28,47 @@ public enum FlowmoDiagnosticOperation: String, Codable, Sendable {
     case recoveryFinish = "recovery_finish"
     case dataExport = "data_export"
     case diagnosticExport = "diagnostic_export"
+    case evidenceExport = "evidence_export"
     case reset = "reset"
     case preserveAndReset = "preserve_and_reset"
+}
+
+public enum FlowmoExportKind: String, Codable, Equatable, Sendable {
+    case data
+    case diagnostics
+    case evidence
+
+    public var defaultFilename: String {
+        switch self {
+        case .data: "flowmo-data"
+        case .diagnostics: "flowmo-diagnostics"
+        case .evidence: "flowmo-focus-guard-counts"
+        }
+    }
+
+    public var successMessage: String {
+        switch self {
+        case .data: "Flowmo data exported."
+        case .diagnostics: "Diagnostic report exported."
+        case .evidence: "Focus Guard counts exported."
+        }
+    }
+
+    public var failureCode: FlowmoIssueCode {
+        switch self {
+        case .data: .dataExportFailed
+        case .diagnostics: .diagnosticExportFailed
+        case .evidence: .evidenceExportFailed
+        }
+    }
+
+    public var diagnosticOperation: FlowmoDiagnosticOperation {
+        switch self {
+        case .data: .dataExport
+        case .diagnostics: .diagnosticExport
+        case .evidence: .evidenceExport
+        }
+    }
 }
 
 public struct FlowmoIssueRecord: Codable, Equatable, Sendable {
@@ -59,9 +99,10 @@ public struct FlowmoPresentedIssue: Identifiable, Equatable, Sendable {
         case .recoveryUnavailable: "Recovery needs attention"
         case .diagnosticExportFailed: "Couldn’t prepare diagnostics"
         case .dataExportFailed: "Couldn’t prepare data export"
+        case .evidenceExportFailed: "Couldn’t prepare Guard counts"
         case .resetFailed: "Couldn’t delete data"
         case .preserveAndResetFailed: "Couldn’t preserve and reset"
-        case .dataDeletionIncomplete: "Some recovery data remains"
+        case .dataDeletionIncomplete: "Some local data remains"
         }
     }
 
@@ -79,12 +120,14 @@ public struct FlowmoPresentedIssue: Identifiable, Equatable, Sendable {
             "Flowmo couldn’t create the redacted diagnostic report."
         case .dataExportFailed:
             "Flowmo couldn’t create the full data export."
+        case .evidenceExportFailed:
+            "Flowmo couldn’t create the Focus Guard counts export."
         case .resetFailed:
             "Flowmo couldn’t delete the current local data."
         case .preserveAndResetFailed:
             "Flowmo couldn’t preserve the original data and reset safely."
         case .dataDeletionIncomplete:
-            "Your current Flowmo data was deleted, but some preserved recovery data couldn’t be removed."
+            "Your current Flowmo data was deleted, but some Flowmo-owned local data couldn’t be removed."
         }
     }
 }

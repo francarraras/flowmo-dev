@@ -4,6 +4,32 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Added the WP3 Focus Guard resumption candidate. After **Stay focused** commits,
+  Flowmo can reactivate the exact prior unguarded process instance and counts it
+  as confirmed only when the matching activation notification arrives within
+  one second. Missing identity, rejection, and timeout preserve the prior safe
+  behavior; any resolution or activation identity mismatch disables the new
+  treatment for the process lifetime without disabling baseline Guard.
+- Froze the aggregate-only `focus_guard_resumption_v1` engineering plan and its
+  supervised 60-attempt acceptance rule. It uses a new evidence schema/plan and
+  does not merge pre-WP3 counts.
+- Added the WP2 local instrumentation foundation on Mac. Focus Guard records
+  only six bounded aggregate path counts in a separate store: prompt offered
+  after confirmed hide, Stay focused chosen, Open once chosen, activation
+  accepted, Open once not accepted, and interception failed before a prompt.
+- Instrumentation writes are ordered off the main thread, use fail-fast locks,
+  have a fixed 16-write admission bound, contain no private session or app
+  identity data, and cannot reject or alter a product action. The explicit Focus
+  Guard counts export states that completeness is unknown, raw rates are invalid,
+  and no learning, productivity, well-being, or causal claim is supported.
+  Delete All Data removes the counts.
+- Kept the Focus Guard counts explanation behind a quiet info control instead of
+  occupying the calm Idle interface.
+- Recovery-paused sessions now reject other loop mutations until the user
+  chooses Continue or Restart; CLI callers receive `recovery_paused`, while cue
+  preference and presentation controls remain available.
+- Focus Guard now uses the documented “Stay focused” action in both Mac views.
+
 ## 1.0 (2) — Friends & family preview
 
 - Kept the Guard switch and deletion notices inside the idle chrome so they no
