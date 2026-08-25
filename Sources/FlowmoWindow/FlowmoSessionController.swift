@@ -137,7 +137,7 @@ public final class FlowmoSessionController: ObservableObject {
         focusGuard.attach(
             bringForward: { [weak self] in
                 self?.attention.window?.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
+                NSApp.activate()
             },
             observeEvidence: { [evidence = self.evidence] event in
                 evidence.record(event)

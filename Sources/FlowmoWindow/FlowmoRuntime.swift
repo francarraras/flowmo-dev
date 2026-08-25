@@ -39,11 +39,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         controller.startRunning()
         glance.attach(controller: controller) { [weak self] in
             self?.window?.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
         observeWindowContentSize()
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         watchSleep()
         watchTerminationSignals()
     }

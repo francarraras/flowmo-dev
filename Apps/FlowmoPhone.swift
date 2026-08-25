@@ -12,7 +12,7 @@ struct FlowmoPhoneApp: App {
                 if let controller = bootstrap.controller {
                     PhoneRootView(controller: controller)
                         .onAppear { controller.startRunning() }
-                        .onChange(of: scenePhase) { phase in
+                        .onChange(of: scenePhase) { _, phase in
                             if phase == .active {
                                 controller.becameActive()
                             }

@@ -34,7 +34,7 @@ extension NSRunningApplication: FocusGuardApplication {
     func focusGuardUnhide() -> Bool { unhide() }
 
     func focusGuardActivate() -> Bool {
-        activate(options: [.activateIgnoringOtherApps])
+        activate(options: [])
     }
 }
 

@@ -605,7 +605,7 @@ private struct RecallPane: View {
                     focusDelay: 0.55,
                     onSubmit: { controller.skip() }
                 )
-                .onChange(of: controller.recallDraft) { _ in
+                .onChange(of: controller.recallDraft) { _, _ in
                     controller.persistRecall()
                 }
             }

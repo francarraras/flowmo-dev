@@ -56,7 +56,7 @@ public struct Aperture<Content: View>: View {
             guard !reduceMotion, ring == .idle else { return }
             idlePulse = true
         }
-        .onChange(of: ringEqualsIdle) { isIdle in
+        .onChange(of: ringEqualsIdle) { _, isIdle in
             if reduceMotion {
                 idlePulse = false
             } else {

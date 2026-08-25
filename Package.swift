@@ -6,11 +6,12 @@ let infoPlist = Context.packageDirectory + "/Sources/FlowmoApp/Info.plist"
 let package = Package(
     name: "flowmo",
     platforms: [
-        .macOS(.v13),
-        .iOS(.v16),
+        .macOS(.v14),
+        .iOS(.v17),
     ],
     products: [
         .library(name: "FlowmoCore", targets: ["FlowmoCore"]),
+        .library(name: "FlowmoSync", targets: ["FlowmoSync"]),
         .library(name: "FlowmoLook", targets: ["FlowmoLook"]),
         .library(name: "FlowmoWindow", targets: ["FlowmoWindow"]),
         .library(name: "FlowmoPhone", targets: ["FlowmoPhone"]),
@@ -19,6 +20,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "FlowmoCore"),
+        .target(name: "FlowmoSync", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoLook", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoWindow", dependencies: ["FlowmoCore", "FlowmoLook"]),
         .target(name: "FlowmoPhone", dependencies: ["FlowmoCore", "FlowmoLook"]),
@@ -40,6 +42,7 @@ let package = Package(
             ]
         ),
         .testTarget(name: "FlowmoCoreTests", dependencies: ["FlowmoCore"]),
+        .testTarget(name: "FlowmoSyncTests", dependencies: ["FlowmoSync", "FlowmoCore"]),
         .testTarget(name: "FlowmoCLITests", dependencies: ["FlowmoCLI", "FlowmoCore"]),
         .testTarget(name: "FlowmoWindowTests", dependencies: ["FlowmoWindow", "FlowmoCore"]),
     ]

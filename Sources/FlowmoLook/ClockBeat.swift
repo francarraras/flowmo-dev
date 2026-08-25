@@ -19,7 +19,7 @@ public struct MilestoneGrow: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .scaleEffect(scale)
-            .onChange(of: elapsed) { now in
+            .onChange(of: elapsed) { _, now in
                 let from = lastElapsed
                 lastElapsed = now
                 guard !paused, !reduceMotion else { return }
@@ -57,7 +57,7 @@ public struct BreakRace: ViewModifier {
         content
             .scaleEffect(scale)
             .onAppear { openBeat() }
-            .onChange(of: remaining) { now in
+            .onChange(of: remaining) { _, now in
                 raceTick(now)
             }
     }

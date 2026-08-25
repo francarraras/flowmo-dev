@@ -32,7 +32,7 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
     func bringWindowForward() {
         NSApp.unhide(nil)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
 
     private var windowIsInBackground: Bool {
