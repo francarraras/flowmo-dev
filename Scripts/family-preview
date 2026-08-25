@@ -72,7 +72,8 @@ validate_mac_app() {
   [ "$identifier" = "app.flowmo.mac" ] || fail "unexpected bundle identifier: $identifier"
   [ "$app_version" = "$version" ] || fail "built version $app_version does not match project version $version"
   [ "$app_build" = "$build" ] || fail "built build $app_build does not match project build $build"
-  [ "$minimum_system" = "13.0" ] || fail "unexpected minimum macOS version: $minimum_system"
+  [ "$minimum_system" = "$minimum_macos" ] \
+    || fail "built minimum macOS $minimum_system does not match project target $minimum_macos"
   [ -f "$app/Contents/MacOS/$executable" ] || fail "app executable is missing"
 
   architectures="$(lipo -archs "$app/Contents/MacOS/$executable")"
@@ -183,6 +184,7 @@ fi
 
 version="$(unique_project_value MARKETING_VERSION)"
 build="$(unique_project_value CURRENT_PROJECT_VERSION)"
+minimum_macos="$(unique_project_value MACOSX_DEPLOYMENT_TARGET)"
 case "$version" in
   ''|*[!0-9.]*) fail "unsupported marketing version: $version" ;;
 esac
@@ -493,7 +495,7 @@ fi
   printf 'Candidate state: %s\n' "$candidate_state"
   printf 'Product: Flowmo %s (build %s)\n' "$version" "$build"
   printf 'Bundle identifier: app.flowmo.mac\n'
-  printf 'Minimum macOS: 13.0\n'
+  printf 'Minimum macOS: %s\n' "$minimum_macos"
   printf 'Architectures: %s\n' "$validated_architectures"
   printf 'Signing: ad-hoc with Hardened Runtime; not Developer ID; not notarized\n'
   printf 'Gatekeeper assessment: %s\n' "$gatekeeper_result"
