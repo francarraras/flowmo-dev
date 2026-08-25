@@ -4,6 +4,11 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+## 1.0 (3) — Friends & family preview
+
+- Removed the irrelevant iCloud-unavailable notice from local-only Mac builds while preserving user-actionable sync conflicts and deletion warnings.
+- Made earned rest legible on Break by showing the proportional rest beside the Focus duration that earned it.
+- Added a fast **Use last** path on Mac and iPhone that reveals the saved intention for confirmation before starting, while keeping Idle empty by default. **New** now clears only the unstarted draft instead of erasing the saved intention.
 - Fixed the local Mac executable crashing at launch when CloudKit entitlements are unavailable; unentitled builds now continue in local-only mode.
 
 - Added private CloudKit synchronization between the entitled Mac and iPhone

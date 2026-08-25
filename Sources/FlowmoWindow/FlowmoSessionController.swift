@@ -261,8 +261,12 @@ public final class FlowmoSessionController: ObservableObject {
         showCapture = false
     }
 
+    public func useLastIntention() {
+        guard world.live == nil else { return }
+        intentionDraft = world.profile.lastIntention
+    }
+
     public func clearIntention() {
-        guard apply(.setLastIntention("")) else { return }
         intentionDraft = ""
     }
 

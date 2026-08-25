@@ -435,6 +435,27 @@ public struct Accrual: View {
     }
 }
 
+/// Explains the proportional rest at the moment it becomes useful.
+public struct EarnedRestContext: View {
+    var focus: TimeInterval
+    var rest: TimeInterval
+
+    public init(focus: TimeInterval, rest: TimeInterval) {
+        self.focus = focus
+        self.rest = rest
+    }
+
+    public var body: some View {
+        Text("\(Format.minutes(rest)) earned from \(Format.minutes(focus)) focus")
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .monospacedDigit()
+            .tracking(0.2)
+            .foregroundStyle(Atmosphere.rest)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+    }
+}
+
 public struct FieldCanvas: View {
     public init() {}
 

@@ -83,8 +83,8 @@ struct MiniView: View {
         } else {
             switch status.phase {
             case nil:
-                InkButton("Start", compact: true) { controller.start() }
-                    .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                InkButton(miniStartTitle, compact: true) { performIdleAction() }
+                    .disabled(!canStart)
             case .prime:
                 QuietButton("Focus now", minHeight: 26) { controller.skip() }
             case .recall:
@@ -102,6 +102,28 @@ struct MiniView: View {
             case .closeBeat:
                 EmptyView()
             }
+        }
+    }
+
+    private var canStart: Bool {
+        !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var miniStartTitle: String {
+        let typed = controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let saved = status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
+        return typed.isEmpty && !saved.isEmpty ? "Use last" : "Start"
+    }
+
+    private func performIdleAction() {
+        let typed = controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let saved = status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed.isEmpty && !saved.isEmpty {
+            controller.useLastIntention()
+            controller.setDisplayMode(.classic)
+        } else {
+            controller.start()
         }
     }
 

@@ -218,19 +218,19 @@ private struct IdlePane: View {
                         autofocus: true,
                         focusDelay: 0.45,
                         onSubmit: {
-                            let trimmed = controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !trimmed.isEmpty else { return }
-                            controller.start()
+                            guard canStart else { return }
+                            performIdleAction()
                         }
                     )
                 } hole: {
                     Aperture(ring: .idle)
                 } verb: {
-                    InkButton("Start") {
-                        controller.start()
+                    InkButton(startButtonTitle) {
+                        performIdleAction()
                     }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canStart)
+                    .help(usesLastIntention ? "Show last intention" : "Start this intention")
                 } chrome: {
                     VStack(spacing: 8) {
                         HStack(spacing: 18) {
@@ -289,6 +289,34 @@ private struct IdlePane: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    private var typedIntention: String {
+        controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var savedIntention: String {
+        status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var usesLastIntention: Bool {
+        typedIntention.isEmpty && !savedIntention.isEmpty
+    }
+
+    private var canStart: Bool {
+        !typedIntention.isEmpty || !savedIntention.isEmpty
+    }
+
+    private var startButtonTitle: String {
+        usesLastIntention ? "Use last" : "Start"
+    }
+
+    private func performIdleAction() {
+        if usesLastIntention {
+            controller.useLastIntention()
+        } else {
+            controller.start()
+        }
+    }
 }
 
 @MainActor
@@ -299,6 +327,8 @@ private func worldSyncNotice(_ status: WorldSyncStatus) -> String? {
         return "Sign back into the previous iCloud account to finish deletion."
     case "sync_deletion_pending":
         return "iCloud deletion is pending."
+    case "sync_entitlement_unavailable":
+        return nil
     default:
         return "iCloud sync is unavailable. Flowmo is working locally."
     }
@@ -639,12 +669,18 @@ private struct BreakPane: View {
                     race: !status.isPaused && (status.remaining ?? 0) <= 10
                 )
             ) {
-                InstrumentClock(Format.remainingClock(status.remaining ?? 0))
-                    .breakRace(
-                        remaining: status.remaining ?? 0,
-                        elapsed: status.elapsed,
-                        paused: status.isPaused
+                VStack(spacing: 9) {
+                    InstrumentClock(Format.remainingClock(status.remaining ?? 0))
+                        .breakRace(
+                            remaining: status.remaining ?? 0,
+                            elapsed: status.elapsed,
+                            paused: status.isPaused
+                        )
+                    EarnedRestContext(
+                        focus: status.focusSeconds,
+                        rest: status.breakSeconds ?? 0
                     )
+                }
             }
         } verb: {
             if status.isPaused {

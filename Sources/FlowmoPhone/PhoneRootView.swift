@@ -215,10 +215,10 @@ private struct IdlePane: View {
                 } hole: {
                     Aperture(ring: .idle)
                 } verb: {
-                    InkButton("Start") {
-                        controller.start()
+                    InkButton(startButtonTitle) {
+                        performIdleAction()
                     }
-                    .disabled(controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canStart)
                 } chrome: {
                     HStack(spacing: 18) {
                         Text("Today \(Format.clock(status.todayFocusSeconds))")
@@ -257,6 +257,30 @@ private struct IdlePane: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var typedIntention: String {
+        controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var savedIntention: String {
+        status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canStart: Bool {
+        !typedIntention.isEmpty || !savedIntention.isEmpty
+    }
+
+    private var startButtonTitle: String {
+        typedIntention.isEmpty && !savedIntention.isEmpty ? "Use last" : "Start"
+    }
+
+    private func performIdleAction() {
+        if typedIntention.isEmpty && !savedIntention.isEmpty {
+            controller.useLastIntention()
+        } else {
+            controller.start()
+        }
     }
 }
 
@@ -530,12 +554,18 @@ private struct BreakPane: View {
                     race: !status.isPaused && (status.remaining ?? 0) <= 10
                 )
             ) {
-                InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 40)
-                    .breakRace(
-                        remaining: status.remaining ?? 0,
-                        elapsed: status.elapsed,
-                        paused: status.isPaused
+                VStack(spacing: 9) {
+                    InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 40)
+                        .breakRace(
+                            remaining: status.remaining ?? 0,
+                            elapsed: status.elapsed,
+                            paused: status.isPaused
+                        )
+                    EarnedRestContext(
+                        focus: status.focusSeconds,
+                        rest: status.breakSeconds ?? 0
                     )
+                }
             }
         } verb: {
             if status.isPaused {

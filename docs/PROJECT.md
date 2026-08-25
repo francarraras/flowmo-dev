@@ -180,7 +180,7 @@ The product must stay:
 
 You type **once**. That line is the intention. Prime does not ask again.
 
-1. **Idle → type (or keep last line) → Start**
+1. **Idle → type → Start**, or **Use last → Start** when returning to the same work
 2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready.
 3. **Focus — count up** — work until you stop. **+** parks one line. No pause button.
 4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Continue whenever ready.
@@ -208,10 +208,10 @@ The Mac **window is the product**.
 
 | State | On screen | Actions |
 |---|---|---|
-| **Idle** | Empty field, placeholder **Intention**. **Start**. Today, **History**, **Data**, **New**. | Type a line, Start, inspect history, export/delete data, or New (clears a typed line). |
+| **Idle** | Empty field, placeholder **Intention**. **Start**, or **Use last** when a saved intention exists. Today, **History**, **Data**, **New**. | Type a line, reveal and confirm the last intention, inspect history, export/delete data, or New (clears only the typed draft). |
 | **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, or Focus now whenever ready. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **+** opens capture; **Park** / **Discard** replace + / Stop. | Work. Park a thought. Stop. |
-| **Break** | Neutral **Break** caption. Recommended countdown + determinate gold ring. | Rest, or Continue whenever ready. |
+| **Break** | Neutral **Break** caption. Recommended countdown + determinate gold ring, with the earned rest and source Focus duration stated plainly. | Rest, or Continue whenever ready. |
 | **Reflection (3:00)** | **What did you do, and what comes next?** Optional text. Countdown + ring. | Write, sit, or skip. |
 | **Close beat** | Intention. Two labeled clocks: Focused and Rested. No score, no share. | Tap the frame. Then idle. |
 
@@ -469,7 +469,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
-| Idle | Empty Intention + Start + today + History + Data + New (clears a typed line) |
+| Idle | Empty Intention + Start, or Use last + today + History + Data + New (clears only the typed draft) |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |
 | Close / hide window | Session keeps running |
