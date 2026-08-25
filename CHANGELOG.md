@@ -4,6 +4,10 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Kept the iPhone session interface quiet when no iCloud account is configured,
+  while preserving structural sync failures and deletion problems. Added the
+  background notification mode required by `CKSyncEngine`.
+
 ## 1.0 (3) — Friends & family preview
 
 - Removed the irrelevant iCloud-unavailable notice from local-only Mac builds while preserving user-actionable sync conflicts and deletion warnings.

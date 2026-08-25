@@ -41,7 +41,9 @@ Home, tabs, setup, scores, streaks, flashcards, SM-2, history dashboard, Watch, 
 
 On Mac, hide/close leaves Flowmo running. On iPhone, background **suspends** the process. Clocks stay honest because they are timestamps, not a ticking timer. Timed phases that should have ended while you were away catch up when Core `sync`s on the next launch or foreground.
 
-Notifications for “prime ended / break ended / recall ended” while away are **scheduled when that timed phase starts**, then cancelled if you Skip or Stop first. Do not wait for a live `sync` in the background — it will not run.
+Notifications for “prime ended / break ended / recall ended” while away are **scheduled when that timed phase starts**, then cancelled if you Skip or Stop first. The UI/Core timer does not run continuously in the background. iOS may grant
+`CKSyncEngine` bounded background execution for remote database notifications;
+persisted timestamps remain the clock authority when the interface returns.
 
 ## Checkable lines
 
@@ -71,6 +73,9 @@ iCloud version**. It SHALL NOT silently merge two live sessions.
 WHEN CloudKit is signed out or unavailable
 THE SYSTEM SHALL remain usable against its local store and queue later sync.
 Changing iCloud accounts SHALL require an explicit data choice before upload.
+A missing iCloud account or entitlement SHALL NOT occupy the session interface;
+structural or unknown sync failures, pending deletion, and account-choice
+problems remain visible.
 
 WHEN the process is killed during a live session
 THE SYSTEM SHALL restore paused with Continue and Restart. Appearing SHALL NOT resume. Restart SHALL drop the frozen session and start Prime with the same intention.

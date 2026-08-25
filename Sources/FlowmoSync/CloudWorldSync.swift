@@ -734,6 +734,9 @@ private actor CloudWorldSyncState {
 
     private static func issueCode(_ error: Error) -> String {
         if let cloud = error as? CKError {
+            if cloud.code == .notAuthenticated {
+                return "sync_account_unavailable"
+            }
             return "cloudkit_\(cloud.code.rawValue)"
         }
         if error is WorldSyncRecordError { return "sync_record_invalid" }

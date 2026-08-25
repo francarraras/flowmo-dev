@@ -108,6 +108,8 @@ private func worldSyncNotice(_ status: WorldSyncStatus) -> String? {
         return "Sign back into the previous iCloud account to finish deletion."
     case "sync_deletion_pending":
         return "iCloud deletion is pending."
+    case "sync_entitlement_unavailable", "sync_account_unavailable":
+        return nil
     default:
         return "iCloud sync is unavailable. Flowmo is working locally."
     }
