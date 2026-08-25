@@ -14,7 +14,7 @@ commercial decisions are not current product work.
 
 ```bash
 cd ~/dev/flowmo
-swift run
+swift run flowmo
 ```
 
 Leave that running. That is the app.

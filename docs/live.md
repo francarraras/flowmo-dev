@@ -14,4 +14,4 @@ The file is internal storage, not a supported write API. Scripts should read
 
 ## Out
 
-Pause, Start, Skip, scores, replacing `swift run` (no args still opens the window).
+Pause, Start, Skip, scores, or replacing `swift run flowmo` as the window launcher.

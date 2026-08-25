@@ -130,7 +130,7 @@ reactivation nor fewer clicks proves focus or productivity benefit.
 - Guard only during **unpaused Focus**. Prime, break, recall, close beat, idle: off.
 - Hide + bring Flowmo forward. **Stay focused** / **Open once** (that exact process instance until it loses activation).
 - Small factual Focus line (`Guarding 3 apps`). Clock stays the hero. No extra ring.
-- Same Core store. `swift run` and the Dock app, if the spike proves both.
+- Same Core store. `swift run flowmo` and the Dock app, if the spike proves both.
 - Fail open. Crash/quit leaves no OS restriction.
 
 ## Out

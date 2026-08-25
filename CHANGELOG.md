@@ -4,6 +4,8 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Fixed the local Mac executable crashing at launch when CloudKit entitlements are unavailable; unentitled builds now continue in local-only mode.
+
 - Added private CloudKit synchronization between the entitled Mac and iPhone
   apps. Offline changes remain local and queued; distinct completed sessions
   merge, while simultaneous live starts, account changes, resets, and ambiguous

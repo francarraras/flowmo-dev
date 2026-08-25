@@ -3,6 +3,10 @@ import Combine
 import FlowmoCore
 import Foundation
 
+#if os(macOS)
+    import Security
+#endif
+
 public enum WorldSyncPhase: String, Equatable, Sendable {
     case localOnly
     case syncing
@@ -58,7 +62,7 @@ public final class CloudWorldSync: NSObject, CKSyncEngineDelegate, @unchecked Se
     @MainActor
     public init(
         store: Store,
-        container: CKContainer = CKContainer(identifier: CloudWorldSync.containerIdentifier),
+        container: CKContainer,
         status: WorldSyncStatus? = nil,
         onWorldChange: @escaping @MainActor @Sendable (World) -> Void = { _ in }
     ) throws {
@@ -83,6 +87,49 @@ public final class CloudWorldSync: NSObject, CKSyncEngineDelegate, @unchecked Se
             onWorldChange: onWorldChange
         )
         super.init()
+    }
+
+    /// Creates the production adapter only when this process is signed for the
+    /// configured iCloud container. CloudKit traps while constructing a named
+    /// container in an unentitled macOS process, so this check must happen first.
+    @MainActor
+    public static func makeDefault(
+        store: Store,
+        status: WorldSyncStatus,
+        onWorldChange: @escaping @MainActor @Sendable (World) -> Void = { _ in }
+    ) -> CloudWorldSync? {
+        guard currentProcessHasContainerEntitlement else {
+            status.markUnavailable(issueCode: "sync_entitlement_unavailable")
+            return nil
+        }
+        do {
+            return try CloudWorldSync(
+                store: store,
+                container: CKContainer(identifier: containerIdentifier),
+                status: status,
+                onWorldChange: onWorldChange
+            )
+        } catch {
+            status.markUnavailable()
+            return nil
+        }
+    }
+
+    public static var currentProcessHasContainerEntitlement: Bool {
+        #if os(macOS)
+            guard let task = SecTaskCreateFromSelf(nil) else { return false }
+            let key = "com.apple.developer.icloud-container-identifiers" as CFString
+            let value = SecTaskCopyValueForEntitlement(task, key, nil)
+            return containerIdentifiers(from: value).contains(containerIdentifier)
+        #else
+            // iOS builds carrying this target are provisioned through the app
+            // target. Xcode rejects unsupported iCloud capabilities before run.
+            return true
+        #endif
+    }
+
+    static func containerIdentifiers(from entitlement: Any?) -> [String] {
+        entitlement as? [String] ?? []
     }
 
     public func start() {

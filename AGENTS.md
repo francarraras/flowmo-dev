@@ -40,7 +40,7 @@ Product behavior lives in [`docs/PROJECT.md`](docs/PROJECT.md). If chat, old cod
 
 ## Run
 
-- Window: `swift run`
+- Window: `swift run flowmo`
 - Dock app: `xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES`, then open `Flowmo.app` (`app.flowmo.mac`).
 - iPhone: `xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES` (`app.flowmo.phone`).
 - CLI side door: `swift run flowmo status --json`

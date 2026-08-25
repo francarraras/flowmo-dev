@@ -411,7 +411,7 @@ The Mac window is the product; the CLI remains a side door.
 
 macOS on this machine is case-insensitive: `~/flowmo` and `~/Flowmo` are the **same path**. New work must stay under `~/dev/flowmo` (or another name that is not `Flowmo`).
 
-Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may fail without full Xcode). The Dock `.app` is a thin Xcode host of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`); `swift run` remains the SwiftPM launcher.
+Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may fail without full Xcode). The Dock `.app` is a thin Xcode host of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`); `swift run flowmo` remains the SwiftPM launcher.
 
 ---
 
@@ -478,7 +478,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Pause button | No |
 | After recall | Quiet close beat; tap the frame (Skip = dismiss). Then idle |
 | History UI | Local list from Idle. Collapsed: intention, date, focus clock, writing count. Tap expands that session: Focused / Rested, parked lines, reflection. |
-| Window delivery | SwiftPM launcher (`swift run`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
+| Window delivery | SwiftPM launcher (`swift run flowmo`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
 | Store recovery | Preserve invalid bytes before reset; never silently replace them |
 | Data controls | Idle-only full export, redacted diagnostics, confirmed Delete All |

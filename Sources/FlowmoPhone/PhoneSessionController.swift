@@ -392,23 +392,24 @@ public final class PhoneSessionController: ObservableObject {
 
     private func startCloudSync() {
         guard cloudSync == nil else { return }
-        do {
-            let sync = try CloudWorldSync(
+        guard
+            let sync = CloudWorldSync.makeDefault(
                 store: store,
-                status: syncStatus
-            ) { [weak self] syncedWorld in
-                guard let self else { return }
-                world = syncedWorld
-                now = Date()
-                refreshDraftsAfterChange()
-                attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
-                reloadGlance()
-            }
-            cloudSync = sync
-            sync.start()
-        } catch {
-            syncStatus.markUnavailable()
+                status: syncStatus,
+                onWorldChange: { [weak self] syncedWorld in
+                    guard let self else { return }
+                    world = syncedWorld
+                    now = Date()
+                    refreshDraftsAfterChange()
+                    attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+                    reloadGlance()
+                }
+            )
+        else {
+            return
         }
+        cloudSync = sync
+        sync.start()
     }
 
     private func refreshDraftsAfterChange() {

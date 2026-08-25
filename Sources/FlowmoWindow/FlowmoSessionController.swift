@@ -678,22 +678,23 @@ public final class FlowmoSessionController: ObservableObject {
 
     private func startCloudSync() {
         guard cloudSync == nil else { return }
-        do {
-            let sync = try CloudWorldSync(
+        guard
+            let sync = CloudWorldSync.makeDefault(
                 store: store,
-                status: syncStatus
-            ) { [weak self] syncedWorld in
-                guard let self else { return }
-                world = syncedWorld
-                now = Date()
-                refreshDraftsAfterChange()
-                reconcileGuard()
-            }
-            cloudSync = sync
-            sync.start()
-        } catch {
-            syncStatus.markUnavailable()
+                status: syncStatus,
+                onWorldChange: { [weak self] syncedWorld in
+                    guard let self else { return }
+                    world = syncedWorld
+                    now = Date()
+                    refreshDraftsAfterChange()
+                    reconcileGuard()
+                }
+            )
+        else {
+            return
         }
+        cloudSync = sync
+        sync.start()
     }
 
     private func markerSessionID(_ id: UUID?) -> UUID? {
