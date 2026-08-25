@@ -26,6 +26,7 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public var captureDraft: String = ""
     @Published public var recallDraft: String = ""
     @Published public var showCapture: Bool = false
+    @Published public var showParkedReview: Bool = false
     @Published public var isPinned: Bool = false
     @Published public var showGuardConfig: Bool = false
     @Published public private(set) var displayMode: DisplayMode
@@ -273,6 +274,56 @@ public final class FlowmoSessionController: ObservableObject {
         intentionDraft = nextStep
     }
 
+    @discardableResult
+    public func resumeCompletedSession(
+        _ session: CompletedSession,
+        replacingCurrentDraft: Bool = false
+    ) -> Bool {
+        guard world.live == nil,
+            let suggestion = SessionResumptionSuggestion.forSession(session)
+        else { return false }
+        guard
+            replacingCurrentDraft
+                || intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return false }
+        intentionDraft = suggestion
+        return true
+    }
+
+    public func beginParkedReview() {
+        guard let live = world.live,
+            live.phase == .recall,
+            !live.isPaused,
+            live.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            !live.captures.isEmpty
+        else { return }
+        showParkedReview = true
+    }
+
+    public func endParkedReview() {
+        showParkedReview = false
+    }
+
+    @discardableResult
+    public func useParkedThoughtAsNext(_ capture: CaptureItem) -> Bool {
+        guard let live = world.live,
+            live.phase == .recall,
+            !live.isPaused,
+            live.captures.contains(capture),
+            live.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return false }
+        let text = capture.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
+        guard apply(.useParkedThoughtAsNext(sessionID: live.id, capture: capture)) else {
+            reloadFromStore(cueIfChanged: false)
+            return false
+        }
+        showParkedReview = false
+        return world.live?.recallText == text
+    }
+
     public func clearIntention() {
         intentionDraft = ""
     }
@@ -360,6 +411,7 @@ public final class FlowmoSessionController: ObservableObject {
             captureDraft = ""
             recallDraft = ""
             showCapture = false
+            showParkedReview = false
             sessionWasLive = false
             beginMacProcessLifetime()
             reconcileGuard()
@@ -759,6 +811,7 @@ public final class FlowmoSessionController: ObservableObject {
                 intentionDraft = ""
             }
             showCapture = false
+            showParkedReview = false
             captureDraft = ""
             recallDraft = ""
         } else {
@@ -769,6 +822,9 @@ public final class FlowmoSessionController: ObservableObject {
             }
             if world.live?.phase != .recall {
                 recallDraft = ""
+                showParkedReview = false
+            } else if world.live?.isPaused == true || !recallDraft.isEmpty {
+                showParkedReview = false
             }
         }
         sessionWasLive = isLive
@@ -785,6 +841,7 @@ public final class FlowmoSessionController: ObservableObject {
         captureDraft = ""
         recallDraft = ""
         showCapture = false
+        showParkedReview = false
         showGuardConfig = false
         if nextWorld.live?.phase == .recall {
             recallDraft = nextWorld.live?.recallText ?? ""

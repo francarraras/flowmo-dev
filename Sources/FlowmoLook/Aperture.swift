@@ -475,6 +475,128 @@ public struct ClosePayoff: View {
     }
 }
 
+/// One parked thought at the moment it can become a concrete next step.
+/// Navigation stays inside the aperture so Reflection keeps its timed ring.
+public struct ParkedThoughtReview: View {
+    @Environment(\.atmosphere) private var atmo
+    var text: String
+    var position: Int
+    var count: Int
+    var onPrevious: () -> Void
+    var onNext: () -> Void
+
+    public init(
+        text: String,
+        position: Int,
+        count: Int,
+        onPrevious: @escaping () -> Void,
+        onNext: @escaping () -> Void
+    ) {
+        self.text = text
+        self.position = position
+        self.count = count
+        self.onPrevious = onPrevious
+        self.onNext = onNext
+    }
+
+    public var body: some View {
+        if safeCount > 0 {
+            VStack(spacing: 6) {
+                ViewThatFits(in: .vertical) {
+                    thoughtText
+                        .fixedSize(horizontal: false, vertical: true)
+                    ScrollView {
+                        thoughtText
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 4)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                .frame(maxHeight: 96)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Parked thought: \(text)")
+
+                HStack(spacing: 10) {
+                    navigationButton(
+                        systemName: "chevron.left",
+                        label: "Previous parked thought",
+                        enabled: canMovePrevious,
+                        action: onPrevious
+                    )
+
+                    Text("Parked \(safePosition) of \(safeCount)")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(atmo.faint)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    navigationButton(
+                        systemName: "chevron.right",
+                        label: "Next parked thought",
+                        enabled: canMoveNext,
+                        action: onNext
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .contain)
+        }
+    }
+
+    private var safeCount: Int {
+        max(0, count)
+    }
+
+    private var safePosition: Int {
+        guard safeCount > 0 else { return 0 }
+        return min(max(1, position), safeCount)
+    }
+
+    private var canMovePrevious: Bool {
+        safeCount > 0 && safePosition > 1
+    }
+
+    private var canMoveNext: Bool {
+        safeCount > 0 && safePosition < safeCount
+    }
+
+    private var navigationTarget: CGFloat {
+        #if os(iOS)
+            44
+        #else
+            28
+        #endif
+    }
+
+    private var thoughtText: some View {
+        Text(text)
+            .font(.system(.body, design: .rounded).weight(.medium))
+            .foregroundStyle(atmo.ink)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+    }
+
+    private func navigationButton(
+        systemName: String,
+        label: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(enabled ? atmo.mute : atmo.faint.opacity(0.45))
+                .frame(width: navigationTarget, height: navigationTarget)
+                .contentShape(Circle())
+        }
+        .buttonStyle(PressStyle())
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+        .accessibilityValue("Parked \(safePosition) of \(safeCount)")
+    }
+}
+
 /// Gold mark with no finish line. Width grows with earned rest; the track never fills.
 public struct Accrual: View {
     var seconds: TimeInterval

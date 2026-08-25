@@ -38,6 +38,54 @@ final class NextStepSuggestionTests: XCTestCase {
         XCTAssertEqual(NextStepSuggestion.latest(in: sessions), "earlier UUID")
     }
 
+    func testSelectedSessionResumptionPrefersItsNextStep() {
+        let selected = session(
+            id: "00000000-0000-0000-0000-000000000001",
+            endedAt: 100,
+            recall: "  finish the introduction  "
+        )
+
+        XCTAssertEqual(SessionResumptionSuggestion.forSession(selected), "finish the introduction")
+    }
+
+    func testSelectedSessionResumptionFallsBackToTrimmedIntention() {
+        var selected = session(
+            id: "00000000-0000-0000-0000-000000000001",
+            endedAt: 100,
+            recall: " \n "
+        )
+        selected.intention = " \t Return to draft \n "
+
+        XCTAssertEqual(SessionResumptionSuggestion.forSession(selected), "Return to draft")
+    }
+
+    func testSelectedSessionResumptionReturnsNilWhenBothFieldsAreBlank() {
+        var selected = session(
+            id: "00000000-0000-0000-0000-000000000001",
+            endedAt: 100,
+            recall: " \n "
+        )
+        selected.intention = " \t "
+
+        XCTAssertNil(SessionResumptionSuggestion.forSession(selected))
+    }
+
+    func testSelectedOlderSessionDoesNotUseNewerSessionCue() {
+        let selectedOlder = session(
+            id: "00000000-0000-0000-0000-000000000001",
+            endedAt: 100,
+            recall: "return to essay"
+        )
+        let newer = session(
+            id: "00000000-0000-0000-0000-000000000002",
+            endedAt: 200,
+            recall: "newer task"
+        )
+
+        XCTAssertEqual(NextStepSuggestion.latest(in: [selectedOlder, newer]), "newer task")
+        XCTAssertEqual(SessionResumptionSuggestion.forSession(selectedOlder), "return to essay")
+    }
+
     private func session(id: String, endedAt: TimeInterval, recall: String?) -> CompletedSession {
         CompletedSession(
             id: UUID(uuidString: id)!,

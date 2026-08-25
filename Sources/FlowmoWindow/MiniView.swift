@@ -86,7 +86,17 @@ struct MiniView: View {
             case .prime:
                 QuietButton("Focus now", minHeight: 26) { controller.skip() }
             case .recall:
-                QuietButton(recallActionTitle, minHeight: 26) { controller.skip() }
+                if canReviewParkedThoughts {
+                    HStack(spacing: 8) {
+                        miniIcon("tray.full", help: "Review parked thoughts — opens Classic") {
+                            controller.beginParkedReview()
+                            controller.setDisplayMode(.classic)
+                        }
+                        QuietButton(recallActionTitle, minHeight: 26) { controller.skip() }
+                    }
+                } else {
+                    QuietButton(recallActionTitle, minHeight: 26) { controller.skip() }
+                }
             case .onBreak:
                 QuietButton("Reflect", minHeight: 26) { controller.skip() }
             case .focus:
@@ -136,6 +146,11 @@ struct MiniView: View {
         controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "Skip"
             : "Done"
+    }
+
+    private var canReviewParkedThoughts: Bool {
+        !status.captures.isEmpty
+            && controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func miniIcon(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {

@@ -1,36 +1,32 @@
 import FlowmoCore
 import SwiftUI
 
-/// One finished session. Collapsed is a scan row. Tap opens that session only.
+/// One finished session. Its disclosure and optional resumption are distinct actions.
 public struct HistorySessionCard: View {
     @Environment(\.atmosphere) private var atmo
     var session: CompletedSession
     var expanded: Bool
+    var resumptionTitle: String?
+    var onResume: (() -> Void)?
     var onToggle: () -> Void
 
-    public init(session: CompletedSession, expanded: Bool, onToggle: @escaping () -> Void) {
+    public init(
+        session: CompletedSession,
+        expanded: Bool,
+        resumptionTitle: String? = nil,
+        onResume: (() -> Void)? = nil,
+        onToggle: @escaping () -> Void
+    ) {
         self.session = session
         self.expanded = expanded
+        self.resumptionTitle = resumptionTitle
+        self.onResume = onResume
         self.onToggle = onToggle
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: expanded ? 8 : 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(session.intention.isEmpty ? "No intention" : session.intention)
-                    .font(.system(.body, design: .rounded).weight(.medium))
-                    .lineLimit(expanded ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: expanded)
-                Spacer(minLength: 8)
-                if !expanded {
-                    Text(Format.clock(session.focusSeconds))
-                        .font(.system(.body, design: .rounded).weight(.medium).monospacedDigit())
-                        .foregroundStyle(atmo.mute)
-                }
-            }
-            Text(session.endedAt, format: .dateTime.month(.abbreviated).day().year())
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(atmo.mute)
+            disclosure
 
             if expanded {
                 clocks
@@ -60,20 +56,50 @@ public struct HistorySessionCard: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-            } else if hasWriting {
-                Text(collapsedMark)
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(atmo.mute)
+                if let visibleResumptionTitle, let onResume {
+                    QuietButton(visibleResumptionTitle, action: onResume)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(atmo.well)
         .clipShape(RoundedRectangle(cornerRadius: Look.corner, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: Look.corner, style: .continuous))
-        .onTapGesture(perform: onToggle)
-        .accessibilityElement(children: expanded ? .contain : .combine)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var disclosure: some View {
+        Button(action: onToggle) {
+            VStack(alignment: .leading, spacing: expanded ? 8 : 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(session.intention.isEmpty ? "No intention" : session.intention)
+                        .font(.system(.body, design: .rounded).weight(.medium))
+                        .lineLimit(expanded ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: expanded)
+                    Spacer(minLength: 8)
+                    if !expanded {
+                        Text(Format.clock(session.focusSeconds))
+                            .font(.system(.body, design: .rounded).weight(.medium).monospacedDigit())
+                            .foregroundStyle(atmo.mute)
+                    }
+                }
+                Text(session.endedAt, format: .dateTime.month(.abbreviated).day().year())
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(atmo.mute)
+
+                if !expanded, hasWriting {
+                    Text(collapsedMark)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(atmo.mute)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(expanded ? "Expanded" : "Collapsed")
         .accessibilityHint(expanded ? "Shows less" : "Shows parked lines and next step")
     }
 
@@ -83,6 +109,12 @@ public struct HistorySessionCard: View {
 
     private var hasWriting: Bool {
         parkedCount > 0 || !(session.recallText?.isEmpty ?? true)
+    }
+
+    private var visibleResumptionTitle: String? {
+        guard let resumptionTitle else { return nil }
+        let trimmed = resumptionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private var collapsedMark: String {

@@ -4,6 +4,13 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Closed the parked-thought loop: Reflection can now review saved thoughts
+  newest-first and turn one into the editable next step without deleting it.
+  Mini opens this review in Classic, and iPhone mirrors the same flow.
+- Made History actionable on Mac and iPhone. Expanding any completed session
+  now offers **Use next step**, or **Use intention** when that is the only cue.
+  The choice returns to Idle for confirmation, never starts automatically, and
+  asks before replacing an intention already typed there.
 - Reworked the visible session loop around Flowmo’s actual advantage: open-ended
   count-up focus and self-directed breaks. A first session now explains the
   model in place; Break says **Take what you need** and advances with **Reflect**.

@@ -46,7 +46,8 @@ What should happen:
 - Focus counts up. Gold is rest you are earning.
 - Break is gold.
 - Close shows **Focused**, **Break earned**, and anything worth returning to. **Done** returns to an empty Idle, where **Use next** can reveal the latest next step for confirmation.
-- **History** still has the parked line. Tap a card to open it.
+- During **Reflection**, review parked lines and use one as the editable next step.
+- **History** keeps every parked line and can return any chosen session’s next step—or its intention—to Idle for confirmation.
 
 Same session as the window. The current local store is `~/.flowmo/world.json`,
 but it is internal storage—not a supported write API. Automation should use the

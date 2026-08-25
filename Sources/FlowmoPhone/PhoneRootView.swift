@@ -208,7 +208,10 @@ private struct IdlePane: View {
                     showingData = false
                 }
             } else if showingHistory {
-                HistoryPane(sessions: HistoryOrder.newestFirst(controller.world.history)) {
+                HistoryPane(
+                    controller: controller,
+                    sessions: HistoryOrder.newestFirst(controller.world.history)
+                ) {
                     showingHistory = false
                 }
             } else {
@@ -444,9 +447,12 @@ private struct DataControlsPane: View {
 
 private struct HistoryPane: View {
     @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: PhoneSessionController
     var sessions: [CompletedSession]
     var dismiss: () -> Void
     @State private var expandedID: UUID?
+    @State private var pendingResumption: CompletedSession?
+    @State private var showingReplacementConfirmation = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -467,18 +473,64 @@ private struct HistoryPane: View {
                         ForEach(sessions, id: \.id) { session in
                             HistorySessionCard(
                                 session: session,
-                                expanded: expandedID == session.id
-                            ) {
-                                withAnimation(Motion.phase) {
-                                    expandedID = expandedID == session.id ? nil : session.id
+                                expanded: expandedID == session.id,
+                                resumptionTitle: resumptionTitle(for: session),
+                                onResume: { attemptResumption(session) },
+                                onToggle: {
+                                    withAnimation(Motion.phase) {
+                                        expandedID = expandedID == session.id ? nil : session.id
+                                    }
                                 }
-                            }
+                            )
                         }
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .confirmationDialog(
+            "Replace current intention?",
+            isPresented: $showingReplacementConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Replace intention") {
+                guard let pendingResumption else { return }
+                finishResumption(pendingResumption, replacingCurrentDraft: true)
+            }
+            Button("Cancel", role: .cancel) {
+                pendingResumption = nil
+            }
+        } message: {
+            Text("This replaces the intention currently typed in Idle.")
+        }
+    }
+
+    private func resumptionTitle(for session: CompletedSession) -> String? {
+        guard SessionResumptionSuggestion.forSession(session) != nil else { return nil }
+        let nextStep = session.recallText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return nextStep.isEmpty ? "Use intention" : "Use next step"
+    }
+
+    private func attemptResumption(_ session: CompletedSession) {
+        let hasCurrentDraft = !controller.intentionDraft.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty
+        guard hasCurrentDraft else {
+            finishResumption(session, replacingCurrentDraft: false)
+            return
+        }
+        pendingResumption = session
+        showingReplacementConfirmation = true
+    }
+
+    private func finishResumption(_ session: CompletedSession, replacingCurrentDraft: Bool) {
+        if controller.useSessionResumption(
+            session,
+            replacingCurrentDraft: replacingCurrentDraft
+        ) {
+            pendingResumption = nil
+            dismiss()
+        }
     }
 }
 
@@ -604,11 +656,14 @@ private struct RecallPane: View {
     @Environment(\.atmosphere) private var atmo
     @ObservedObject var controller: PhoneSessionController
     var status: SessionStatus
+    @State private var parkedIndex = 0
 
     var body: some View {
         PhaseColumn {
             if status.isPaused {
                 PhaseCaption(status.recallText.isEmpty ? "Reflection" : status.recallText, tone: atmo.mute)
+            } else if controller.showParkedReview {
+                PhaseLead("Parked thoughts", cue: "Choose what comes next", tone: atmo.mute)
             } else {
                 HairlineField(FlowmoCopy.reflectionPrompt, text: $controller.recallDraft, centered: true)
                     .onChange(of: controller.recallDraft) { _, _ in
@@ -618,7 +673,17 @@ private struct RecallPane: View {
             }
         } hole: {
             Aperture(ring: .timed(progress: ringProgress(status))) {
-                InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 40)
+                if controller.showParkedReview, let capture = selectedParkedThought {
+                    ParkedThoughtReview(
+                        text: capture.text,
+                        position: parkedIndex + 1,
+                        count: parkedThoughts.count,
+                        onPrevious: showPreviousParkedThought,
+                        onNext: showNextParkedThought
+                    )
+                } else {
+                    InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 40)
+                }
             }
         } verb: {
             if status.isPaused {
@@ -626,10 +691,83 @@ private struct RecallPane: View {
                     onRestart: { controller.restartSession() },
                     onContinue: { controller.continueSession() }
                 )
+            } else if controller.showParkedReview {
+                HStack(spacing: 12) {
+                    QuietButton("Back", minHeight: 44) {
+                        controller.endParkedReview()
+                    }
+                    InkButton("Use as next") {
+                        useSelectedParkedThought()
+                    }
+                    .disabled(selectedParkedThought == nil)
+                }
+            } else if canReviewParkedThoughts {
+                HStack(spacing: 12) {
+                    QuietButton(reviewParkedTitle, minHeight: 44) {
+                        parkedIndex = 0
+                        controller.beginParkedReview()
+                    }
+                    QuietButton("Skip", minHeight: 44) { controller.skip() }
+                }
             } else {
                 QuietButton(reflectionActionTitle, minHeight: 44) { controller.skip() }
             }
         }
+        .onChange(of: status.phase) { _, phase in
+            if phase != .recall {
+                controller.endParkedReview()
+            }
+        }
+        .onChange(of: status.isPaused) { _, paused in
+            if paused {
+                controller.endParkedReview()
+            }
+        }
+        .onChange(of: controller.recallDraft) { _, draft in
+            if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                controller.endParkedReview()
+            }
+        }
+        .onChange(of: parkedThoughts.count) { _, count in
+            if count == 0 {
+                controller.endParkedReview()
+                parkedIndex = 0
+            } else {
+                parkedIndex = min(parkedIndex, count - 1)
+            }
+        }
+    }
+
+    private var parkedThoughts: [CaptureItem] {
+        Array(status.captures.reversed())
+    }
+
+    private var selectedParkedThought: CaptureItem? {
+        guard parkedThoughts.indices.contains(parkedIndex) else { return nil }
+        return parkedThoughts[parkedIndex]
+    }
+
+    private var canReviewParkedThoughts: Bool {
+        !parkedThoughts.isEmpty
+            && controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && status.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var reviewParkedTitle: String {
+        parkedThoughts.count == 1 ? "Review parked thought" : "Review \(parkedThoughts.count) parked"
+    }
+
+    private func showPreviousParkedThought() {
+        parkedIndex = max(0, parkedIndex - 1)
+    }
+
+    private func showNextParkedThought() {
+        parkedIndex = min(parkedThoughts.count - 1, parkedIndex + 1)
+    }
+
+    private func useSelectedParkedThought() {
+        guard let capture = selectedParkedThought else { return }
+        _ = controller.useParkedThoughtAsNext(capture)
     }
 
     private var reflectionActionTitle: String {

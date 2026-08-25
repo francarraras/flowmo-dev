@@ -60,6 +60,8 @@ public struct Engine: Equatable, Sendable {
             try capture(text, now: now)
         case .setRecallText(let text):
             try setRecallText(text)
+        case .useParkedThoughtAsNext(let sessionID, let capture):
+            try useParkedThoughtAsNext(sessionID: sessionID, capture: capture)
         case .cancel:
             try cancel()
         case .configureFocusGuard(let config):
@@ -347,6 +349,19 @@ public struct Engine: Equatable, Sendable {
     private mutating func setRecallText(_ text: String) throws {
         guard var live = world.live else { throw EngineError.nothingRunning }
         guard live.phase == .recall else { throw EngineError.cannotSetRecallText }
+        live.recallText = text
+        world.live = live
+    }
+
+    private mutating func useParkedThoughtAsNext(sessionID: UUID, capture: CaptureItem) throws {
+        guard var live = world.live else { throw EngineError.nothingRunning }
+        guard live.id == sessionID,
+            live.phase == .recall,
+            live.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            live.captures.contains(capture)
+        else { throw EngineError.cannotSetRecallText }
+        let text = capture.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { throw EngineError.emptyCapture }
         live.recallText = text
         world.live = live
     }

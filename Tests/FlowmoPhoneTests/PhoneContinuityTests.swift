@@ -1,0 +1,176 @@
+import FlowmoCore
+import FlowmoSync
+import Foundation
+import XCTest
+
+@testable import FlowmoPhone
+
+@MainActor
+final class PhoneContinuityTests: XCTestCase {
+    func testSelectedHistorySessionFillsDraftWithoutStarting() throws {
+        try withStore { store in
+            let session = CompletedSession(
+                id: UUID(),
+                intention: "Draft the launch page",
+                focusSeconds: 1_200,
+                breakSeconds: 240,
+                captureCount: 0,
+                recallText: "Write the pricing section",
+                endedAt: Date()
+            )
+            var world = World.empty
+            world.history = [session]
+            try store.save(world)
+            let controller = makeController(store: store)
+            let idleWorld = controller.world
+
+            XCTAssertTrue(controller.useSessionResumption(session))
+            XCTAssertEqual(controller.intentionDraft, "Write the pricing section")
+            XCTAssertNil(controller.world.live)
+            XCTAssertEqual(controller.world, idleWorld)
+            XCTAssertEqual(try store.load(), idleWorld)
+        }
+    }
+
+    func testSelectedHistorySessionRequiresExplicitReplacementOfTypedDraft() throws {
+        try withStore { store in
+            let session = CompletedSession(
+                id: UUID(),
+                intention: "Draft the launch page",
+                focusSeconds: 1_200,
+                breakSeconds: 240,
+                captureCount: 0,
+                recallText: "Write the pricing section",
+                endedAt: Date()
+            )
+            var world = World.empty
+            world.history = [session]
+            try store.save(world)
+            let storedWorld = try store.load()
+            let controller = makeController(store: store)
+            controller.intentionDraft = "Keep this draft"
+
+            XCTAssertFalse(controller.useSessionResumption(session))
+            XCTAssertEqual(controller.intentionDraft, "Keep this draft")
+            XCTAssertTrue(
+                controller.useSessionResumption(session, replacingCurrentDraft: true)
+            )
+            XCTAssertEqual(controller.intentionDraft, "Write the pricing section")
+            XCTAssertEqual(try store.load(), storedWorld)
+        }
+    }
+
+    func testParkedThoughtPromotionPersistsNextStepAndKeepsCaptures() throws {
+        try withStore { store in
+            let controller = try makeRecallController(store: store)
+            let captures = try XCTUnwrap(controller.world.live?.captures)
+            let selected = try XCTUnwrap(captures.last)
+
+            XCTAssertTrue(controller.useParkedThoughtAsNext(selected))
+            XCTAssertEqual(controller.recallDraft, selected.text)
+            XCTAssertEqual(controller.world.live?.recallText, selected.text)
+            XCTAssertEqual(controller.world.live?.captures, captures)
+
+            let persisted = try store.load()
+            XCTAssertEqual(persisted.live?.recallText, selected.text)
+            XCTAssertEqual(persisted.live?.captures, captures)
+        }
+    }
+
+    func testParkedThoughtPromotionNeverOverwritesTypedOrStoredRecall() throws {
+        try withStore { store in
+            let controller = try makeRecallController(store: store)
+            let selected = try XCTUnwrap(controller.world.live?.captures.last)
+
+            controller.recallDraft = "Already typed"
+            XCTAssertFalse(controller.useParkedThoughtAsNext(selected))
+            XCTAssertEqual(controller.recallDraft, "Already typed")
+            XCTAssertEqual(controller.world.live?.recallText, "")
+
+            controller.persistRecall()
+            XCTAssertEqual(controller.world.live?.recallText, "Already typed")
+            controller.recallDraft = ""
+
+            XCTAssertFalse(controller.useParkedThoughtAsNext(selected))
+            XCTAssertEqual(controller.recallDraft, "")
+            XCTAssertEqual(controller.world.live?.recallText, "Already typed")
+            XCTAssertEqual(try store.load().live?.recallText, "Already typed")
+        }
+    }
+
+    func testParkedThoughtPromotionRejectsStaleCaptureWrongPhaseAndNoLiveSession() throws {
+        try withStore { store in
+            let controller = try makeRecallController(store: store)
+            let captures = try XCTUnwrap(controller.world.live?.captures)
+            let selected = try XCTUnwrap(captures.last)
+            let stale = CaptureItem(
+                text: selected.text,
+                createdAt: selected.createdAt.addingTimeInterval(1)
+            )
+
+            XCTAssertFalse(controller.useParkedThoughtAsNext(stale))
+            XCTAssertEqual(controller.world.live?.recallText, "")
+            XCTAssertEqual(controller.world.live?.captures, captures)
+
+            controller.skip()
+            XCTAssertEqual(controller.world.live?.phase, .closeBeat)
+            XCTAssertFalse(controller.useParkedThoughtAsNext(selected))
+            XCTAssertEqual(controller.world.live?.recallText, "")
+            XCTAssertEqual(controller.world.live?.captures, captures)
+
+            controller.dismissCloseBeat()
+            XCTAssertNil(controller.world.live)
+            XCTAssertFalse(controller.useParkedThoughtAsNext(selected))
+        }
+    }
+
+    func testParkedThoughtPromotionDoesNotOverwriteRecallSavedByAnotherSurface() throws {
+        try withStore { store in
+            let controller = try makeRecallController(store: store)
+            let captures = try XCTUnwrap(controller.world.live?.captures)
+            let selected = try XCTUnwrap(captures.last)
+
+            _ = try store.update { engine in
+                try engine.apply(.setRecallText("Saved elsewhere"), now: Date())
+            }
+
+            XCTAssertFalse(controller.useParkedThoughtAsNext(selected))
+            XCTAssertEqual(controller.recallDraft, "Saved elsewhere")
+            XCTAssertEqual(controller.world.live?.recallText, "Saved elsewhere")
+            XCTAssertEqual(controller.world.live?.captures, captures)
+            XCTAssertEqual(try store.load().live?.recallText, "Saved elsewhere")
+        }
+    }
+
+    private func makeRecallController(store: Store) throws -> PhoneSessionController {
+        let start = Date().addingTimeInterval(-60)
+        var engine = Engine()
+        try engine.apply(.start(intention: "Finish the product slice"), now: start)
+        try engine.apply(.skip, now: start.addingTimeInterval(1))
+        try engine.apply(.capture("Check the empty state"), now: start.addingTimeInterval(10))
+        try engine.apply(.capture("Write the release note"), now: start.addingTimeInterval(20))
+        try engine.apply(.stopFocus, now: start.addingTimeInterval(30))
+        try engine.apply(.skip, now: start.addingTimeInterval(31))
+        let sessionID = try XCTUnwrap(engine.world.live?.id)
+        try store.save(engine.world)
+        try WorldSyncMetadataStore(root: store.root).save(
+            WorldSyncMetadata(remoteLiveSessionID: sessionID)
+        )
+        return makeController(store: store)
+    }
+
+    private func makeController(store: Store) -> PhoneSessionController {
+        PhoneSessionController(
+            store: store,
+            attention: PhoneAttention(notificationsEnabled: false)
+        )
+    }
+
+    private func withStore(_ body: (Store) throws -> Void) throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("flowmo-phone-continuity-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try body(Store(root: root))
+    }
+}

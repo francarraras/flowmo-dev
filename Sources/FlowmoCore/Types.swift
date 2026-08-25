@@ -387,6 +387,27 @@ public enum NextStepSuggestion {
     }
 }
 
+/// The continuation cue for a session the person explicitly selected.
+///
+/// Unlike `NextStepSuggestion.latest(in:)`, this deliberately falls back to
+/// the selected session's original intention. The user chose the session, so
+/// it must not apply the idle screen's newest-only rule or reach into another
+/// completed session for a cue.
+public enum SessionResumptionSuggestion {
+    public static func forSession(_ session: CompletedSession) -> String? {
+        if let recall = trimmed(session.recallText) {
+            return recall
+        }
+        return trimmed(session.intention)
+    }
+
+    private static func trimmed(_ text: String?) -> String? {
+        guard let text else { return nil }
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+}
+
 public struct World: Codable, Equatable, Sendable {
     public var live: SessionSnapshot?
     public var profile: Profile
@@ -426,6 +447,7 @@ public enum Event: Equatable, Sendable {
     case stopFocus
     case capture(String)
     case setRecallText(String)
+    case useParkedThoughtAsNext(sessionID: UUID, capture: CaptureItem)
     case pauseForRecovery
     case `continue`
     case restart

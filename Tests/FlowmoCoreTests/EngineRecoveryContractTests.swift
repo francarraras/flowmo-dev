@@ -13,6 +13,10 @@ final class EngineRecoveryContractTests: XCTestCase {
             .stopFocus,
             .capture("hidden mutation"),
             .setRecallText("hidden mutation"),
+            .useParkedThoughtAsNext(
+                sessionID: UUID(),
+                capture: CaptureItem(text: "hidden mutation", createdAt: origin)
+            ),
             .cancel,
             .configureFocusGuard(
                 FocusGuardConfiguration(enabled: true, bundleIdentifiers: ["com.example.blocked"])),

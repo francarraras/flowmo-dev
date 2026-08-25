@@ -29,7 +29,7 @@ Copy does not claim productivity, well-being, or flow.
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
 - Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write. The phone app synchronizes the loop through the user's private CloudKit database; the widget only reads the App Group copy.
-- Same controls as Mac: Start, Use next / Use last, Park thought, Stop, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
+- Same controls as Mac: Start, Use next / Use last, continue a chosen History thread, Park thought, review parked thoughts into the next step, Stop, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
 - Same look rules: black field, cyan on Start and timed rings, clock-in-ring on prime/break/recall, Focus is a count-up plus earned strip. No focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Phase end while you are not looking: a local notification. Tap opens the app; it does not Continue.
 
@@ -51,7 +51,10 @@ WHEN the app is idle
 THE SYSTEM SHALL show 00:00, Start, today’s focus total, History, and Data. On a truly new store it SHALL explain count-up Focus and earned break inside the aperture. When available, Use next SHALL reveal only the latest completed session’s explicit next step for confirmation; otherwise Use last SHALL reveal the saved intention.
 
 WHEN the user opens History from Idle
-THE SYSTEM SHALL show completed sessions newest-first. Each card shows intention, Focus duration, and local date. Tapping a card SHALL expand that session in place with Focused, Break earned, parked lines, and next step when present. Back SHALL return to Idle.
+THE SYSTEM SHALL show completed sessions newest-first. Each card shows intention, Focus duration, and local date. Tapping a card SHALL expand that session in place with Focused, Break earned, parked lines, and next step when present. An expanded card SHALL offer Use next step, or Use intention when that is the only cue; choosing it SHALL return to Idle with the line visible and SHALL NOT start automatically. If Idle already has a typed intention, the app SHALL ask before replacing it. Back SHALL return to Idle.
+
+WHEN Reflection has parked thoughts and its next-step field is empty
+THE SYSTEM SHALL offer a newest-first review inside the same frame. Use as next SHALL fill and persist the selected line as editable Reflection text without removing the parked line. Existing Reflection text SHALL never be overwritten.
 
 WHEN the user starts
 THE SYSTEM SHALL enter Prime for 120s with that intention and SHALL NOT ask for it again during Prime.

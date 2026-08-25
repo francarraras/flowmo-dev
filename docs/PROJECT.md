@@ -4,7 +4,7 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 Owner: Fran Carrara  
 Status: 1.0 close-beta candidate; external Apple distribution remains gated.
 
@@ -180,11 +180,11 @@ The product must stay:
 
 You type **once**. That line is the intention. Prime does not ask again.
 
-1. **Idle → type → Start**. After a completed session, **Use next** reveals its next step for confirmation; otherwise **Use last** can reveal the prior intention.
+1. **Idle → type → Start**. After a completed session, **Use next** reveals its next step for confirmation; otherwise **Use last** can reveal the prior intention. History can also bring any explicitly chosen thread back to Idle for confirmation.
 2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready.
 3. **Focus — count up** — work until you stop. **Park thought** saves one line without leaving Focus. No pause button.
 4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Take what you need, then Reflect whenever ready.
-5. **Reflection — 3:00** — “Where will you pick up next?” Optional line. Skip allowed.
+5. **Reflection — 3:00** — “Where will you pick up next?” Optional line. If thoughts were parked, review them newest-first and use one as the editable next step. Skip allowed.
 6. **Quiet close beat** — focus time, break earned, next step, and parked-thought count — then Done returns to idle.
 
 Encoding (focus) is the only required open-ended phase. Prime and recall have ends. Break is **not** a protocol phase in the old sense; it is the earned interlude between focus and recall.
@@ -208,11 +208,11 @@ The Mac **window is the product**.
 
 | State | On screen | Actions |
 |---|---|---|
-| **Idle** | Empty field, placeholder **Intention**. The first empty store explains count-up focus and earned break inside the aperture. **Start**, or **Use next** / **Use last** when prior work exists. Today, **History**, **Data**, **New**. | Type a line; reveal and confirm the newest session’s explicit next step (without falling back to a stale older one) or the last intention; inspect history; export/delete data; or New (clears only the typed draft). |
+| **Idle** | Empty field, placeholder **Intention**. The first empty store explains count-up focus and earned break inside the aperture. **Start**, or **Use next** / **Use last** when prior work exists. Today, **History**, **Data**, **New**. | Type a line; reveal and confirm the newest session’s explicit next step (without falling back to a stale older one) or the last intention; choose any completed History thread and return its next step—or its original intention—to Idle for confirmation, asking before replacing a typed draft; export/delete data; or New (clears only the typed draft). |
 | **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, or Focus now whenever ready. |
 | **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. | Work. Park a thought. Stop. |
 | **Break** | Neutral **Break** caption and **Take what you need.** Recommended countdown + determinate gold ring, with the earned rest and source Focus duration stated plainly. | Rest, or Reflect whenever ready. |
-| **Reflection (3:00)** | **Where will you pick up next?** Optional text. Countdown + ring. | Write and Done, sit, or Skip. |
+| **Reflection (3:00)** | **Where will you pick up next?** Optional text. Countdown + ring. When the session has parked thoughts and the field is empty, **Review N parked** opens a newest-first chooser inside the same frame. | Write and Done, use a parked thought as an editable next step, sit, or Skip. |
 | **Close beat** | Intention. **Focused** and **Break earned**, plus the optional next step and parked-thought count. No score, no share. | Done. Then idle. |
 
 ### Focus visual (important)
@@ -226,7 +226,7 @@ This is the “on steroids” visual that is still honest.
 
 ### Capture
 
-Not an always-visible field. The quiet **Park thought** action on the focus state opens one line. Enter parks it and clears; the action’s count confirms that the thought stayed. The lines stay on the session in **History**. Mini retains a compact `+`. No sheet, no categories in v1 (distraction vs idea can be inferred later; don’t ask now).
+Not an always-visible field. The quiet **Park thought** action on the focus state opens one line. Enter parks it and clears; the action’s count confirms that the thought stayed. During Reflection, the person can review parked lines newest-first and use one as the editable next step; this is non-destructive, so every line also stays on the session in **History**. Mini retains a compact `+` and opens review in Classic. No sheet, no categories in v1 (distraction vs idea can be inferred later; don’t ask now).
 
 ### Pause
 
@@ -459,7 +459,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | First place it lives | Mac, **real window** as the main thing |
 | Window structure | One frame, states change |
 | Prime | Intention + stilling (2:00) |
-| Reflection | One concrete next-step question + optional line (3:00) |
+| Reflection | One concrete next-step question + optional line (3:00); parked thoughts can become the editable next step |
 | Focus visual | Big clock + thin earned-break strip and “Xm earned” |
 | Timed-phase visual | Determinate ring/bar |
 | Fake 0–100% focus bar | No |
@@ -477,7 +477,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Resume after quit / sleep | **Continue** or **Restart**. Window appearing does not resume. Restart primes the same intention. |
 | Pause button | No |
 | After recall | Quiet close beat with next-step and parked-thought payoff; visible Done. Then idle |
-| History UI | Local list from Idle. Collapsed: intention, date, focus clock, writing count. Tap expands that session: Focused / Break earned, parked lines, next step. |
+| History UI | Local list from Idle. Collapsed: intention, date, focus clock, writing count. Tap expands that session: Focused / Break earned, parked lines, next step, and an explicit return action that fills Idle without auto-starting. |
 | Window delivery | SwiftPM launcher (`swift run flowmo`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
 | Store recovery | Preserve invalid bytes before reset; never silently replace them |
