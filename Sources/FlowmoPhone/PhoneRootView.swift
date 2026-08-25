@@ -1,5 +1,6 @@
 import FlowmoCore
 import FlowmoLook
+import FlowmoSync
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -16,6 +17,8 @@ public struct PhoneRootView: View {
         Group {
             if controller.storeNeedsRecovery {
                 StoreRecoveryPane(controller: controller)
+            } else if let conflict = controller.syncStatus.conflict {
+                SyncConflictPane(controller: controller, conflict: conflict)
             } else if status.isIdle {
                 IdlePane(controller: controller, status: status)
             } else {
@@ -89,6 +92,55 @@ public struct PhoneRootView: View {
         case nil:
             IdlePane(controller: controller, status: status)
         }
+    }
+}
+
+private struct SyncConflictPane: View {
+    @Environment(\.atmosphere) private var atmo
+    @ObservedObject var controller: PhoneSessionController
+    let conflict: WorldSyncConflict
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+            Text("Choose what to keep")
+                .font(.system(.title2, design: .rounded).weight(.semibold))
+            Text(message)
+                .font(.system(.body, design: .rounded))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
+            VStack(spacing: 10) {
+                InkButton("Keep this iPhone") {
+                    controller.resolveSyncConflict(choosing: .local)
+                }
+                InkButton("Use iCloud version") {
+                    controller.resolveSyncConflict(choosing: .remote)
+                }
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var message: String {
+        switch conflict.kind {
+        case .account:
+            "The iCloud account changed. Flowmo will not move private session data between accounts without your choice."
+        case .liveSession:
+            "Two sessions were started offline. This iPhone has \(summary(conflict.local)); iCloud has \(summary(conflict.remote))."
+        case .initialImport:
+            "This iPhone and iCloud both contain Flowmo data. Nothing will be overwritten until you choose."
+        case .resetGeneration:
+            "One copy was reset while the other changed. Choose the complete copy you want to keep."
+        case .profile, .completedSession:
+            "This iPhone and iCloud changed the same Flowmo data. Choose the copy you want to keep."
+        }
+    }
+
+    private func summary(_ snapshot: WorldSyncSnapshot) -> String {
+        guard let live = snapshot.head.live else { return "no active session" }
+        let intention = live.intention.trimmingCharacters(in: .whitespacesAndNewlines)
+        return intention.isEmpty ? "an active session" : "“\(intention)”"
     }
 }
 

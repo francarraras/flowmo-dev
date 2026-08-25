@@ -10,13 +10,24 @@ import UserNotifications
 @MainActor
 public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
     public static let requestID = "flowmo.timed-phase"
+    private let notificationsEnabled: Bool
 
     public override init() {
+        self.notificationsEnabled = true
         super.init()
         UNUserNotificationCenter.current().delegate = self
     }
 
+    init(notificationsEnabled: Bool) {
+        self.notificationsEnabled = notificationsEnabled
+        super.init()
+        if notificationsEnabled {
+            UNUserNotificationCenter.current().delegate = self
+        }
+    }
+
     public func requestPermission() {
+        guard notificationsEnabled else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
@@ -30,6 +41,7 @@ public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func reconcile(status: SessionStatus, cuesEnabled: Bool) {
+        guard notificationsEnabled else { return }
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.requestID])
         guard let delay = TimedNotice.remainingToSchedule(status) else { return }
         let next: SessionPhase

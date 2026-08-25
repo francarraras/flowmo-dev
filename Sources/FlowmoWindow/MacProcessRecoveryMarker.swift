@@ -171,7 +171,11 @@ final class MacProcessRecoveryMarker {
     /// Prepare Mac-host ownership. The kernel-held lifetime lock is the sole
     /// authority for a concurrent Mac owner; JSON is crash metadata only.
     /// Ownership is committed after `Store.update` persists the recovered world.
-    func prepareClaim(_ engine: inout Engine, now: Date) throws -> ClaimPreparation {
+    func prepareClaim(
+        _ engine: inout Engine,
+        now: Date,
+        trackLiveSession: Bool = true
+    ) throws -> ClaimPreparation {
         if ownsMarker { return .prepared }
         try requireFinite(now)
         guard try acquireLifetimeClaim() else { return .contended }
@@ -180,18 +184,18 @@ final class MacProcessRecoveryMarker {
         let previous = try previousMarker()
         switch previous {
         case .versioned(let record):
-            if record.liveSessionID == engine.world.live?.id {
+            if trackLiveSession, record.liveSessionID == engine.world.live?.id {
                 try freeze(&engine, at: record.lastObservedAt, noLaterThan: now)
             }
         case .legacy(let record):
-            if record.liveSessionID == engine.world.live?.id {
+            if trackLiveSession, record.liveSessionID == engine.world.live?.id {
                 try freeze(&engine, at: record.lastObservedAt, noLaterThan: now)
             }
         case .absent:
             break
         }
 
-        let sessionID = engine.world.live?.id
+        let sessionID = trackLiveSession ? engine.world.live?.id : nil
         try writeRecord(identity: currentIdentity, sessionID: sessionID, observedAt: now)
         pendingClaim = PendingClaim(identity: currentIdentity, sessionID: sessionID, observedAt: now)
         return .prepared

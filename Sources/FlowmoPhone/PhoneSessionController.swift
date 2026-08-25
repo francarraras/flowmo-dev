@@ -1,5 +1,6 @@
 import Combine
 import FlowmoCore
+import FlowmoSync
 import Foundation
 
 #if canImport(WidgetKit)
@@ -50,14 +51,18 @@ public final class PhoneSessionController: ObservableObject {
     @Published public var activeIssue: FlowmoPresentedIssue?
     @Published public private(set) var userNotice: String?
     @Published public private(set) var recentIssues: [FlowmoIssueRecord] = []
+    public let syncStatus: WorldSyncStatus
 
     let store: Store
     let attention: PhoneAttention
+    private let syncMetadataStore: WorldSyncMetadataStore
+    private var cloudSync: CloudWorldSync?
 
     private var timer: Timer?
     private var applying = false
     private var sessionWasLive = false
     private var lastIssuePresentedAt: [FlowmoIssueCode: Date] = [:]
+    private var cancellables = Set<AnyCancellable>()
 
     public var status: SessionStatus {
         Engine.sessionStatus(world, now: now)
@@ -66,6 +71,8 @@ public final class PhoneSessionController: ObservableObject {
     public init(store: Store, attention: PhoneAttention = PhoneAttention()) {
         self.store = store
         self.attention = attention
+        self.syncMetadataStore = WorldSyncMetadataStore(root: store.root)
+        self.syncStatus = WorldSyncStatus()
         var loaded: World
         var startupIssue: FlowmoIssueCode?
         do {
@@ -83,7 +90,10 @@ public final class PhoneSessionController: ObservableObject {
             FlowmoDiagnosticLog.emit(.storeUnreadable, operation: .load)
         }
         var didRecover = false
-        if startupIssue == nil, loaded.live?.isPaused == false {
+        if startupIssue == nil,
+            loaded.live?.isPaused == false,
+            !syncMetadataStore.isRemoteLiveSession(loaded.live?.id)
+        {
             do {
                 loaded = try store.update { engine in
                     engine.pauseUnpausedLiveOnProcessStart(now: Date())
@@ -111,12 +121,18 @@ public final class PhoneSessionController: ObservableObject {
             self.activeIssue = FlowmoPresentedIssue(code: startupIssue)
         }
         attention.reconcile(status: Engine.sessionStatus(loaded, now: Date()), cuesEnabled: loaded.config.cuesEnabled)
+        syncStatus.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
         if didRecover {
             reloadGlance()
         }
     }
 
     public func startRunning() {
+        startCloudSync()
         attention.requestPermission()
         guard timer == nil else {
             becameActive()
@@ -136,6 +152,7 @@ public final class PhoneSessionController: ObservableObject {
     public func becameActive() {
         tick()
         attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+        cloudSync?.refresh()
     }
 
     public func start() { apply(.start(intention: intentionDraft)) }
@@ -194,6 +211,7 @@ public final class PhoneSessionController: ObservableObject {
             refreshDraftsAfterChange()
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             reloadGlance()
+            cloudSync?.localWorldDidChange(takesOwnership: false)
         } catch {
             let code = FlowmoIssueClassifier.persistenceFailure(error)
             canPreserveAndReset = code == .storeUnreadable
@@ -299,6 +317,7 @@ public final class PhoneSessionController: ObservableObject {
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reloadGlance()
+            cloudSync?.localWorldDidChange(takesOwnership: false)
         } catch {
             handlePersistenceFailure(error, operation: .sync)
         }
@@ -306,10 +325,12 @@ public final class PhoneSessionController: ObservableObject {
 
     @discardableResult
     private func apply(_ event: Event) -> Bool {
+        guard syncStatus.conflict == nil else { return false }
         let before = world.live?.phase
         applying = true
         defer { applying = false }
         do {
+            try? syncMetadataStore.markLocalControl()
             let engine = try store.update { engine in
                 try engine.apply(event, now: Date())
             }
@@ -319,12 +340,38 @@ public final class PhoneSessionController: ObservableObject {
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reloadGlance()
+            cloudSync?.localWorldDidChange()
             return true
         } catch is EngineError {
             return false
         } catch {
             handlePersistenceFailure(error, operation: .update)
             return false
+        }
+    }
+
+    public func resolveSyncConflict(choosing choice: WorldSyncChoice) {
+        cloudSync?.resolveConflict(choosing: choice)
+    }
+
+    private func startCloudSync() {
+        guard cloudSync == nil else { return }
+        do {
+            let sync = try CloudWorldSync(
+                store: store,
+                status: syncStatus
+            ) { [weak self] syncedWorld in
+                guard let self else { return }
+                world = syncedWorld
+                now = Date()
+                refreshDraftsAfterChange()
+                attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+                reloadGlance()
+            }
+            cloudSync = sync
+            sync.start()
+        } catch {
+            syncStatus.markUnavailable()
         }
     }
 

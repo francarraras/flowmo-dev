@@ -22,8 +22,8 @@ let package = Package(
         .target(name: "FlowmoCore"),
         .target(name: "FlowmoSync", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoLook", dependencies: ["FlowmoCore"]),
-        .target(name: "FlowmoWindow", dependencies: ["FlowmoCore", "FlowmoLook"]),
-        .target(name: "FlowmoPhone", dependencies: ["FlowmoCore", "FlowmoLook"]),
+        .target(name: "FlowmoWindow", dependencies: ["FlowmoCore", "FlowmoLook", "FlowmoSync"]),
+        .target(name: "FlowmoPhone", dependencies: ["FlowmoCore", "FlowmoLook", "FlowmoSync"]),
         .target(name: "FlowmoCLI", dependencies: ["FlowmoCore"]),
         .target(name: "FlowmoCheck", dependencies: ["FlowmoCore"]),
         .executableTarget(name: "FlowmoGate", dependencies: ["FlowmoCore"]),
@@ -44,6 +44,7 @@ let package = Package(
         .testTarget(name: "FlowmoCoreTests", dependencies: ["FlowmoCore"]),
         .testTarget(name: "FlowmoSyncTests", dependencies: ["FlowmoSync", "FlowmoCore"]),
         .testTarget(name: "FlowmoCLITests", dependencies: ["FlowmoCLI", "FlowmoCore"]),
-        .testTarget(name: "FlowmoWindowTests", dependencies: ["FlowmoWindow", "FlowmoCore"]),
+        .testTarget(name: "FlowmoWindowTests", dependencies: ["FlowmoWindow", "FlowmoCore", "FlowmoSync"]),
+        .testTarget(name: "FlowmoPhoneTests", dependencies: ["FlowmoPhone", "FlowmoCore", "FlowmoSync"]),
     ]
 )

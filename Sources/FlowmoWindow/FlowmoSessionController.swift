@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import FlowmoCore
+import FlowmoSync
 import Foundation
 
 /// Window presentation. Both modes are fixed-size; the window never
@@ -33,12 +34,15 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public var activeIssue: FlowmoPresentedIssue?
     @Published public private(set) var userNotice: String?
     @Published public private(set) var recentIssues: [FlowmoIssueRecord] = []
+    public let syncStatus: WorldSyncStatus
 
     let store: Store
     let attention: AttentionAdapter
     let focusGuard: FocusGuardAdapter
     private let evidence: LocalEvidenceRecorder
     private let macRecovery: MacProcessRecoveryMarker
+    private let syncMetadataStore: WorldSyncMetadataStore
+    private var cloudSync: CloudWorldSync?
 
     private var timer: Timer?
     private var watcher: WorldWatcher?
@@ -96,6 +100,8 @@ public final class FlowmoSessionController: ObservableObject {
         self.focusGuard = focusGuard
         self.evidence = LocalEvidenceRecorder(root: store.root)
         self.macRecovery = MacProcessRecoveryMarker(store: store)
+        self.syncMetadataStore = WorldSyncMetadataStore(root: store.root)
+        self.syncStatus = WorldSyncStatus()
 
         let loaded: World
         do {
@@ -125,6 +131,11 @@ public final class FlowmoSessionController: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+        syncStatus.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
 
     public func setDisplayMode(_ mode: DisplayMode) {
@@ -134,6 +145,7 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func startRunning() {
+        startCloudSync()
         focusGuard.attach(
             bringForward: { [weak self] in
                 self?.attention.window?.makeKeyAndOrderFront(nil)
@@ -187,6 +199,7 @@ public final class FlowmoSessionController: ObservableObject {
     @discardableResult
     public func pauseForRecovery() -> Bool {
         guard let live = world.live, !live.isPaused else { return true }
+        guard !syncMetadataStore.isRemoteLiveSession(live.id) else { return true }
         if pendingRecoveryPause?.sessionID != live.id {
             pendingRecoveryPause = RecoveryPauseRequest(sessionID: live.id, requestedAt: Date())
         }
@@ -199,7 +212,10 @@ public final class FlowmoSessionController: ObservableObject {
         do {
             let engine = try store.update(
                 { engine in
-                    if let live = engine.world.live, !live.isPaused {
+                    if let live = engine.world.live,
+                        !live.isPaused,
+                        !self.syncMetadataStore.isRemoteLiveSession(live.id)
+                    {
                         let pauseAt = max(timestamp, live.phaseStartedAt)
                         try engine.apply(.pauseForRecovery, now: pauseAt)
                     }
@@ -301,7 +317,10 @@ public final class FlowmoSessionController: ObservableObject {
             let timestamp = Date()
             do {
                 _ = try store.update { engine in
-                    try macRecovery.refreshOwnership(for: engine.world.live?.id, at: timestamp)
+                    try macRecovery.refreshOwnership(
+                        for: markerSessionID(engine.world.live?.id),
+                        at: timestamp
+                    )
                 }
                 markerRecoveryFailed = false
                 clearRecoveryIssueIfResolved()
@@ -437,7 +456,11 @@ public final class FlowmoSessionController: ObservableObject {
         do {
             var preparation = MacProcessRecoveryMarker.ClaimPreparation.contended
             let engine = try store.update { engine in
-                preparation = try macRecovery.prepareClaim(&engine, now: timestamp)
+                preparation = try macRecovery.prepareClaim(
+                    &engine,
+                    now: timestamp,
+                    trackLiveSession: !syncMetadataStore.isRemoteLiveSession(engine.world.live?.id)
+                )
             }
             switch preparation {
             case .prepared:
@@ -495,13 +518,14 @@ public final class FlowmoSessionController: ObservableObject {
         do {
             let engine = try store.update { engine in
                 engine.sync(now: timestamp)
-                try macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                try macRecovery.recordObservation(markerSessionID(engine.world.live?.id), at: timestamp)
             }
             world = engine.world
             now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
+            cloudSync?.localWorldDidChange(takesOwnership: false)
         } catch let error as MacProcessRecoveryError {
             handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
         } catch {
@@ -514,7 +538,7 @@ public final class FlowmoSessionController: ObservableObject {
         defer { applying = false }
         do {
             _ = try store.update { engine in
-                try macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                try macRecovery.recordObservation(markerSessionID(engine.world.live?.id), at: timestamp)
             }
         } catch let error as MacProcessRecoveryError {
             handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
@@ -526,16 +550,18 @@ public final class FlowmoSessionController: ObservableObject {
     @discardableResult
     private func apply(_ event: Event) -> Bool {
         guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return false }
+        guard syncStatus.conflict == nil else { return false }
         let before = world.live?.phase
         applying = true
         defer { applying = false }
         let timestamp = Date()
         do {
+            try? syncMetadataStore.markLocalControl()
             let engine = try store.update(
                 { engine in
                     try engine.apply(event, now: timestamp)
                     if let sessionID = engine.world.live?.id {
-                        try macRecovery.recordObservation(sessionID, at: timestamp)
+                        try macRecovery.recordObservation(markerSessionID(sessionID), at: timestamp)
                     }
                 },
                 afterPersist: { engine in
@@ -549,6 +575,7 @@ public final class FlowmoSessionController: ObservableObject {
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
+            cloudSync?.localWorldDidChange()
             return true
         } catch is EngineError {
             // Expected state race: another local surface won. Reload will reconcile.
@@ -570,12 +597,14 @@ public final class FlowmoSessionController: ObservableObject {
             var engine = Engine(world: loaded)
             let before = world.live?.phase
             engine.sync(now: timestamp)
-            if engine.world != loaded || macRecovery.needsObservation(for: engine.world.live?.id) {
+            if engine.world != loaded
+                || macRecovery.needsObservation(for: markerSessionID(engine.world.live?.id))
+            {
                 applying = true
                 defer { applying = false }
                 engine = try store.update { engine in
                     engine.sync(now: timestamp)
-                    try macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
+                    try macRecovery.recordObservation(markerSessionID(engine.world.live?.id), at: timestamp)
                 }
             }
             let changed = engine.world != world
@@ -590,6 +619,9 @@ public final class FlowmoSessionController: ObservableObject {
             }
             refreshDraftsAfterChange()
             reconcileGuard()
+            if changed {
+                cloudSync?.localWorldDidChange()
+            }
             if !didClaimMacProcessLifetime {
                 beginMacProcessLifetime()
             }
@@ -598,6 +630,34 @@ public final class FlowmoSessionController: ObservableObject {
         } catch {
             handlePersistenceFailure(error, operation: .load)
         }
+    }
+
+    public func resolveSyncConflict(choosing choice: WorldSyncChoice) {
+        cloudSync?.resolveConflict(choosing: choice)
+    }
+
+    private func startCloudSync() {
+        guard cloudSync == nil else { return }
+        do {
+            let sync = try CloudWorldSync(
+                store: store,
+                status: syncStatus
+            ) { [weak self] syncedWorld in
+                guard let self else { return }
+                world = syncedWorld
+                now = Date()
+                refreshDraftsAfterChange()
+                reconcileGuard()
+            }
+            cloudSync = sync
+            sync.start()
+        } catch {
+            syncStatus.markUnavailable()
+        }
+    }
+
+    private func markerSessionID(_ id: UUID?) -> UUID? {
+        syncMetadataStore.isRemoteLiveSession(id) ? nil : id
     }
 
     @discardableResult
@@ -623,6 +683,9 @@ public final class FlowmoSessionController: ObservableObject {
             }
             refreshDraftsAfterChange()
             reconcileGuard()
+            if pendingRecoveryPause == nil {
+                cloudSync?.localWorldDidChange()
+            }
             return pendingRecoveryPause == nil
         } catch {
             handlePauseRecoveryFailure(error)

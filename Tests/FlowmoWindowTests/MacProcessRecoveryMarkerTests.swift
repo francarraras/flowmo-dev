@@ -1,5 +1,6 @@
 import Darwin
 import FlowmoCore
+import FlowmoSync
 import Foundation
 import XCTest
 
@@ -657,6 +658,40 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
             XCTAssertFalse(controller.storeNeedsRecovery)
             XCTAssertEqual(controller.effectiveWindowContentSize, DisplayMode.classic.windowContentSize)
             XCTAssertEqual(controller.activeIssue?.code, .recoveryUnavailable)
+        }
+    }
+
+    func testRemoteLiveSessionIsNotPausedOrClaimedByMacRecovery() throws {
+        try withStore { store in
+            let startedAt = Date().addingTimeInterval(-120)
+            let remoteWorld = try focusWorld(at: startedAt)
+            let sessionID = try XCTUnwrap(remoteWorld.live?.id)
+            try store.save(remoteWorld)
+            try WorldSyncMetadataStore(root: store.root).save(
+                WorldSyncMetadata(remoteLiveSessionID: sessionID)
+            )
+            try writeRecord(
+                identity: .init(
+                    pid: 321,
+                    startedAtSeconds: UInt64(startedAt.timeIntervalSince1970),
+                    startedAtMicroseconds: 0
+                ),
+                sessionID: sessionID,
+                observedAt: startedAt.addingTimeInterval(30),
+                to: store
+            )
+
+            let controller = FlowmoSessionController(
+                store: store,
+                attention: AttentionAdapter(canNotify: false)
+            )
+            controller.beginMacProcessLifetime()
+
+            let loaded = try store.load()
+            XCTAssertEqual(loaded.live?.id, sessionID)
+            XCTAssertFalse(try XCTUnwrap(loaded.live).isPaused)
+            XCTAssertNil(try readRecord(from: store).liveSessionID)
+            XCTAssertFalse(controller.lifecycleNeedsRecovery)
         }
     }
 

@@ -9,12 +9,14 @@ public struct WorldSyncHead: Codable, Equatable, Sendable {
 
     public var schemaVersion: Int
     public var generation: UUID
+    public var historyIDs: [UUID]
     public var live: SessionSnapshot?
     public var breakRatio: Double
     public var lastIntention: String
 
     public init(
         generation: UUID,
+        historyIDs: [UUID] = [],
         live: SessionSnapshot?,
         breakRatio: Double,
         lastIntention: String,
@@ -22,6 +24,7 @@ public struct WorldSyncHead: Codable, Equatable, Sendable {
     ) {
         self.schemaVersion = schemaVersion
         self.generation = generation
+        self.historyIDs = historyIDs.sorted { $0.uuidString < $1.uuidString }
         self.live = live
         self.breakRatio = breakRatio
         self.lastIntention = lastIntention
@@ -33,14 +36,18 @@ public struct WorldSyncSnapshot: Codable, Equatable, Sendable {
     public var history: [CompletedSession]
 
     public init(head: WorldSyncHead, history: [CompletedSession]) {
-        self.head = head
-        self.history = Self.canonicalHistory(history)
+        let canonical = Self.canonicalHistory(history)
+        var canonicalHead = head
+        canonicalHead.historyIDs = canonical.map(\.id)
+        self.head = canonicalHead
+        self.history = canonical
     }
 
     public init(world: World, generation: UUID) {
         self.init(
             head: WorldSyncHead(
                 generation: generation,
+                historyIDs: world.history.map(\.id),
                 live: world.live,
                 breakRatio: world.profile.breakRatio,
                 lastIntention: world.profile.lastIntention
@@ -95,6 +102,7 @@ public struct WorldSyncSnapshot: Codable, Equatable, Sendable {
 
 public enum WorldSyncConflictKind: String, Codable, Equatable, Sendable {
     case initialImport
+    case account
     case resetGeneration
     case liveSession
     case profile
@@ -204,6 +212,7 @@ public enum WorldSyncReconciler {
             WorldSyncSnapshot(
                 head: WorldSyncHead(
                     generation: local.head.generation,
+                    historyIDs: history.map(\.id),
                     live: live,
                     breakRatio: ratio,
                     lastIntention: lastIntention
@@ -223,6 +232,7 @@ public enum WorldSyncReconciler {
         let preferred = choice == .local ? conflict.local : conflict.remote
         let other = choice == .local ? conflict.remote : conflict.local
         guard conflict.kind != .resetGeneration else { return preferred }
+        guard conflict.kind != .account else { return preferred }
 
         var byID = Dictionary(uniqueKeysWithValues: preferred.history.map { ($0.id, $0) })
         for session in other.history where byID[session.id] == nil {
