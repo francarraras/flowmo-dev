@@ -1,7 +1,7 @@
 import Foundation
 
 public enum FlowmoCopy {
-    public static let reflectionPrompt = "What did you do, and what comes next?"
+    public static let reflectionPrompt = "Where will you pick up next?"
 }
 
 public struct Config: Equatable, Sendable {
@@ -371,6 +371,19 @@ public enum HistoryOrder {
             }
             return lhs.id.uuidString < rhs.id.uuidString
         }
+    }
+}
+
+/// The most recent explicit next step, if the latest completed session has one.
+public enum NextStepSuggestion {
+    public static func latest(in sessions: [CompletedSession]) -> String? {
+        guard let latest = HistoryOrder.newestFirst(sessions).first,
+            let recall = latest.recallText
+        else {
+            return nil
+        }
+        let trimmed = recall.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

@@ -384,7 +384,9 @@ public struct CloseFigures: View {
             figure(
                 Format.clock(focus), name: "Focused", size: compact ? 26 : 36, tone: Atmosphere.canvas.ink,
                 nameTone: Look.mute)
-            figure(Format.clock(rest), name: "Rested", size: compact ? 16 : 22, tone: Look.mute, nameTone: Look.faint)
+            figure(
+                Format.clock(rest), name: "Break earned", size: compact ? 16 : 22,
+                tone: Look.mute, nameTone: Look.faint)
         }
     }
 
@@ -397,6 +399,79 @@ public struct CloseFigures: View {
                 .tracking(0.6)
                 .foregroundStyle(nameTone)
         }
+    }
+}
+
+/// The complete first-session promise, kept inside the idle aperture so a new
+/// person can understand Flowmo without an onboarding screen.
+public struct FirstRunPromise: View {
+    @Environment(\.atmosphere) private var atmo
+
+    public init() {}
+
+    public var body: some View {
+        VStack(spacing: 6) {
+            Text("Focus counts up.")
+                .foregroundStyle(atmo.ink)
+            Text("Stop when you’re ready.")
+                .foregroundStyle(atmo.mute)
+            Text("Your break grows as you focus.")
+                .foregroundStyle(Atmosphere.rest)
+        }
+        .font(.system(size: 12, weight: .medium, design: .rounded))
+        .multilineTextAlignment(.center)
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Focus counts up. Stop when you’re ready. Your break grows as you focus."
+        )
+    }
+}
+
+/// Quiet proof that a finished session left something useful behind.
+public struct ClosePayoff: View {
+    @Environment(\.atmosphere) private var atmo
+    var nextStep: String
+    var parkedCount: Int
+
+    public init(nextStep: String, parkedCount: Int) {
+        self.nextStep = nextStep
+        self.parkedCount = parkedCount
+    }
+
+    public var body: some View {
+        if !trimmedNextStep.isEmpty || safeParkedCount > 0 {
+            VStack(spacing: 5) {
+                if !trimmedNextStep.isEmpty {
+                    Text("Next: \(trimmedNextStep)")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(Atmosphere.rest)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.78)
+                }
+                if safeParkedCount > 0 {
+                    Text(parkedConfirmation)
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(atmo.faint)
+                        .lineLimit(1)
+                }
+            }
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var trimmedNextStep: String {
+        nextStep.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var safeParkedCount: Int {
+        max(0, parkedCount)
+    }
+
+    private var parkedConfirmation: String {
+        safeParkedCount == 1 ? "1 thought parked" : "\(safeParkedCount) thoughts parked"
     }
 }
 

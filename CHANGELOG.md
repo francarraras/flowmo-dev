@@ -4,6 +4,17 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Reworked the visible session loop around Flowmo’s actual advantage: open-ended
+  count-up focus and self-directed breaks. A first session now explains the
+  model in place; Break says **Take what you need** and advances with **Reflect**.
+- Turned Reflection into the concrete prompt **Where will you pick up next?**
+  and paid it back at Close and the next Idle. Close now truthfully says
+  **Break earned**, shows the next step and parked-thought count, and has a
+  visible **Done** action. **Use next** reveals only the newest session’s cue for
+  confirmation and never silently falls back to stale work.
+- Made capture discoverable as **Park thought**, with the parked count visible
+  after capture, and removed Focus Guard measurement explanation from the main
+  Idle surface while keeping its explicit export in Data.
 - Kept the iPhone session interface quiet when no iCloud account is configured,
   while preserving structural sync failures and deletion problems. Added the
   background notification mode required by `CKSyncEngine`.

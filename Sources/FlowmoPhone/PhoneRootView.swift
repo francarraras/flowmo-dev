@@ -215,7 +215,11 @@ private struct IdlePane: View {
                 PhaseColumn {
                     HairlineField("Intention", text: $controller.intentionDraft)
                 } hole: {
-                    Aperture(ring: .idle)
+                    Aperture(ring: .idle) {
+                        if isFirstRun {
+                            FirstRunPromise()
+                        }
+                    }
                 } verb: {
                     InkButton(startButtonTitle) {
                         performIdleAction()
@@ -269,16 +273,30 @@ private struct IdlePane: View {
         status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var nextStep: String? {
+        NextStepSuggestion.latest(in: controller.world.history)
+    }
+
+    private var isFirstRun: Bool {
+        controller.world.history.isEmpty
+            && controller.world.profile.sessionCount == 0
+            && savedIntention.isEmpty
+    }
+
     private var canStart: Bool {
-        !typedIntention.isEmpty || !savedIntention.isEmpty
+        !typedIntention.isEmpty || nextStep != nil || !savedIntention.isEmpty
     }
 
     private var startButtonTitle: String {
-        typedIntention.isEmpty && !savedIntention.isEmpty ? "Use last" : "Start"
+        guard typedIntention.isEmpty else { return "Start" }
+        if nextStep != nil { return "Use next" }
+        return savedIntention.isEmpty ? "Start" : "Use last"
     }
 
     private func performIdleAction() {
-        if typedIntention.isEmpty && !savedIntention.isEmpty {
+        if typedIntention.isEmpty, nextStep != nil {
+            controller.useNextStep()
+        } else if typedIntention.isEmpty && !savedIntention.isEmpty {
             controller.useLastIntention()
         } else {
             controller.start()
@@ -525,19 +543,19 @@ private struct FocusPane: View {
                         .disabled(controller.captureDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             } else {
-                HStack {
-                    Button {
+                HStack(spacing: 12) {
+                    QuietButton(parkButtonTitle, minHeight: 44) {
                         controller.showCapture = true
-                    } label: {
-                        ChromeGlyph("plus")
-                            .frame(width: 44, height: PhaseGrid.verb)
                     }
-                    .buttonStyle(PressStyle())
-                    .accessibilityLabel("Park a thought")
                     QuietButton("Stop", minHeight: 44) { controller.stopFocus() }
                 }
             }
         }
+    }
+
+    private var parkButtonTitle: String {
+        let count = status.captures.count
+        return count == 0 ? "Park thought" : "Park another · \(count)"
     }
 }
 
@@ -547,7 +565,7 @@ private struct BreakPane: View {
 
     var body: some View {
         PhaseColumn {
-            PhaseCaption("Break", tone: Look.mute)
+            PhaseLead("Break", cue: "Take what you need.", tone: Look.mute)
         } hole: {
             Aperture(
                 ring: .timed(
@@ -576,7 +594,7 @@ private struct BreakPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Continue", minHeight: 44) { controller.skip() }
+                QuietButton("Reflect", minHeight: 44) { controller.skip() }
             }
         }
     }
@@ -609,9 +627,15 @@ private struct RecallPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Skip", minHeight: 44) { controller.skip() }
+                QuietButton(reflectionActionTitle, minHeight: 44) { controller.skip() }
             }
         }
+    }
+
+    private var reflectionActionTitle: String {
+        controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Skip"
+            : "Done"
     }
 }
 
@@ -624,7 +648,10 @@ private struct CloseBeatPane: View {
             PhaseCaption(status.intention.isEmpty ? "Close" : status.intention, tone: Look.mute)
         } hole: {
             Aperture(ring: .none) {
-                CloseFigures(focus: status.focusSeconds, rest: status.breakSeconds ?? 0)
+                VStack(spacing: 12) {
+                    CloseFigures(focus: status.focusSeconds, rest: status.breakSeconds ?? 0)
+                    ClosePayoff(nextStep: status.recallText, parkedCount: status.captures.count)
+                }
             }
         } verb: {
             if status.isPaused {
@@ -633,13 +660,9 @@ private struct CloseBeatPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                Color.clear
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if !status.isPaused {
-                controller.dismissCloseBeat()
+                QuietButton("Done", minHeight: 44) {
+                    controller.dismissCloseBeat()
+                }
             }
         }
     }

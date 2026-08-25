@@ -85,7 +85,7 @@ final class FlowmoCLITests: XCTestCase {
         try engine.apply(.skip, now: start.addingTimeInterval(101))
         XCTAssertEqual(
             FlowmoCLI.skipMessage(for: engine),
-            "Reflection: What did you do, and what comes next?"
+            "Reflection: Where will you pick up next?"
         )
 
         try engine.apply(.skip, now: start.addingTimeInterval(102))

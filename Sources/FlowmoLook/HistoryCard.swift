@@ -53,7 +53,7 @@ public struct HistorySessionCard: View {
                     }
                 }
                 if let recall = session.recallText, !recall.isEmpty {
-                    labeled("Reflection") {
+                    labeled("Next step") {
                         Text(recall)
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(atmo.mute)
@@ -74,7 +74,7 @@ public struct HistorySessionCard: View {
         .onTapGesture(perform: onToggle)
         .accessibilityElement(children: expanded ? .contain : .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint(expanded ? "Shows less" : "Shows parked lines and reflection")
+        .accessibilityHint(expanded ? "Shows less" : "Shows parked lines and next step")
     }
 
     private var parkedCount: Int {
@@ -91,7 +91,7 @@ public struct HistorySessionCard: View {
             parts.append("\(parkedCount) parked")
         }
         if let recall = session.recallText, !recall.isEmpty {
-            parts.append("reflection")
+            parts.append("Next step")
         }
         return parts.joined(separator: " · ")
     }
@@ -99,7 +99,7 @@ public struct HistorySessionCard: View {
     private var clocks: some View {
         HStack(alignment: .firstTextBaseline, spacing: 16) {
             namedClock("Focused", seconds: session.focusSeconds, tone: atmo.ink)
-            namedClock("Rested", seconds: session.breakSeconds, tone: Atmosphere.rest)
+            namedClock("Break earned", seconds: session.breakSeconds, tone: Atmosphere.rest)
             Spacer(minLength: 0)
         }
         .padding(.top, 2)

@@ -266,6 +266,13 @@ public final class FlowmoSessionController: ObservableObject {
         intentionDraft = world.profile.lastIntention
     }
 
+    public func useNextStep() {
+        guard world.live == nil,
+            let nextStep = NextStepSuggestion.latest(in: world.history)
+        else { return }
+        intentionDraft = nextStep
+    }
+
     public func clearIntention() {
         intentionDraft = ""
     }

@@ -36,15 +36,16 @@ swift run flowmo skip                    # Idle
 swift run flowmo status
 ```
 
-In the app, Prime offers **Focus now**, Break offers **Continue**, and Reflection
-offers **Skip**. The CLI keeps the stable `skip` verb for all three timed beats.
+In the app, Prime offers **Focus now**, Break offers **Reflect**, and Reflection
+offers **Skip** while empty or **Done** after a next step is written. The CLI
+keeps the stable `skip` verb for all three timed beats.
 
 What should happen:
 
 - After Start, the circle stays put. Start is gone.
 - Focus counts up. Gold is rest you are earning.
 - Break is gold.
-- Close shows **Focused** and **Rested**. After the last Skip, Idle is empty again.
+- Close shows **Focused**, **Break earned**, and anything worth returning to. **Done** returns to an empty Idle, where **Use next** can reveal the latest next step for confirmation.
 - **History** still has the parked line. Tap a card to open it.
 
 Same session as the window. The current local store is `~/.flowmo/world.json`,

@@ -17,9 +17,7 @@ struct MiniView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            if status.phase == .closeBeat, !status.isPaused {
-                controller.dismissCloseBeat()
-            } else if status.phase == nil || (status.phase == .recall && !status.isPaused) {
+            if status.phase == nil || (status.phase == .recall && !status.isPaused) {
                 controller.setDisplayMode(.classic)
             }
         }
@@ -35,7 +33,7 @@ struct MiniView: View {
                 Accrual(seconds: status.earnedBreakSeconds, label: Format.earned(status.earnedBreakSeconds))
             }
         case .closeBeat:
-            CloseFigures(focus: status.focusSeconds, rest: status.breakSeconds ?? 0, compact: true)
+            MiniCloseSummary(status: status)
         case .onBreak:
             InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 30)
                 .breakRace(
@@ -88,9 +86,9 @@ struct MiniView: View {
             case .prime:
                 QuietButton("Focus now", minHeight: 26) { controller.skip() }
             case .recall:
-                QuietButton("Skip", minHeight: 26) { controller.skip() }
+                QuietButton(recallActionTitle, minHeight: 26) { controller.skip() }
             case .onBreak:
-                QuietButton("Continue", minHeight: 26) { controller.skip() }
+                QuietButton("Reflect", minHeight: 26) { controller.skip() }
             case .focus:
                 HStack(spacing: 8) {
                     miniIcon("plus", help: "Park a thought — opens Classic") {
@@ -100,31 +98,44 @@ struct MiniView: View {
                     QuietButton("Stop", minHeight: 26) { controller.stopFocus() }
                 }
             case .closeBeat:
-                EmptyView()
+                QuietButton("Done", minHeight: 26) { controller.dismissCloseBeat() }
             }
         }
     }
 
     private var canStart: Bool {
         !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || NextStepSuggestion.latest(in: controller.world.history) != nil
             || !status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var miniStartTitle: String {
         let typed = controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let saved = status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed.isEmpty, NextStepSuggestion.latest(in: controller.world.history) != nil {
+            return "Use next"
+        }
         return typed.isEmpty && !saved.isEmpty ? "Use last" : "Start"
     }
 
     private func performIdleAction() {
         let typed = controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         let saved = status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
-        if typed.isEmpty && !saved.isEmpty {
+        if typed.isEmpty, NextStepSuggestion.latest(in: controller.world.history) != nil {
+            controller.useNextStep()
+            controller.setDisplayMode(.classic)
+        } else if typed.isEmpty && !saved.isEmpty {
             controller.useLastIntention()
             controller.setDisplayMode(.classic)
         } else {
             controller.start()
         }
+    }
+
+    private var recallActionTitle: String {
+        controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Skip"
+            : "Done"
     }
 
     private func miniIcon(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
@@ -138,6 +149,57 @@ struct MiniView: View {
         .buttonStyle(PressStyle())
         .help(help)
         .accessibilityLabel(help)
+    }
+}
+
+private struct MiniCloseSummary: View {
+    @Environment(\.atmosphere) private var atmo
+    var status: SessionStatus
+
+    var body: some View {
+        VStack(spacing: 3) {
+            InstrumentClock(Format.clock(status.focusSeconds), size: 24)
+            Text("Focused")
+                .foregroundStyle(atmo.mute)
+            Text("Break earned · \(Format.clock(status.breakSeconds ?? 0))")
+                .foregroundStyle(atmo.faint)
+            if !nextStep.isEmpty {
+                Text("Next: \(nextStep)")
+                    .foregroundStyle(Atmosphere.rest)
+                    .truncationMode(.tail)
+            }
+            if status.captures.count > 0 {
+                Text(parkedLabel)
+                    .foregroundStyle(atmo.faint)
+            }
+        }
+        .font(.system(size: 8, weight: .medium, design: .rounded))
+        .lineLimit(1)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
+    }
+
+    private var nextStep: String {
+        status.recallText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var parkedLabel: String {
+        status.captures.count == 1 ? "1 thought parked" : "\(status.captures.count) thoughts parked"
+    }
+
+    private var accessibilitySummary: String {
+        var parts = [
+            "Focused \(Format.clock(status.focusSeconds))",
+            "Break earned \(Format.clock(status.breakSeconds ?? 0))",
+        ]
+        if !nextStep.isEmpty {
+            parts.append("Next: \(nextStep)")
+        }
+        if status.captures.count > 0 {
+            parts.append(parkedLabel)
+        }
+        return parts.joined(separator: ". ")
     }
 }
 

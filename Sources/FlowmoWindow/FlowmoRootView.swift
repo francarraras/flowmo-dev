@@ -223,14 +223,18 @@ private struct IdlePane: View {
                         }
                     )
                 } hole: {
-                    Aperture(ring: .idle)
+                    Aperture(ring: .idle) {
+                        if isFirstRun {
+                            FirstRunPromise()
+                        }
+                    }
                 } verb: {
                     InkButton(startButtonTitle) {
                         performIdleAction()
                     }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canStart)
-                    .help(usesLastIntention ? "Show last intention" : "Start this intention")
+                    .help(idleActionHelp)
                 } chrome: {
                     VStack(spacing: 8) {
                         HStack(spacing: 18) {
@@ -298,20 +302,43 @@ private struct IdlePane: View {
         status.lastIntention.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var nextStep: String? {
+        NextStepSuggestion.latest(in: controller.world.history)
+    }
+
+    private var usesNextStep: Bool {
+        typedIntention.isEmpty && nextStep != nil
+    }
+
     private var usesLastIntention: Bool {
-        typedIntention.isEmpty && !savedIntention.isEmpty
+        typedIntention.isEmpty && nextStep == nil && !savedIntention.isEmpty
     }
 
     private var canStart: Bool {
-        !typedIntention.isEmpty || !savedIntention.isEmpty
+        !typedIntention.isEmpty || nextStep != nil || !savedIntention.isEmpty
     }
 
     private var startButtonTitle: String {
-        usesLastIntention ? "Use last" : "Start"
+        if usesNextStep { return "Use next" }
+        return usesLastIntention ? "Use last" : "Start"
+    }
+
+    private var idleActionHelp: String {
+        if usesNextStep { return "Show the next step from your last session" }
+        if usesLastIntention { return "Show last intention" }
+        return "Start this intention"
+    }
+
+    private var isFirstRun: Bool {
+        controller.world.history.isEmpty
+            && controller.world.profile.sessionCount == 0
+            && savedIntention.isEmpty
     }
 
     private func performIdleAction() {
-        if usesLastIntention {
+        if usesNextStep {
+            controller.useNextStep()
+        } else if usesLastIntention {
             controller.useLastIntention()
         } else {
             controller.start()
@@ -450,19 +477,20 @@ private struct FocusPane: View {
                         .disabled(controller.captureDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             } else {
-                HStack {
-                    Button {
+                HStack(spacing: 12) {
+                    QuietButton(parkActionTitle) {
                         controller.showCapture = true
-                    } label: {
-                        ChromeGlyph("plus")
                     }
-                    .buttonStyle(PressStyle())
-                    .help("Park a thought")
-                    .accessibilityLabel("Park a thought")
+                    .help("Save a thought without leaving Focus")
                     QuietButton("Stop") { controller.stopFocus() }
                 }
             }
         }
+    }
+
+    private var parkActionTitle: String {
+        let count = status.captures.count
+        return count == 0 ? "Park thought" : "Park another · \(count)"
     }
 }
 
@@ -660,7 +688,7 @@ private struct BreakPane: View {
 
     var body: some View {
         PhaseColumn {
-            PhaseCaption("Break", tone: Look.mute)
+            PhaseLead("Break", cue: "Take what you need.", tone: Look.mute)
         } hole: {
             Aperture(
                 ring: .timed(
@@ -689,7 +717,7 @@ private struct BreakPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Continue") { controller.skip() }
+                QuietButton("Reflect") { controller.skip() }
             }
         }
     }
@@ -728,9 +756,15 @@ private struct RecallPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Skip") { controller.skip() }
+                QuietButton(recallActionTitle) { controller.skip() }
             }
         }
+    }
+
+    private var recallActionTitle: String {
+        controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Skip"
+            : "Done"
     }
 }
 
@@ -743,7 +777,10 @@ private struct CloseBeatPane: View {
             PhaseCaption(status.intention.isEmpty ? "Close" : status.intention, tone: Look.mute)
         } hole: {
             Aperture(ring: .none) {
-                CloseFigures(focus: status.focusSeconds, rest: status.breakSeconds ?? 0)
+                VStack(spacing: 10) {
+                    CloseFigures(focus: status.focusSeconds, rest: status.breakSeconds ?? 0)
+                    ClosePayoff(nextStep: status.recallText, parkedCount: status.captures.count)
+                }
             }
         } verb: {
             if status.isPaused {
@@ -752,13 +789,8 @@ private struct CloseBeatPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                Color.clear
-            }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if !status.isPaused {
-                controller.dismissCloseBeat()
+                QuietButton("Done") { controller.dismissCloseBeat() }
+                    .keyboardShortcut(.defaultAction)
             }
         }
     }
@@ -772,7 +804,6 @@ private func ringProgress(_ status: SessionStatus) -> Double {
 private struct GuardConfig: View {
     @Environment(\.atmosphere) private var atmo
     @ObservedObject var controller: FlowmoSessionController
-    @State private var showingCountsInfo = false
 
     var body: some View {
         let config = controller.world.config.focusGuard
@@ -787,33 +818,6 @@ private struct GuardConfig: View {
                         .modifier(QuietHoverInk())
                 }
                 .buttonStyle(PressStyle())
-                Button {
-                    showingCountsInfo.toggle()
-                } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(.caption, design: .rounded).weight(.medium))
-                        .foregroundStyle(atmo.faint)
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressStyle())
-                .help("About Focus Guard counts")
-                .accessibilityLabel("About Focus Guard counts")
-                .popover(isPresented: $showingCountsInfo, arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Focus Guard counts")
-                            .font(.system(.headline, design: .rounded))
-                        Text(
-                            "Flowmo keeps bounded aggregate Guard and resumption counts on this Mac. They contain no app identity and are never uploaded. Turning Guard off stops new counts; Delete All erases prior counts."
-                        )
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(atmo.mute)
-                        .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(14)
-                    .frame(width: 260)
-                    .environment(\.atmosphere, atmo)
-                }
                 Toggle(
                     "On",
                     isOn: Binding(
