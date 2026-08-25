@@ -794,6 +794,38 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
         }
     }
 
+    func testMacDeleteAllWithoutCloudTransportPreservesContentFreeDeletionIntent() throws {
+        try withStore { store in
+            var privateWorld = World.empty
+            privateWorld.profile.lastIntention = "private cloud deletion proof"
+            try store.save(privateWorld)
+            let snapshot = WorldSyncSnapshot(world: privateWorld, generation: UUID())
+            try WorldSyncMetadataStore(root: store.root).save(
+                WorldSyncMetadata(
+                    accountRecordName: "opaque-old-account",
+                    base: snapshot
+                )
+            )
+            let controller = FlowmoSessionController(
+                store: store,
+                attention: AttentionAdapter(canNotify: false)
+            )
+            controller.beginMacProcessLifetime()
+
+            controller.deleteAllData()
+
+            let metadataStore = WorldSyncMetadataStore(root: store.root)
+            let metadata = try metadataStore.load()
+            XCTAssertTrue(metadata.cloudDeletionPending)
+            XCTAssertEqual(metadata.cloudDeletionAccountRecordName, "opaque-old-account")
+            XCTAssertTrue(try XCTUnwrap(metadata.pending).isEffectivelyEmpty)
+            XCTAssertNil(metadata.base)
+            XCTAssertEqual(controller.activeIssue?.code, .dataDeletionIncomplete)
+            let encoded = String(decoding: try Data(contentsOf: metadataStore.stateURL), as: UTF8.self)
+            XCTAssertFalse(encoded.contains("private cloud deletion proof"))
+        }
+    }
+
     func testMacDeleteAllNeverRecursivelyRemovesExactNamedTempDirectory() throws {
         try withStore { store in
             try store.save(.empty)

@@ -271,12 +271,48 @@ public final class PhoneSessionController: ObservableObject {
         do {
             _ = try store.deleteAllData()
             finishDataDeletion()
-            userNotice = "All Flowmo data was deleted."
+            finishCloudDataDeletion()
         } catch is StoreDataDeletionError {
             finishDataDeletion()
             presentIssue(.dataDeletionIncomplete, operation: .reset)
         } catch {
             presentIssue(.resetFailed, operation: .reset)
+        }
+    }
+
+    private func finishCloudDataDeletion() {
+        let metadata = try? syncMetadataStore.load()
+        guard metadata?.containsPrivateCloudData != false else {
+            try? syncMetadataStore.deleteOwnedData()
+            userNotice = "All Flowmo data was deleted."
+            return
+        }
+        guard let cloudSync else {
+            preserveCloudDeletionIntent()
+            presentIssue(.dataDeletionIncomplete, operation: .reset)
+            return
+        }
+        userNotice = "Local Flowmo data was deleted. Removing iCloud data…"
+        cloudSync.deleteAllData { [weak self] complete in
+            guard let self else { return }
+            if complete {
+                self.userNotice = "All Flowmo data was deleted."
+            } else {
+                self.presentIssue(.dataDeletionIncomplete, operation: .reset)
+            }
+        }
+    }
+
+    private func preserveCloudDeletionIntent() {
+        do {
+            _ = try syncMetadataStore.update { metadata in
+                metadata.prepareDataDeletion()
+            }
+        } catch {
+            try? syncMetadataStore.deleteOwnedData()
+            var replacement = WorldSyncMetadata()
+            replacement.prepareDataDeletion()
+            try? syncMetadataStore.save(replacement)
         }
     }
 
@@ -330,10 +366,10 @@ public final class PhoneSessionController: ObservableObject {
         applying = true
         defer { applying = false }
         do {
-            try? syncMetadataStore.markLocalControl()
             let engine = try store.update { engine in
                 try engine.apply(event, now: Date())
             }
+            try? syncMetadataStore.markLocalControl()
             world = engine.world
             now = Date()
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)

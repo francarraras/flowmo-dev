@@ -10,6 +10,8 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
     public var accountRecordName: String?
     public var remoteLiveSessionID: UUID?
     public var accountChangeRequiresChoice: Bool
+    public var cloudDeletionPending: Bool
+    public var cloudDeletionAccountRecordName: String?
     public var engineState: Data?
     public var base: WorldSyncSnapshot?
     public var pending: WorldSyncSnapshot?
@@ -18,6 +20,7 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
     public var remoteSessionData: [String: Data]
     public var recordSystemFields: [String: Data]
     public var pendingRevisions: [String: UUID]
+    public var pendingDeletionRecordNames: [String]
 
     public init(
         schemaVersion: Int = Self.schemaVersion,
@@ -25,6 +28,8 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
         accountRecordName: String? = nil,
         remoteLiveSessionID: UUID? = nil,
         accountChangeRequiresChoice: Bool = false,
+        cloudDeletionPending: Bool = false,
+        cloudDeletionAccountRecordName: String? = nil,
         engineState: Data? = nil,
         base: WorldSyncSnapshot? = nil,
         pending: WorldSyncSnapshot? = nil,
@@ -32,13 +37,16 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
         remoteHeadData: Data? = nil,
         remoteSessionData: [String: Data] = [:],
         recordSystemFields: [String: Data] = [:],
-        pendingRevisions: [String: UUID] = [:]
+        pendingRevisions: [String: UUID] = [:],
+        pendingDeletionRecordNames: [String] = []
     ) {
         self.schemaVersion = schemaVersion
         self.generation = generation
         self.accountRecordName = accountRecordName
         self.remoteLiveSessionID = remoteLiveSessionID
         self.accountChangeRequiresChoice = accountChangeRequiresChoice
+        self.cloudDeletionPending = cloudDeletionPending
+        self.cloudDeletionAccountRecordName = cloudDeletionAccountRecordName
         self.engineState = engineState
         self.base = base
         self.pending = pending
@@ -47,6 +55,31 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
         self.remoteSessionData = remoteSessionData
         self.recordSystemFields = recordSystemFields
         self.pendingRevisions = pendingRevisions
+        self.pendingDeletionRecordNames = pendingDeletionRecordNames
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+        generation = try values.decode(UUID.self, forKey: .generation)
+        accountRecordName = try values.decodeIfPresent(String.self, forKey: .accountRecordName)
+        remoteLiveSessionID = try values.decodeIfPresent(UUID.self, forKey: .remoteLiveSessionID)
+        accountChangeRequiresChoice = try values.decode(Bool.self, forKey: .accountChangeRequiresChoice)
+        cloudDeletionPending = try values.decodeIfPresent(Bool.self, forKey: .cloudDeletionPending) ?? false
+        cloudDeletionAccountRecordName = try values.decodeIfPresent(
+            String.self,
+            forKey: .cloudDeletionAccountRecordName
+        )
+        engineState = try values.decodeIfPresent(Data.self, forKey: .engineState)
+        base = try values.decodeIfPresent(WorldSyncSnapshot.self, forKey: .base)
+        pending = try values.decodeIfPresent(WorldSyncSnapshot.self, forKey: .pending)
+        conflict = try values.decodeIfPresent(WorldSyncConflict.self, forKey: .conflict)
+        remoteHeadData = try values.decodeIfPresent(Data.self, forKey: .remoteHeadData)
+        remoteSessionData = try values.decode([String: Data].self, forKey: .remoteSessionData)
+        recordSystemFields = try values.decode([String: Data].self, forKey: .recordSystemFields)
+        pendingRevisions = try values.decode([String: UUID].self, forKey: .pendingRevisions)
+        pendingDeletionRecordNames =
+            try values.decodeIfPresent([String].self, forKey: .pendingDeletionRecordNames) ?? []
     }
 
     public var remoteSnapshot: WorldSyncSnapshot? {
@@ -73,6 +106,92 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
                 .filter { $0.kind == .completedSession }
                 .map { ($0.name, $0.data) }
         )
+    }
+
+    public var containsPrivateCloudData: Bool {
+        cloudDeletionPending
+            || base?.isEffectivelyEmpty == false
+            || pending?.isEffectivelyEmpty == false
+            || conflict != nil
+            || remoteHeadData != nil
+            || !remoteSessionData.isEmpty
+            || !pendingDeletionRecordNames.isEmpty
+    }
+
+    var canSendCloudDeletion: Bool {
+        guard cloudDeletionPending else { return true }
+        guard let deletionAccount = cloudDeletionAccountRecordName else { return true }
+        return deletionAccount == accountRecordName
+    }
+
+    mutating func prepareForAccountSwitch(to account: String) {
+        let deletionPending = cloudDeletionPending
+        let deletionAccount = cloudDeletionAccountRecordName
+        accountRecordName = account
+        accountChangeRequiresChoice = !deletionPending
+        cloudDeletionPending = deletionPending
+        cloudDeletionAccountRecordName = deletionAccount
+        engineState = nil
+        base = nil
+        pending =
+            deletionPending
+            ? WorldSyncSnapshot(world: .empty, generation: generation)
+            : nil
+        conflict = nil
+        remoteHeadData = nil
+        remoteSessionData = [:]
+        recordSystemFields = [:]
+        pendingRevisions = [:]
+        pendingDeletionRecordNames = []
+        remoteLiveSessionID = nil
+    }
+
+    /// Forget local private replicas immediately while retaining only opaque
+    /// record identifiers and change tags needed to remove their cloud copies.
+    @discardableResult
+    public mutating func prepareDataDeletion() -> WorldSyncSnapshot {
+        let deletionAccount =
+            cloudDeletionPending
+            ? cloudDeletionAccountRecordName
+            : accountRecordName
+        var names = Set(pendingDeletionRecordNames)
+        names.formUnion(recordSystemFields.keys)
+        names.formUnion(remoteSessionData.keys)
+        for snapshot in [base, pending, conflict?.local, conflict?.remote, conflict?.ancestor].compactMap({ $0 }) {
+            names.formUnion(snapshot.history.map { WorldSyncRecordCodec.sessionRecordName($0.id) })
+        }
+        names.remove(WorldSyncRecordCodec.headRecordName)
+
+        let empty = WorldSyncSnapshot(world: .empty, generation: UUID())
+        generation = empty.head.generation
+        remoteLiveSessionID = nil
+        accountChangeRequiresChoice = false
+        cloudDeletionPending = true
+        cloudDeletionAccountRecordName = deletionAccount
+        base = nil
+        pending = empty
+        conflict = nil
+        remoteHeadData = nil
+        remoteSessionData = [:]
+        pendingRevisions = [:]
+        pendingDeletionRecordNames = names.sorted()
+        return empty
+    }
+
+    @discardableResult
+    mutating func forgetOrphanedRemoteSessions(
+        referencedBy snapshot: WorldSyncSnapshot?
+    ) -> [String] {
+        let referenced = Set(
+            (snapshot?.history ?? []).map { WorldSyncRecordCodec.sessionRecordName($0.id) }
+        )
+        let orphaned = Set(remoteSessionData.keys).subtracting(referenced)
+        guard !orphaned.isEmpty else { return [] }
+        for name in orphaned {
+            remoteSessionData.removeValue(forKey: name)
+        }
+        pendingDeletionRecordNames = Set(pendingDeletionRecordNames).union(orphaned).sorted()
+        return orphaned.sorted()
     }
 }
 
@@ -208,6 +327,22 @@ public struct WorldSyncMetadataStore: Sendable {
         {
             throw WorldSyncMetadataError.invalidMetadata
         }
+        if let deletionAccount = metadata.cloudDeletionAccountRecordName,
+            deletionAccount.utf8.count > 1_024
+        {
+            throw WorldSyncMetadataError.invalidMetadata
+        }
+        guard metadata.cloudDeletionAccountRecordName == nil || metadata.cloudDeletionPending,
+            !metadata.cloudDeletionPending || metadata.pending != nil
+        else {
+            throw WorldSyncMetadataError.invalidMetadata
+        }
+        guard
+            metadata.pendingDeletionRecordNames.count
+                == Set(metadata.pendingDeletionRecordNames).count
+        else {
+            throw WorldSyncMetadataError.invalidMetadata
+        }
         let snapshots = [
             metadata.base, metadata.pending, metadata.conflict?.local, metadata.conflict?.remote,
             metadata.conflict?.ancestor,
@@ -223,7 +358,8 @@ public struct WorldSyncMetadataStore: Sendable {
         }
         guard metadata.remoteSessionData.count <= WorldPersistenceLimits.maximumHistoryCount,
             metadata.recordSystemFields.count <= WorldPersistenceLimits.maximumHistoryCount + 1,
-            metadata.pendingRevisions.count <= WorldPersistenceLimits.maximumHistoryCount + 1
+            metadata.pendingRevisions.count <= WorldPersistenceLimits.maximumHistoryCount + 1,
+            metadata.pendingDeletionRecordNames.count <= WorldPersistenceLimits.maximumHistoryCount
         else {
             throw WorldSyncMetadataError.invalidMetadata
         }
@@ -237,6 +373,10 @@ public struct WorldSyncMetadataStore: Sendable {
             throw WorldSyncMetadataError.invalidMetadata
         }
         for name in metadata.pendingRevisions.keys where !Self.isKnownRecordName(name) {
+            throw WorldSyncMetadataError.invalidMetadata
+        }
+        for name in metadata.pendingDeletionRecordNames
+        where name == WorldSyncRecordCodec.headRecordName || !Self.isKnownRecordName(name) {
             throw WorldSyncMetadataError.invalidMetadata
         }
     }

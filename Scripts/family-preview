@@ -58,6 +58,7 @@ validate_mac_app() {
   local architectures
   local signature_info
   local entitlements
+  local privacy_manifest="$app/Contents/Resources/PrivacyInfo.xcprivacy"
 
   [ -d "$app" ] || fail "Mac app not found: $app"
   [ -f "$app/Contents/Info.plist" ] || fail "Info.plist not found in $app"
@@ -97,6 +98,11 @@ validate_mac_app() {
   if printf '%s\n' "$entitlements" | grep -Fq 'com.apple.security.get-task-allow'; then
     fail "Mac Release app unexpectedly contains get-task-allow"
   fi
+  if printf '%s\n' "$entitlements" | grep -Fq 'com.apple.developer.icloud'; then
+    fail "ad-hoc Mac preview unexpectedly contains iCloud entitlements"
+  fi
+  [ -f "$privacy_manifest" ] || fail "Mac privacy manifest is missing"
+  plutil -lint "$privacy_manifest"
 
   validated_architectures="$architectures"
 }
@@ -345,6 +351,7 @@ xcodebuild -quiet \
   -destination 'generic/platform=macOS' \
   -derivedDataPath "$derived_data" \
   CODE_SIGN_IDENTITY=- \
+  CODE_SIGN_ENTITLEMENTS= \
   AD_HOC_CODE_SIGNING_ALLOWED=YES \
   SWIFT_SUPPRESS_WARNINGS=NO \
   SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
@@ -361,6 +368,7 @@ xcodebuild -quiet \
   -destination 'generic/platform=macOS' \
   -derivedDataPath "$derived_data" \
   CODE_SIGN_IDENTITY=- \
+  CODE_SIGN_ENTITLEMENTS= \
   AD_HOC_CODE_SIGNING_ALLOWED=YES \
   SWIFT_SUPPRESS_WARNINGS=NO \
   SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \

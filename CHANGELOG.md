@@ -4,6 +4,18 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Added private CloudKit synchronization between the entitled Mac and iPhone
+  apps. Offline changes remain local and queued; distinct completed sessions
+  merge, while simultaneous live starts, account changes, resets, and ambiguous
+  edits require an explicit choose-one decision before controls continue.
+- Kept cross-device recovery honest: a live session received from another
+  device is not paused as a local crash, and opening either app never resumes a
+  recovery-paused session by itself.
+- Made Delete All remove private local sync replicas immediately, queue exact
+  CloudKit record deletion, and report incomplete deletion until the cloud
+  confirms it. Updated privacy declarations for private iCloud user content and
+  product interaction used only for app functionality.
+- Raised the supported floor to macOS 14 and iOS 17 for CKSyncEngine.
 - Removed automatic break-ratio movement based only on the last three Focus
   durations. Existing valid ratios are preserved; new/reset profiles use 5,
   completed-session totals still update, and no new rolling duration samples or

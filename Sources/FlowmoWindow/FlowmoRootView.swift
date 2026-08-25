@@ -275,12 +275,32 @@ private struct IdlePane: View {
                                 .contentShape(Rectangle())
                                 .onTapGesture { controller.clearNotice() }
                         }
+                        if let notice = worldSyncNotice(controller.syncStatus) {
+                            Text(notice)
+                                .font(.system(.caption2, design: .rounded).weight(.medium))
+                                .foregroundStyle(atmo.mute)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .padding(.top, 8)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+@MainActor
+private func worldSyncNotice(_ status: WorldSyncStatus) -> String? {
+    guard status.phase == .unavailable else { return nil }
+    switch status.issueCode {
+    case "sync_deletion_account_unavailable":
+        return "Sign back into the previous iCloud account to finish deletion."
+    case "sync_deletion_pending":
+        return "iCloud deletion is pending."
+    default:
+        return "iCloud sync is unavailable. Flowmo is working locally."
     }
 }
 

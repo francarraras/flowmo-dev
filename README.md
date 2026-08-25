@@ -76,7 +76,11 @@ when that text is needed.
 `restart` after quit/sleep. There is no Focus pause command. Other action
 commands return `recovery_paused` until recovery is resolved.
 
-iPhone is a separate local app (`Apps/FlowmoPhone.xcodeproj`). The old tree in `~/Flowmo` is reference only.
+iPhone is a native app (`Apps/FlowmoPhone.xcodeproj`) that synchronizes the loop
+with the entitled Mac app through the user's private CloudKit database. Both
+keep working from local replicas when CloudKit is unavailable; simultaneous
+offline starts require an explicit choose-one decision. The old tree in
+`~/Flowmo` is reference only.
 
 ## Verify a candidate
 

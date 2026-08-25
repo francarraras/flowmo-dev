@@ -105,6 +105,19 @@ public final class CloudWorldSync: NSObject, CKSyncEngineDelegate, @unchecked Se
         Task { await state.resolveConflict(choosing: choice, engine: engine) }
     }
 
+    /// Removes local sync replicas immediately and queues deletion of the
+    /// private CloudKit copy. `completion` is false when that cloud work remains
+    /// durable but could not be confirmed during this attempt.
+    public func deleteAllData(
+        completion: @escaping @MainActor @Sendable (Bool) -> Void
+    ) {
+        let engine = engine
+        Task {
+            let complete = await state.deleteAllData(engine: engine)
+            await completion(complete)
+        }
+    }
+
     public func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
         await state.handle(event: event, engine: syncEngine)
     }
@@ -147,8 +160,16 @@ private actor CloudWorldSyncState {
         await publish(phase: .syncing)
         if metadata.base == nil && metadata.recordSystemFields.isEmpty {
             engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
+            do {
+                try await engine.sendChanges(.init(scope: .all))
+            } catch {
+                await publish(phase: .unavailable, issueCode: Self.issueCode(error))
+                return
+            }
         }
-        if metadata.pending != nil {
+        if metadata.canSendCloudDeletion,
+            metadata.pending != nil || !metadata.pendingDeletionRecordNames.isEmpty
+        {
             await enqueuePending(on: engine, refreshingRevisions: false)
         }
         await refresh(engine: engine)
@@ -158,9 +179,11 @@ private actor CloudWorldSyncState {
         do {
             try await engine.fetchChanges(.init(scope: .zoneIDs([zoneID])))
             try await processRemote(engine: engine)
-            if metadata.pending != nil {
+            if metadata.canSendCloudDeletion,
+                metadata.pending != nil || !metadata.pendingDeletionRecordNames.isEmpty
+            {
                 try await engine.sendChanges(.init(scope: .zoneIDs([zoneID])))
-            } else if metadata.conflict == nil {
+            } else if metadata.conflict == nil, !metadata.cloudDeletionPending {
                 await publish(phase: .synced)
             }
         } catch {
@@ -179,6 +202,12 @@ private actor CloudWorldSyncState {
             if takesOwnership {
                 metadata.remoteLiveSessionID = nil
             }
+            if metadata.cloudDeletionPending, !metadata.canSendCloudDeletion {
+                metadata.pending = snapshot
+                try metadataStore.save(metadata)
+                await publish(phase: .unavailable, issueCode: "sync_deletion_account_unavailable")
+                return
+            }
             try metadataStore.save(metadata)
             await stage(snapshot, on: engine)
         } catch {
@@ -189,6 +218,7 @@ private actor CloudWorldSyncState {
     func resolveConflict(choosing choice: WorldSyncChoice, engine: CKSyncEngine) async {
         guard let conflict = metadata.conflict else { return }
         do {
+            let cloudHeadExists = try metadata.remoteSnapshot != nil
             let resolved = WorldSyncReconciler.resolve(conflict, choosing: choice)
             let cloudSide = conflict.remote
             metadata.conflict = nil
@@ -200,7 +230,7 @@ private actor CloudWorldSyncState {
             try metadataStore.save(metadata)
             try worldStore.save(applied)
             await onWorldChange(applied)
-            if choice == .local || resolved != cloudSide {
+            if choice == .local || resolved != cloudSide || !cloudHeadExists {
                 await stage(resolved, on: engine)
             } else {
                 metadata.base = resolved
@@ -214,6 +244,35 @@ private actor CloudWorldSyncState {
         }
     }
 
+    func deleteAllData(engine: CKSyncEngine) async -> Bool {
+        do {
+            metadata.prepareDataDeletion()
+            try metadataStore.save(metadata)
+            guard metadata.canSendCloudDeletion else {
+                await publish(
+                    phase: .unavailable,
+                    issueCode: "sync_deletion_account_unavailable"
+                )
+                return false
+            }
+            try await engine.fetchChanges(.init(scope: .zoneIDs([zoneID])))
+            try await processRemote(engine: engine)
+            try await engine.sendChanges(.init(scope: .zoneIDs([zoneID])))
+            let complete =
+                !metadata.cloudDeletionPending && metadata.pending == nil
+                && metadata.pendingDeletionRecordNames.isEmpty
+            if complete {
+                await publish(phase: .synced)
+            } else {
+                await publish(phase: .unavailable, issueCode: "sync_deletion_pending")
+            }
+            return complete
+        } catch {
+            await publish(phase: .unavailable, issueCode: "sync_deletion_pending")
+            return false
+        }
+    }
+
     func handle(event: CKSyncEngine.Event, engine: CKSyncEngine) async {
         do {
             switch event {
@@ -221,7 +280,7 @@ private actor CloudWorldSyncState {
                 metadata.engineState = try JSONEncoder.flowmo.encode(update.stateSerialization)
                 try metadataStore.save(metadata)
             case .accountChange(let change):
-                try await handleAccountChange(change)
+                try await handleAccountChange(change, engine: engine)
             case .fetchedRecordZoneChanges(let fetched):
                 for modification in fetched.modifications where modification.record.recordID.zoneID == zoneID {
                     try ingest(modification.record)
@@ -246,7 +305,9 @@ private actor CloudWorldSyncState {
                     try metadataStore.save(metadata)
                 }
             case .didSendChanges:
-                if metadata.pending == nil && metadata.conflict == nil {
+                if !metadata.cloudDeletionPending && metadata.pending == nil && metadata.conflict == nil
+                    && metadata.pendingDeletionRecordNames.isEmpty
+                {
                     await publish(phase: .synced)
                 }
             case .willFetchChanges, .willFetchRecordZoneChanges, .didFetchRecordZoneChanges,
@@ -278,43 +339,69 @@ private actor CloudWorldSyncState {
         }
     }
 
-    private func handleAccountChange(_ change: CKSyncEngine.Event.AccountChange) async throws {
+    private func handleAccountChange(
+        _ change: CKSyncEngine.Event.AccountChange,
+        engine: CKSyncEngine
+    ) async throws {
         switch change.changeType {
         case .signIn(let currentUser):
             let current = currentUser.recordName
             if let previous = metadata.accountRecordName, previous != current {
-                prepareForAccountSwitch(to: current)
+                metadata.prepareForAccountSwitch(to: current)
             } else {
                 metadata.accountRecordName = current
+                if metadata.cloudDeletionPending,
+                    metadata.cloudDeletionAccountRecordName == nil
+                {
+                    metadata.cloudDeletionAccountRecordName = current
+                }
             }
         case .signOut:
             await publish(phase: .localOnly)
         case .switchAccounts(_, let currentUser):
-            prepareForAccountSwitch(to: currentUser.recordName)
+            metadata.prepareForAccountSwitch(to: currentUser.recordName)
         @unknown default:
             throw WorldSyncTransportError.invalidRecord
         }
+        let stale = engine.state.pendingRecordZoneChanges.filter {
+            Self.belongsToFlowmoZone($0, zoneID: zoneID)
+        }
+        engine.state.remove(pendingRecordZoneChanges: stale)
         try metadataStore.save(metadata)
-    }
-
-    private func prepareForAccountSwitch(to account: String) {
-        metadata.accountRecordName = account
-        metadata.accountChangeRequiresChoice = true
-        metadata.engineState = nil
-        metadata.base = nil
-        metadata.pending = nil
-        metadata.conflict = nil
-        metadata.remoteHeadData = nil
-        metadata.remoteSessionData = [:]
-        metadata.recordSystemFields = [:]
-        metadata.pendingRevisions = [:]
-        metadata.remoteLiveSessionID = nil
     }
 
     private func processRemote(engine: CKSyncEngine) async throws {
         let localWorld = try worldStore.load()
         let local = WorldSyncSnapshot(world: localWorld, generation: metadata.generation)
+        if metadata.cloudDeletionPending, !metadata.canSendCloudDeletion {
+            metadata.pending = local
+            metadata.remoteHeadData = nil
+            metadata.remoteSessionData = [:]
+            metadata.recordSystemFields = [:]
+            metadata.pendingRevisions = [:]
+            metadata.pendingDeletionRecordNames = []
+            try metadataStore.save(metadata)
+            let stale = engine.state.pendingRecordZoneChanges.filter {
+                Self.belongsToFlowmoZone($0, zoneID: zoneID)
+            }
+            engine.state.remove(pendingRecordZoneChanges: stale)
+            await publish(phase: .unavailable, issueCode: "sync_deletion_account_unavailable")
+            return
+        }
         let remote = try metadata.remoteSnapshot
+        if metadata.cloudDeletionPending {
+            metadata.pending = local
+            metadata.base = nil
+            metadata.conflict = nil
+            metadata.remoteLiveSessionID = nil
+            metadata.forgetOrphanedRemoteSessions(referencedBy: nil)
+            metadata.remoteHeadData = nil
+            try metadataStore.save(metadata)
+            await enqueuePending(on: engine, refreshingRevisions: true)
+            await publish(phase: .syncing)
+            return
+        }
+        metadata.forgetOrphanedRemoteSessions(referencedBy: remote)
         let outcome: WorldSyncReconciliation
 
         if metadata.accountChangeRequiresChoice {
@@ -345,7 +432,12 @@ private actor CloudWorldSyncState {
             metadata.conflict = conflict
             metadata.pending = nil
             metadata.pendingRevisions = [:]
+            let stale = engine.state.pendingRecordZoneChanges.filter {
+                Self.belongsToFlowmoZone($0, zoneID: zoneID)
+            }
+            engine.state.remove(pendingRecordZoneChanges: stale)
             try metadataStore.save(metadata)
+            await enqueuePending(on: engine, refreshingRevisions: false)
             await publish(phase: .needsChoice, conflict: conflict)
         case .merged(let merged):
             let remoteChangedLive = merged.head.live != local.head.live
@@ -364,7 +456,12 @@ private actor CloudWorldSyncState {
                 metadata.pending = nil
                 metadata.pendingRevisions = [:]
                 try metadataStore.save(metadata)
-                await publish(phase: .synced)
+                if metadata.pendingDeletionRecordNames.isEmpty {
+                    await publish(phase: .synced)
+                } else {
+                    await enqueuePending(on: engine, refreshingRevisions: false)
+                    await publish(phase: .syncing)
+                }
             }
         }
     }
@@ -378,8 +475,7 @@ private actor CloudWorldSyncState {
 
     private func enqueuePending(on engine: CKSyncEngine, refreshingRevisions: Bool) async {
         do {
-            guard let pending = metadata.pending else { return }
-            let pendingRecords = try WorldSyncRecordCodec.records(for: pending)
+            let pendingRecords = try metadata.pending.map(WorldSyncRecordCodec.records(for:)) ?? []
             let baseRecords = try metadata.base.map(WorldSyncRecordCodec.records(for:)) ?? []
             let pendingByName = Dictionary(uniqueKeysWithValues: pendingRecords.map { ($0.name, $0) })
             let baseByName = Dictionary(uniqueKeysWithValues: baseRecords.map { ($0.name, $0) })
@@ -405,15 +501,24 @@ private actor CloudWorldSyncState {
                 }
                 saves.append(.saveRecord(recordID(head.name)))
             }
-            let deletions = baseByName.keys
-                .filter { pendingByName[$0] == nil && $0 != WorldSyncRecordCodec.headRecordName }
-                .sorted()
-                .map { CKSyncEngine.PendingRecordZoneChange.deleteRecord(recordID($0)) }
+            let derivedDeletions =
+                metadata.pending == nil
+                ? []
+                : baseByName.keys.filter {
+                    pendingByName[$0] == nil && $0 != WorldSyncRecordCodec.headRecordName
+                }
+            var deletionNames = Set(metadata.pendingDeletionRecordNames)
+            deletionNames.formUnion(derivedDeletions)
+            deletionNames.subtract(pendingByName.keys)
+            metadata.pendingDeletionRecordNames = deletionNames.sorted()
+            let deletions = metadata.pendingDeletionRecordNames.map {
+                CKSyncEngine.PendingRecordZoneChange.deleteRecord(recordID($0))
+            }
 
             metadata.pendingRevisions = metadata.pendingRevisions.filter { pendingByName[$0.key] != nil }
             try metadataStore.save(metadata)
             engine.state.add(pendingRecordZoneChanges: saves + deletions)
-            if saves.isEmpty && deletions.isEmpty {
+            if saves.isEmpty, deletions.isEmpty, let pending = metadata.pending {
                 metadata.base = pending
                 metadata.pending = nil
                 metadata.pendingRevisions = [:]
@@ -451,6 +556,7 @@ private actor CloudWorldSyncState {
         _ sent: CKSyncEngine.Event.SentRecordZoneChanges,
         engine: CKSyncEngine
     ) async throws {
+        var savedHead = false
         for record in sent.savedRecords where record.recordID.zoneID == zoneID {
             let name = record.recordID.recordName
             metadata.recordSystemFields[name] = try Self.encodeSystemFields(record)
@@ -462,19 +568,24 @@ private actor CloudWorldSyncState {
                     metadata.pendingRevisions.removeValue(forKey: name)
                 }
             }
-            if name == WorldSyncRecordCodec.headRecordName,
-                let pending = metadata.pending,
-                metadata.pendingRevisions[name] == nil
-            {
-                metadata.base = pending
-                try metadata.replaceRemote(with: pending)
-                metadata.pending = nil
-                metadata.pendingRevisions = [:]
-            }
+            savedHead = savedHead || name == WorldSyncRecordCodec.headRecordName
         }
         for id in sent.deletedRecordIDs where id.zoneID == zoneID {
+            metadata.pendingDeletionRecordNames.removeAll { $0 == id.recordName }
             metadata.recordSystemFields.removeValue(forKey: id.recordName)
             removeRemoteRecord(named: id.recordName)
+        }
+        if savedHead,
+            let pending = metadata.pending,
+            metadata.pendingRevisions[WorldSyncRecordCodec.headRecordName] == nil,
+            metadata.pendingDeletionRecordNames.isEmpty
+        {
+            metadata.base = pending
+            try metadata.replaceRemote(with: pending)
+            metadata.pending = nil
+            metadata.pendingRevisions = [:]
+            metadata.cloudDeletionPending = false
+            metadata.cloudDeletionAccountRecordName = nil
         }
         try metadataStore.save(metadata)
 

@@ -42,6 +42,30 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
         }
     }
 
+    func testRemoteOwnershipChangesOnlyAfterAValidLocalMutationPersists() throws {
+        try withStore { store in
+            let world = try focusWorld(at: Date().addingTimeInterval(-120))
+            let sessionID = try XCTUnwrap(world.live?.id)
+            let metadataStore = WorldSyncMetadataStore(root: store.root)
+            try store.save(world)
+            try metadataStore.save(WorldSyncMetadata(remoteLiveSessionID: sessionID))
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+
+            controller.continueSession()
+
+            XCTAssertEqual(try metadataStore.load().remoteLiveSessionID, sessionID)
+            XCTAssertEqual(controller.world.live?.phase, .focus)
+
+            controller.stopFocus()
+
+            XCTAssertNil(try metadataStore.load().remoteLiveSessionID)
+            XCTAssertEqual(controller.world.live?.phase, .onBreak)
+        }
+    }
+
     private func focusWorld(at date: Date) throws -> World {
         var engine = Engine()
         try engine.apply(.start(intention: "phone sync recovery proof"), now: date)

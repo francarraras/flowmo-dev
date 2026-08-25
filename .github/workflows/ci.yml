@@ -52,20 +52,26 @@ jobs:
       - name: Build and analyze Mac app
         shell: bash
         run: |
-          xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+          xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
 
-          mac_release_settings="$(xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES -showBuildSettings)"
+          mac_release_settings="$(xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= AD_HOC_CODE_SIGNING_ALLOWED=YES -showBuildSettings)"
           grep -Fq 'CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO' <<<"$mac_release_settings"
           mac_build_dir="$(sed -n 's/^[[:space:]]*TARGET_BUILD_DIR = //p' <<<"$mac_release_settings" | head -n 1)"
           mac_product_name="$(sed -n 's/^[[:space:]]*FULL_PRODUCT_NAME = //p' <<<"$mac_release_settings" | head -n 1)"
           mac_app="$mac_build_dir/$mac_product_name"
           test -d "$mac_app"
+          test -f "$mac_app/Contents/Resources/PrivacyInfo.xcprivacy"
+          plutil -lint "$mac_app/Contents/Resources/PrivacyInfo.xcprivacy"
           if codesign -d --entitlements :- "$mac_app" 2>&1 | grep -Fq 'com.apple.security.get-task-allow'; then
             echo 'Release app unexpectedly contains get-task-allow.' >&2
             exit 1
           fi
+          if codesign -d --entitlements :- "$mac_app" 2>&1 | grep -Fq 'com.apple.developer.icloud'; then
+            echo 'Ad-hoc CI app unexpectedly contains iCloud entitlements.' >&2
+            exit 1
+          fi
 
-          xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Debug -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
+          xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Debug -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
 
       - name: Build and analyze iPhone app and widget
         shell: bash

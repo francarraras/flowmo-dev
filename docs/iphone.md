@@ -12,7 +12,8 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 | Widgets | After the app exists. A widget is a glance, not a session. |
 | History | Plain local completed-session list from Idle. |
 | Theme packs | Black + cyan from [`visual.md`](visual.md). Not a pack. |
-| iCloud / Watch | After a working phone. This slice is **local**. |
+| iCloud | Private CloudKit sync with the Mac app. |
+| Watch | Later. |
 
 ## Outcome
 
@@ -27,16 +28,14 @@ Copy does not claim productivity, well-being, or flow.
 ## In
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
-- Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write.
+- Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write. The phone app synchronizes the loop through the user's private CloudKit database; the widget only reads the App Group copy.
 - Same controls as Mac: Start, Skip, Stop, +, Continue, Restart, mute, and Idle-only Data controls. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
 - Same look rules: black field, cyan on Start and timed rings, clock-in-ring on prime/break/recall, Focus is a count-up plus earned strip. No focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Phase end while you are not looking: a local notification. Tap opens the app; it does not Continue.
 
 ## Out
 
-Home, tabs, setup, scores, streaks, flashcards, SM-2, history dashboard, widgets, Watch, Live Activities, iCloud, a second engine, Pause during Focus, App Store launch work.
-
-Mac and iPhone are **two local files** until iCloud. They do not share a live session.
+Home, tabs, setup, scores, streaks, flashcards, SM-2, history dashboard, Watch, Live Activities, a second engine, Pause during Focus, App Store launch work.
 
 ## Phone vs Mac (honest)
 
@@ -61,6 +60,18 @@ THE SYSTEM SHALL count up from timestamps, show earned rest, offer +, and SHALL 
 WHEN the user backgrounds the app during a live session
 THE SYSTEM SHALL not pause. On return the same phase is still moving (or already advanced if a timed beat ran out).
 
+WHEN a session arrives from the Mac through private CloudKit
+THE SYSTEM SHALL display the same timestamped session and SHALL NOT pause it as
+an iPhone process-recovery event.
+
+WHEN both devices start or ambiguously change a session while offline
+THE SYSTEM SHALL block loop controls and require **Keep this iPhone** or **Use
+iCloud version**. It SHALL NOT silently merge two live sessions.
+
+WHEN CloudKit is signed out or unavailable
+THE SYSTEM SHALL remain usable against its local store and queue later sync.
+Changing iCloud accounts SHALL require an explicit data choice before upload.
+
 WHEN the process is killed during a live session
 THE SYSTEM SHALL restore paused with Continue and Restart. Appearing SHALL NOT resume. Restart SHALL drop the frozen session and start Prime with the same intention.
 
@@ -81,4 +92,6 @@ original bytes SHALL be preserved before reset.
 WHEN the user opens Data from Idle
 THE SYSTEM SHALL offer full export, redacted diagnostic export, and explicitly
 confirmed Delete All. Delete All SHALL remove Flowmo-owned recovery copies and
-reload the widget timeline.
+reload the widget timeline. It SHALL remove local private sync replicas
+immediately and SHALL report incomplete deletion until queued CloudKit deletion
+is confirmed.

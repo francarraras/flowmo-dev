@@ -1,10 +1,12 @@
 # Privacy
 
-Last updated: 2026-08-24
+Last updated: 2026-08-25
 
 Flowmo does not currently operate a server and contains no third-party
-analytics, advertising, or crash-reporting SDK. Flowmo itself does not transmit
-session data.
+analytics, advertising, or crash-reporting SDK. The entitled Mac and iPhone
+apps transmit session data only to Apple's CloudKit service for private
+cross-device synchronization. Flowmo does not transmit it to a developer-run
+server.
 
 ## Data kept on the device
 
@@ -12,8 +14,42 @@ Flowmo stores the current session, intentions, parked thoughts, recall text,
 completed-session history, cue preference, learned break ratio, and selected
 Focus Guard application identifiers. The Mac store is normally
 `~/.flowmo/world.json`; `FLOWMO_HOME` is a development override. The iPhone app
-and widget use the private `group.app.flowmo.phone` App Group container and do
-not share a session with the Mac.
+and widget use the private `group.app.flowmo.phone` App Group container.
+
+The Mac and phone apps also keep bounded sync metadata beside their local
+store. It can include a validated local or remote session replica, a durable
+outgoing queue, opaque CloudKit record change tags, a random account-scoped
+identifier supplied by CloudKit, and a session identifier used to distinguish a
+remote live session from local crash recovery. Files use mode 0600 where the
+platform permits it. Temporary CloudKit assets are exact UUID-named transport
+copies and are removed after upload.
+
+## Private iCloud synchronization
+
+Flowmo uses container `iCloud.app.flowmo` and only the signed-in user's private
+CloudKit database. It sends the live phase and timestamps, intentions, parked
+thoughts, recall text, fixed break ratio, and completed-session history so the
+same loop can appear on Mac and iPhone. Sync is app functionality only. It is
+not used for analytics, advertising, marketing, profiling, or tracking.
+
+Apple documents that [private-database
+content](https://developer.apple.com/documentation/cloudkit/ckcontainer/privateclouddatabase)
+belongs to the user, counts against the user's iCloud quota, is accessible only
+to that user by default, and is not visible in the developer portal. Data is
+unavailable to another iCloud account unless the person explicitly chooses what
+to keep after an account change. Flowmo uses random revisions rather than
+content hashes and keeps private text out of logs and diagnostics.
+
+Local operation continues when iCloud is signed out or unavailable. Changes are
+queued for a later attempt. If two devices create incompatible live sessions or
+other ambiguous changes while offline, Flowmo blocks session controls and asks
+which copy to keep instead of silently overwriting or combining them. Distinct
+completed sessions can merge by their random session identifiers.
+
+The Home Screen widget does not access CloudKit. It remains a read-only glance
+over the iPhone App Group store. The command-line and `swift run` launchers do
+not carry CloudKit entitlements; their Mac-store changes synchronize when the
+entitled Mac app observes them or next opens.
 
 On Mac, Focus Guard observes local application activation only to hide apps the
 user selected during Focus. It does not use Accessibility control, terminate
@@ -23,11 +59,13 @@ operating system for local-notification permission and play system sounds.
 The local JSON file is internal storage, not a supported write API. Automation
 should use supported CLI commands.
 
-The iPhone app and widget bundle an Apple privacy manifest that declares no
-tracking and no collected data. It declares required-reason code `C617.1`
-because Flowmo inspects the size and type of files inside its own app and App
-Group containers to read the local store safely. That metadata is not sent off
-the device.
+The Mac, iPhone, and widget bundles include an Apple privacy manifest. It
+declares no tracking. Conservatively, it declares Other User Content and Product
+Interaction as linked data used only for app functionality because the entitled
+apps retain the loop in the user's private iCloud account. It also declares
+required-reason code `C617.1` because Flowmo inspects the size and type of files
+inside its own app and App Group containers to read local stores safely. That
+file metadata is not sent to Flowmo or used for tracking.
 
 On Mac, a small local lifecycle marker stores a process identity, the current
 session identifier (not its text), and an observation timestamp so a crash or
@@ -82,6 +120,13 @@ quarantine and crash-write recovery artifacts, including the separate local
 evidence store and its owned recovery artifacts. Cleanup is non-recursive; if
 an artifact cannot be removed safely, Flowmo reports that deletion is incomplete
 instead of claiming success.
+
+Delete All removes private session replicas from the device immediately and
+queues deletion of their records from the user's private CloudKit database.
+Only opaque record identifiers and change tags needed to finish that deletion
+remain locally while it is pending. If the device is offline, signed out, or
+CloudKit rejects the operation, Flowmo says deletion is incomplete; it does not
+claim the cloud copy is gone. The user can retry after CloudKit is available.
 
 ## Apple beta services
 

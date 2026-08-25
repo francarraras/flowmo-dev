@@ -1,7 +1,7 @@
 FLOWMO — FRIENDS & FAMILY MAC PREVIEW
 
 Version 1.0 (build 2)
-Requires macOS 13 Ventura or newer. Works on Apple silicon and Intel Macs.
+Requires macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
 
 BEFORE YOU OPEN IT
 
@@ -44,8 +44,9 @@ PRIVACY
 
 Flowmo keeps its session data on this Mac. It has no Flowmo server, advertising,
 third-party analytics, or third-party crash-reporting SDK, and it does not
-upload your session text. A full Flowmo data export is private; do not attach it
-to a bug report.
+upload your session text. This ad-hoc Mac preview cannot use the signed CloudKit
+capability, so cross-device sync is disabled in this package. A full Flowmo data
+export is private; do not attach it to a bug report.
 
 REPORTING A PROBLEM
 

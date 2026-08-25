@@ -17,7 +17,7 @@ principles, research on habit and attention, and the owner’s experience. It
 provides an open-ended focus ritual; it does not claim that one timer pattern is
 universally optimal for learning or productivity.
 
-You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop on iPhone (local store until iCloud). Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
+You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same privately synced loop on iPhone. Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
 
 **Working copy:** Stop counting down. Start flowing up. The product name and
 tagline are placeholders; branding is not a roadmap dependency.
@@ -268,7 +268,7 @@ Pause exists only as **recovery**:
 | **Menu bar** | Glance only (clock; click shows the window) | Still not the product |
 | **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
 | **CLI / JSON** | Scripts and integrations | Same verbs, same store as the window |
-| **iPhone** | Shipped ([`iphone.md`](iphone.md)) | Same loop; local store, iCloud later |
+| **iPhone** | Shipped ([`iphone.md`](iphone.md)) | Same loop and private CloudKit session |
 | **Widgets** | Shipped ([`widget.md`](widget.md)) | Glance; not the product |
 
 ### CLI and scripts
@@ -314,6 +314,29 @@ Flowmo-owned recovery artifacts without recursively deleting a planted
 directory. On Mac it also removes the separate evidence store and its exact
 owned recovery artifacts. Any incomplete cleanup remains visible to the user;
 the app must not claim all data was deleted if either cleanup is incomplete.
+
+### Private cross-device sync
+
+The entitled Mac and iPhone apps synchronize the loop through the user's
+private `iCloud.app.flowmo` CloudKit database. The shared state is the live
+session, fixed break ratio, resumption intention, and completed history. Cue
+preference, Focus Guard configuration, local evidence, lifecycle markers, and
+widget/App Group mechanics stay on their device.
+
+Each device remains usable offline. Completed sessions with distinct IDs merge;
+two offline live starts, an account change, or any other ambiguous concurrent
+edit blocks session controls behind an explicit **Keep this device** / **Use
+iCloud version** choice. Flowmo never silently merges two live sessions. A live
+session received from another device is not treated as a local process crash
+and is not recovery-paused merely because the receiving app opens.
+
+Cloud work is queued durably without storing content hashes or logging private
+text. Switching iCloud accounts never uploads the old account's pending private
+data to the new account without a choice. Delete All removes local private
+replicas immediately, queues deletion of the CloudKit records, and reports
+incomplete deletion until CloudKit confirms it. The iPhone widget remains a
+glance over the phone App Group copy and never controls or directly syncs a
+session.
 
 ---
 
@@ -383,8 +406,8 @@ GitHub: `https://github.com/francarraras/Flowmo` (private)
 
 `/Users/facspro/dev/flowmo` is the current close-beta implementation: the
 deterministic Core, native Mac window, Focus Guard, supporting glances and CLI,
-local iPhone app, widget, recovery paths, and privacy controls. The Mac window
-is the product; the CLI remains a side door.
+iPhone app, private CloudKit sync, widget, recovery paths, and privacy controls.
+The Mac window is the product; the CLI remains a side door.
 
 macOS on this machine is case-insensitive: `~/flowmo` and `~/Flowmo` are the **same path**. New work must stay under `~/dev/flowmo` (or another name that is not `Flowmo`).
 
@@ -396,11 +419,11 @@ Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may
 
 The current implementation follows this shape:
 
-1. **One session store** (timestamps + state). Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The separate Mac evidence file contains aggregates only and is never a second session authority.
-2. **One live session**, with a file lock shared by the window and CLI.
+1. **One logical session**, persisted as timestamped local replicas plus a private CloudKit replica. Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The separate Mac evidence file contains aggregates only and is never session authority.
+2. **One live session per local store**, with a file lock shared by the Mac window and CLI. Cross-device ambiguity becomes an explicit conflict; it never becomes two silently merged Focus sessions.
 3. **Native session frames** on Mac and iPhone. Menu bar, terminal, CLI, and widget remain supporting views.
 4. Do **not** start by opening a new Xcode clone of `~/Flowmo`.
-5. Persistence: a small local store (JSON or SQLite under `~/.flowmo/`). SwiftData is not required.
+5. Persistence: a small local JSON store plus durable private-sync metadata. SwiftData is not required.
 6. Notifications and sound are adapters around phase transitions, not the engine.
 
 The shipped loop remains **idle → prime → focus → break → recall → close beat → idle**, with recovery pause, supporting glances, and a local completed-session list.
@@ -411,7 +434,6 @@ The shipped loop remains **idle → prime → focus → break → recall → clo
 
 - Visual identity / themes beyond the shipped compact pass
 - Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
-- Cloud sync between the shipped Mac and iPhone clients
 - Watch and Live Activities
 - Flashcards, SM-2, consolidation protocols, or long-form reflection
 - History dashboard, scoring, or charts

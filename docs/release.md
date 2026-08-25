@@ -11,9 +11,11 @@ An Apple Account with Xcode's Personal Team is enough for the owner to run local
 Mac builds and ordinary personal-device apps that use only supported free-team
 capabilities. Apple limits this path to personal use; device registrations and
 provisioning profiles expire after seven days. It does not provide TestFlight,
-Developer ID, notarization, or friend distribution. Flowmo's current iPhone and
-widget targets require an App Group, so they are simulator-only until paid-team
-provisioning is configured. The unavailable path can also be exercised there.
+Developer ID, notarization, or friend distribution. Flowmo's iPhone target
+requires App Group, CloudKit, and push capabilities, and the Mac sync build
+requires CloudKit and push capabilities, so real sync testing needs an eligible
+team, registered identifiers/container, and provisioning profiles. Unsigned
+Mac and simulator builds still cover local behavior.
 
 Do not describe an ad-hoc Mac build as signed, notarized, Apple-reviewed, or a
 general release.
@@ -23,6 +25,10 @@ general release.
 Until Developer Program enrollment works, the owner may share a narrowly scoped
 Mac engineering preview with people who know and trust the sender. This path is
 not available for the iPhone app or widget.
+
+The preview script explicitly removes the Mac CloudKit entitlements so the app
+can remain ad-hoc signed. That package is local-only and is not evidence for
+cross-device sync. Never describe it as an iCloud-enabled build.
 
 - Build a fresh Release app from the candidate worktree and verify the signature,
   architectures, version, and minimum macOS version.
@@ -94,9 +100,12 @@ From a clean checkout of the candidate revision:
 4. Build and analyze the Mac app:
 
    ```bash
-   xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
-   xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Debug -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
+   xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+   xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Debug -sdk macosx -destination 'generic/platform=macOS' CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
    ```
+
+   An entitled candidate instead requires normal Apple provisioning and must
+   not use the empty-entitlements or ad-hoc identity overrides.
 
 5. Build and analyze the iPhone app and widget in the simulator:
 
@@ -116,10 +125,15 @@ From a clean checkout of the candidate revision:
    Confirm a second Mac process cannot mutate the first process's lifecycle and
    an immediate CLI Continue survives crash recovery without losing frozen
    time. Confirm Focus always counts up with no pause or progress ring.
+   For an entitled sync candidate, also test two signed-in devices: make an
+   offline change on each, confirm distinct history unions, confirm simultaneous
+   live starts block for a choose-one decision, verify account switching never
+   uploads the prior account's pending data, and verify offline Delete All stays
+   visibly incomplete until CloudKit confirms deletion.
 8. Review `CHANGELOG.md`, `PRIVACY.md`, `SECURITY.md`, `PROVENANCE.md`, and
    `THIRD_PARTY_NOTICES.md`. Validate `Apps/PrivacyInfo.xcprivacy` and confirm it
-   is present in both the built phone app and widget bundles; then archive the
-   exact test results with the release revision.
+   is present in the built Mac, phone, and widget bundles; then archive the exact
+   test results with the release revision.
 9. Record the candidate commit, Xcode version, macOS version, simulator runtime,
    and device models. Confirm `git diff --check` passes and the committed
    candidate checkout is clean.
@@ -148,7 +162,9 @@ ad-hoc friends-and-family Mac preview above:
 
 - Enroll the legal owner in the paid Apple Developer Program. Apple currently
   lists it as US$99/year. Create the app identifiers, App Group, certificates,
-  and provisioning profiles under that team.
+  push capability, `iCloud.app.flowmo` CloudKit container, and provisioning
+  profiles under that team. Promote the tested CloudKit development schema to
+  production before a production-signed build.
 - Create the App Store Connect app record. Increase `CURRENT_PROJECT_VERSION`
   for every uploaded build and keep the phone app and widget versions aligned.
   Complete the required TestFlight metadata, review notes, export-compliance
@@ -167,6 +183,9 @@ ad-hoc friends-and-family Mac preview above:
   that declaration whenever networking or cryptographic code changes.
 - Re-audit required-reason APIs and `Apps/PrivacyInfo.xcprivacy` whenever file,
   device, preferences, or third-party SDK APIs change.
+- Keep App Store privacy answers aligned with the manifest: private iCloud
+  synchronization uses Other User Content and Product Interaction, linked to
+  the user's iCloud identity, solely for app functionality, with no tracking.
 - Confirm the legal owner name and Git author aliases in `PROVENANCE.md`. Use
   Apple's standard EULA for an App Store/TestFlight distribution unless counsel
   chooses a custom agreement. Direct Mac distribution needs separately

@@ -1,6 +1,6 @@
 # Source and asset provenance
 
-Last reviewed: 2026-08-23
+Last reviewed: 2026-08-25
 
 The project owner has represented that Flowmo's product concept, design, source
 code, and current visual material are original personal work, created with AI
@@ -9,6 +9,10 @@ The frozen `~/Flowmo` tree is reference-only and is not a source of copied code.
 
 The current repository audit found no shipped third-party packages, code,
 images, fonts, binaries, or frameworks. See `THIRD_PARTY_NOTICES.md`.
+CloudKit, Combine, and the notification frameworks are Apple platform
+frameworks supplied by the operating system; no external SDK was added for
+sync. CloudKit changes privacy and provisioning facts but adds no redistributable
+third-party dependency.
 
 AI assistance does not replace human review or establish ownership by itself.
 For every release, the owner should retain a private ledger recording:

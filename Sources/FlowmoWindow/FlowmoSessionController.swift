@@ -417,8 +417,7 @@ public final class FlowmoSessionController: ObservableObject {
             if deletionIncomplete {
                 markDataDeletionIncomplete()
             } else {
-                clearDataDeletionWarning()
-                userNotice = "All Flowmo data was deleted."
+                finishCloudDataDeletion()
             }
         } catch is MacProcessRecoveryDataDeletionError {
             finishDataDeletion(world: (try? store.load()) ?? .empty)
@@ -431,6 +430,44 @@ public final class FlowmoSessionController: ObservableObject {
             finishDataDeletion(world: (try? store.load()) ?? .empty)
             markDataDeletionIncomplete()
             handlePersistenceFailure(error, operation: .reset)
+        }
+    }
+
+    private func finishCloudDataDeletion() {
+        let metadata = try? syncMetadataStore.load()
+        guard metadata?.containsPrivateCloudData != false else {
+            try? syncMetadataStore.deleteOwnedData()
+            clearDataDeletionWarning()
+            userNotice = "All Flowmo data was deleted."
+            return
+        }
+        guard let cloudSync else {
+            preserveCloudDeletionIntent()
+            markDataDeletionIncomplete()
+            return
+        }
+        userNotice = "Local Flowmo data was deleted. Removing iCloud data…"
+        cloudSync.deleteAllData { [weak self] complete in
+            guard let self else { return }
+            if complete {
+                self.clearDataDeletionWarning()
+                self.userNotice = "All Flowmo data was deleted."
+            } else {
+                self.markDataDeletionIncomplete()
+            }
+        }
+    }
+
+    private func preserveCloudDeletionIntent() {
+        do {
+            _ = try syncMetadataStore.update { metadata in
+                metadata.prepareDataDeletion()
+            }
+        } catch {
+            try? syncMetadataStore.deleteOwnedData()
+            var replacement = WorldSyncMetadata()
+            replacement.prepareDataDeletion()
+            try? syncMetadataStore.save(replacement)
         }
     }
 
@@ -555,18 +592,21 @@ public final class FlowmoSessionController: ObservableObject {
         applying = true
         defer { applying = false }
         let timestamp = Date()
+        let wasRemote = syncMetadataStore.isRemoteLiveSession(world.live?.id)
         do {
-            try? syncMetadataStore.markLocalControl()
             let engine = try store.update(
                 { engine in
                     try engine.apply(event, now: timestamp)
                     if let sessionID = engine.world.live?.id {
-                        try macRecovery.recordObservation(markerSessionID(sessionID), at: timestamp)
+                        try macRecovery.recordObservation(wasRemote ? nil : sessionID, at: timestamp)
                     }
                 },
                 afterPersist: { engine in
+                    try? self.syncMetadataStore.markLocalControl()
                     if engine.world.live == nil {
                         try self.macRecovery.recordObservation(nil, at: timestamp)
+                    } else if wasRemote {
+                        try self.macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
                     }
                 }
             )
