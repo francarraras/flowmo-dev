@@ -27,8 +27,8 @@ notifications, and process activation do not belong in the domain module.
 
 | Module | Owns | Does not own |
 |---|---|---|
-| `FlowmoCore` | Loop state, transitions, timestamp-derived clocks, validation, and the local `World` store | UI, CloudKit transport, app activation |
-| `FlowmoSync` | Reconciliation, sync metadata, record encoding, and the CloudKit adapter | Session rules or an independent copy of `World` |
+| `FlowmoCore` | Loop state, transitions, timestamp-derived clocks, action-first World commits, validation, and the local `World` store | UI, CloudKit transport, app activation |
+| `FlowmoSync` | Reconciliation, synchronized World persistence, sync metadata, record encoding, and the CloudKit adapter | Session rules or an independent copy of `World` |
 | `FlowmoLook` | Shared visual primitives | Session authority or navigation |
 | `FlowmoWindow` | Mac presentation, lifecycle, Focus Guard adapter, Focus Scene, and Work Handoff | Domain transitions or direct file mutation |
 | `FlowmoPhone` | Phone presentation, lifecycle, attention, and widget reload coordination | A second phone-specific session model |
@@ -61,20 +61,23 @@ seam.
 ## The World mutation seam
 
 `Engine` is the single implementation of Loop behavior. Do not create a second
-state machine in a controller, sync adapter, or repository. `Store.update` is
-the current compatibility seam for an atomic local read-modify-write under
-`world.lock`; every ordinary production mutation of `World` must cross it.
-Invalid-data quarantine, Idle-only reset, privacy deletion, and validated
-one-time phone-store migration remain dedicated locked `Store` maintenance
-operations.
+state machine in a controller, sync adapter, or repository. `WorldAuthority`
+is the action-first interface over that same Engine and the atomic local
+read-modify-write under `world.lock`. `Store.update` remains its implementation
+mechanism and the compatibility seam for adapters not migrated yet. Every
+ordinary production mutation of `World` must cross one of those routes during
+the migration. Invalid-data quarantine, Idle-only reset, privacy deletion, and
+validated one-time phone-store migration remain dedicated locked `Store`
+maintenance operations.
 
-The intended interface is an action-first `WorldAuthority` built over that same
-`Engine`. This is an illustrative future interface, not a type that exists yet:
+The implemented action interface has one overload for a caller that targets
+the locked current World and one for a visual adapter that targets the exact
+Live Session it displayed:
 
 ```swift
-let commit = try authority.apply(event, at: timestamp)
+let result = try authority.apply(event, at: timestamp)
 
-let commit = try authority.apply(
+let result = try authority.apply(
     event,
     observed: ObservedLiveBeat(
         sessionID: displayedSessionID,
@@ -85,12 +88,23 @@ let commit = try authority.apply(
 )
 ```
 
-Uncommon recovery, remote-reconciliation, and conflict writes use a typed
-`commit` operation on the same authority. Maintenance may move there only when
-typed operations preserve its quarantine, reset, deletion, and recovery
-contracts; until then it stays in the dedicated locked `Store` operations.
-That interface is a direction for incremental extraction, not a parallel engine
-and not authorization for a repository-wide rewrite.
+The result is either a durable `WorldCommit` or a stale observation carrying
+the locked current World. A commit includes before/after Live Beat facts, the
+exact newly Completed Session when applicable, whether World changed, and a
+warning when related persistence failed after World became durable. Callers
+adopt the returned World before running presentation effects or surfacing that
+warning.
+
+The phone's exact Continue, Restart, and Close Beat actions now cross the
+synchronized authority adapter, which retains `sync.lock` inside `world.lock`
+when it can update local ownership. Other phone actions, the Mac controller,
+and CLI remain on the `Store.update` compatibility seam in this phase. Mac
+migration waits for a typed adapter that preserves its recovery marker
+ordering; the CLI can move after the action contract settles. Uncommon
+recovery, remote-reconciliation, and conflict writes may move behind typed
+authority operations only when those operations preserve their current
+contracts. This remains an incremental extraction, not a parallel engine or a
+repository-wide rewrite.
 
 The seam maintains these invariants:
 
@@ -148,6 +162,9 @@ The accepted decision and its tradeoffs are recorded in
 Create an interface when it protects a real external or local-substitutable
 seam:
 
+- `WorldAuthority` has a package-internal persistence seam with two real
+  adapters: the local `Store` adapter and the synchronized World-plus-metadata
+  adapter. Feature callers cannot inject arbitrary lock-held callbacks.
 - CloudKit is external. Keep transport behind the `FlowmoSync` adapter and test
   reconciliation without a network account.
 - The filesystem and process-recovery marker are local-substitutable. Tests may
@@ -183,9 +200,12 @@ ownership; line count alone is not an architectural seam.
 
 ## Current pressure points
 
-- Mac and phone controllers duplicate action preconditions, draft handling,
-  synchronization calls, and exact-session completion behavior. Move shared
-  orchestration behind the World mutation seam before extracting presentation.
+- The phone controller now delegates the exact-observation checks and completion
+  facts for Continue, Restart, and Close Beat to `WorldAuthority`. Its remaining
+  actions and the Mac controller still use the compatibility seam. Mac
+  recovery-marker and Work Handoff ordering must move through a typed adapter
+  rather than a generic callback. Draft and presentation handling remain
+  surface-owned.
 - `FlowmoCore` still mixes domain types with persistence and some supporting
   utilities. Separate them only along proven dependency seams; keep `Engine`
   behavior stable during that work.

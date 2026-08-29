@@ -45,9 +45,25 @@ The authority will:
   its explicit Engine recovery contract; Work Handoff cannot mutate `World`
   and is fail-open.
 
-The authority will be extracted incrementally. Until that interface exists,
-`Store.update` is its compatibility seam and direct `World` load/modify/save
-sequences are prohibited.
+The authority is extracted incrementally. Until every ordinary writer has
+migrated, `Store.update` remains its compatibility seam and direct `World`
+load/modify/save sequences are prohibited.
+
+## Implementation status
+
+The first action slice now exists in `FlowmoCore`: `WorldAuthority` accepts an
+Engine `Event`, an explicit timestamp, and optionally an exact
+`ObservedLiveBeat`. It returns either a durable commit with transition facts or
+a stale result carrying the locked current World. Its package-internal
+persistence seam has a local `Store` adapter and a synchronized adapter that
+retains `sync.lock` inside `world.lock` while clearing remote ownership.
+
+The phone routes Continue, Restart, and Close Beat dismissal through the
+synchronized adapter. They use exact observations, and Close Beat receives its
+exact newly Completed Session from the commit. Other phone actions, the Mac,
+and CLI still use `Store.update` directly during this phase. Mac migration
+requires a typed recovery-marker adapter; recovery, reconciliation, conflict,
+and maintenance operations retain their existing dedicated routes.
 
 `World` and sync metadata remain separate files for now. A reconciliation or
 local-ownership commit involving both holds the ordered `world.lock` then

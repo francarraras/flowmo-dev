@@ -143,10 +143,64 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
         }
     }
 
+    func testExactCloseBeatAdoptsDurableCompletionWhenOwnershipWriteFails() throws {
+        try withStore { store in
+            let world = try closeBeatWorld(at: Date().addingTimeInterval(-120))
+            let sessionID = try XCTUnwrap(world.live?.id)
+            let generation = uuid(5)
+            let metadataStore = WorldSyncMetadataStore(root: store.root)
+            try store.save(world)
+            try metadataStore.save(
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: WorldSyncSnapshot(world: world, generation: generation)
+                )
+            )
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+            try FileManager.default.removeItem(at: metadataStore.stateURL)
+            try FileManager.default.createDirectory(
+                at: metadataStore.stateURL,
+                withIntermediateDirectories: false
+            )
+
+            controller.dismissCloseBeat()
+
+            XCTAssertNil(controller.world.live)
+            XCTAssertNil(try store.load().live)
+            XCTAssertEqual(controller.world.history.last?.id, sessionID)
+            XCTAssertEqual(controller.intentionDraft, "continue after the authority seam")
+            XCTAssertEqual(controller.activeIssue?.code, .syncMetadataUnavailable)
+            XCTAssertEqual(controller.activeIssue?.title, "Session saved; sync needs attention")
+            XCTAssertEqual(
+                controller.activeIssue?.message,
+                "Your Session change was saved on this device, but Flowmo couldn’t update its private sync state. Other devices may be temporarily out of date."
+            )
+            XCTAssertEqual(controller.recentIssues.last?.operation, .sync)
+        }
+    }
+
     private func focusWorld(at date: Date) throws -> World {
         var engine = Engine()
         try engine.apply(.start(intention: "phone sync recovery proof"), now: date)
         try engine.apply(.skip, now: date)
+        return engine.world
+    }
+
+    private func closeBeatWorld(at date: Date) throws -> World {
+        var engine = Engine()
+        try engine.apply(.start(intention: "phone authority proof"), now: date)
+        try engine.apply(.skip, now: date.addingTimeInterval(1))
+        try engine.apply(.stopFocus, now: date.addingTimeInterval(60))
+        try engine.apply(.skip, now: date.addingTimeInterval(61))
+        try engine.apply(
+            .setRecallText("continue after the authority seam"),
+            now: date.addingTimeInterval(62)
+        )
+        try engine.apply(.skip, now: date.addingTimeInterval(63))
         return engine.world
     }
 

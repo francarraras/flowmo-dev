@@ -7,6 +7,7 @@ public enum FlowmoIssueCode: String, Codable, CaseIterable, Sendable {
     case storeUnavailable = "FLOWMO-STORE-001"
     case storeUnreadable = "FLOWMO-STORE-002"
     case persistenceFailed = "FLOWMO-STORE-003"
+    case syncMetadataUnavailable = "FLOWMO-SYNC-001"
     case recoveryUnavailable = "FLOWMO-RECOVERY-001"
     case diagnosticExportFailed = "FLOWMO-EXPORT-001"
     case dataExportFailed = "FLOWMO-EXPORT-002"
@@ -96,6 +97,7 @@ public struct FlowmoPresentedIssue: Identifiable, Equatable, Sendable {
         case .storeUnavailable: "Flowmo unavailable"
         case .storeUnreadable: "Data needs attention"
         case .persistenceFailed: "Changes weren’t saved"
+        case .syncMetadataUnavailable: "Session saved; sync needs attention"
         case .recoveryUnavailable: "Recovery needs attention"
         case .diagnosticExportFailed: "Couldn’t prepare diagnostics"
         case .dataExportFailed: "Couldn’t prepare data export"
@@ -114,6 +116,8 @@ public struct FlowmoPresentedIssue: Identifiable, Equatable, Sendable {
             "Flowmo couldn’t read its local data. Retry, or preserve the original and reset."
         case .persistenceFailed:
             "Your latest change wasn’t saved. Flowmo kept the last saved state."
+        case .syncMetadataUnavailable:
+            "Your Session change was saved on this device, but Flowmo couldn’t update its private sync state. Other devices may be temporarily out of date."
         case .recoveryUnavailable:
             "Flowmo couldn’t safely protect quit or sleep recovery. Retry before continuing."
         case .diagnosticExportFailed:

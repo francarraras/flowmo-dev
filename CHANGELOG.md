@@ -4,6 +4,10 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Made exact iPhone Continue, Restart, and Done actions commit through one
+  World authority. Stale controls now adopt the newer saved Session, and a
+  private-sync bookkeeping failure no longer makes a durable local action look
+  unsaved; Flowmo keeps the saved result and identifies sync as the problem.
 - Prevented private sync from overwriting a newer local action with a cloud
   result computed from stale state. Remote reconciliation now reloads the
   latest local state under the same store transaction and persists the World

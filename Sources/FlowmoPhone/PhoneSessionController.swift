@@ -57,6 +57,7 @@ public final class PhoneSessionController: ObservableObject {
     let store: Store
     let attention: PhoneAttention
     private let syncMetadataStore: WorldSyncMetadataStore
+    private let worldAuthority: WorldAuthority
     private var cloudSync: CloudWorldSync?
 
     private var timer: Timer?
@@ -72,7 +73,12 @@ public final class PhoneSessionController: ObservableObject {
     public init(store: Store, attention: PhoneAttention = PhoneAttention()) {
         self.store = store
         self.attention = attention
-        self.syncMetadataStore = WorldSyncMetadataStore(root: store.root)
+        let syncMetadataStore = WorldSyncMetadataStore(root: store.root)
+        self.syncMetadataStore = syncMetadataStore
+        self.worldAuthority = WorldAuthority(
+            store: store,
+            syncMetadataStore: syncMetadataStore
+        )
         self.syncStatus = WorldSyncStatus()
         var loaded: World
         var startupIssue: FlowmoIssueCode?
@@ -161,21 +167,17 @@ public final class PhoneSessionController: ObservableObject {
     public func stopFocus() { apply(.stopFocus) }
     public func continueSession() {
         guard let live = world.live, live.isPaused else { return }
-        apply(
+        _ = applyObserved(
             .`continue`,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: live.phase,
-            expectedLiveIsPaused: true
+            observed: ObservedLiveBeat(live)
         )
     }
 
     public func restartSession() {
         guard let live = world.live, live.isPaused else { return }
-        apply(
+        _ = applyObserved(
             .restart,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: live.phase,
-            expectedLiveIsPaused: true
+            observed: ObservedLiveBeat(live)
         )
     }
 
@@ -196,15 +198,10 @@ public final class PhoneSessionController: ObservableObject {
     public func dismissCloseBeat() {
         guard let live = world.live, live.phase == .closeBeat, !live.isPaused else { return }
         let completedSessionID = live.id
-        guard
-            apply(
-                .skip,
-                expectedLiveSessionID: completedSessionID,
-                expectedLivePhase: .closeBeat
-            ),
-            world.live == nil,
-            let completed = world.history.first(where: { $0.id == completedSessionID }),
-            let nextStep = NextStepSuggestion.forSession(completed)
+        guard let result = applyObserved(.skip, observed: ObservedLiveBeat(live)),
+            case .committed(let commit) = result,
+            commit.completedSession?.id == completedSessionID,
+            let nextStep = commit.completedNextStep
         else { return }
         intentionDraft = nextStep
     }
@@ -452,35 +449,18 @@ public final class PhoneSessionController: ObservableObject {
     }
 
     @discardableResult
-    private func apply(
-        _ event: Event,
-        expectedLiveSessionID: UUID? = nil,
-        expectedLivePhase: SessionPhase? = nil,
-        expectedLiveIsPaused: Bool = false
-    ) -> Bool {
+    private func apply(_ event: Event) -> Bool {
         guard syncStatus.conflict == nil else { return false }
         let before = world.live?.phase
         applying = true
         defer { applying = false }
-        var statePreconditionMatched = true
         var ownershipPersistenceError: Error?
         do {
             let engine = try store.update(
                 { engine in
-                    if let expectedLiveSessionID {
-                        guard let live = engine.world.live,
-                            live.id == expectedLiveSessionID,
-                            expectedLivePhase.map({ live.phase == $0 }) ?? true,
-                            live.isPaused == expectedLiveIsPaused
-                        else {
-                            statePreconditionMatched = false
-                            return
-                        }
-                    }
                     try engine.apply(event, now: Date())
                 },
                 afterPersist: { _ in
-                    guard statePreconditionMatched else { return }
                     do {
                         try self.syncMetadataStore.markLocalControl()
                     } catch {
@@ -494,13 +474,11 @@ public final class PhoneSessionController: ObservableObject {
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reloadGlance()
-            if statePreconditionMatched {
-                cloudSync?.localWorldDidChange()
-            }
+            cloudSync?.localWorldDidChange()
             if let ownershipPersistenceError {
                 handlePersistenceFailure(ownershipPersistenceError, operation: .update)
             }
-            return statePreconditionMatched
+            return true
         } catch is EngineError {
             return false
         } catch {
@@ -518,6 +496,51 @@ public final class PhoneSessionController: ObservableObject {
             }
             handlePersistenceFailure(error, operation: .update)
             return false
+        }
+    }
+
+    @discardableResult
+    private func applyObserved(
+        _ event: Event,
+        observed: ObservedLiveBeat
+    ) -> WorldApplyResult? {
+        guard syncStatus.conflict == nil else { return nil }
+        let before = world.live?.phase
+        applying = true
+        defer { applying = false }
+        let timestamp = Date()
+        do {
+            let result = try worldAuthority.apply(event, observed: observed, at: timestamp)
+            world = result.world
+            now = timestamp
+            attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
+            attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+            refreshDraftsAfterChange()
+            reloadGlance()
+            if case .committed = result {
+                cloudSync?.localWorldDidChange()
+            }
+            if result.commit?.warnings.contains(.auxiliaryPersistenceFailed) == true {
+                presentIssue(.syncMetadataUnavailable, operation: .sync)
+            }
+            return result
+        } catch is EngineError {
+            return nil
+        } catch {
+            if let persisted = try? store.load() {
+                world = persisted
+                now = timestamp
+                attention.phaseChanged(
+                    from: before,
+                    to: world.live?.phase,
+                    cuesEnabled: world.config.cuesEnabled
+                )
+                attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+                refreshDraftsAfterChange()
+                reloadGlance()
+            }
+            handlePersistenceFailure(error, operation: .update)
+            return nil
         }
     }
 
