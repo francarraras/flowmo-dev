@@ -801,8 +801,15 @@ private struct CloseBeatPane: View {
                 QuietButton("Done", minHeight: 44) {
                     controller.dismissCloseBeat()
                 }
+                .accessibilityHint(closeActionHint)
             }
         }
+    }
+
+    private var closeActionHint: String {
+        status.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Finishes this session."
+            : "Finishes this session and carries the next step into Idle for editing. Focus does not start."
     }
 }
 

@@ -19,7 +19,7 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 
 One iPhone app that runs:
 
-idle → type once → prime (2:00) → focus (count up, you stop) → earned break → reflection (3:00) → close beat → idle.
+Idle → type once → Prime (2:00) → Focus (count up, you stop) → earned Break → Reflection (3:00) → Close Beat → Idle.
 
 Kill the app → paused with **Continue** and **Restart**. Opening the app does not Continue by itself.
 
@@ -29,8 +29,8 @@ Copy does not claim productivity, well-being, or flow.
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
 - Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write. The phone app synchronizes the loop through the user's private CloudKit database; the widget only reads the App Group copy.
-- Same controls as Mac: Start, Use next / Use last, continue a chosen History thread, Park thought, review parked thoughts into the next step, Stop, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
-- Same look rules: black field, cyan on Start and timed rings, clock-in-ring on prime/break/recall, Focus is a count-up plus earned strip. No focus progress ring. No Home. No tabs.
+- Same controls as Mac: Start, Use next / Use last, restore a chosen Completed Session from History, Park thought, review parked thoughts into the Next Step, Stop, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. Close Beat Done carries that exact Session’s explicit Next Step into editable Idle without starting. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
+- Same look rules: black field, cyan on Start and timed rings, clock-in-ring on Prime/Break/Reflection, Focus is a count-up plus earned strip. No Focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Phase end while you are not looking: a local notification. Tap opens the app; it does not Continue.
 
 ## Out
@@ -41,20 +41,27 @@ Home, tabs, setup, scores, streaks, flashcards, SM-2, history dashboard, Watch, 
 
 On Mac, hide/close leaves Flowmo running. On iPhone, background **suspends** the process. Clocks stay honest because they are timestamps, not a ticking timer. Timed phases that should have ended while you were away catch up when Core `sync`s on the next launch or foreground.
 
-Notifications for “prime ended / break ended / recall ended” while away are **scheduled when that timed phase starts**, then cancelled if you Skip or Stop first. The UI/Core timer does not run continuously in the background. iOS may grant
+Notifications for “Prime ended / Break ended / Reflection ended” while away are **scheduled when that timed phase starts**, then cancelled if you Skip or Stop first. The UI/Core timer does not run continuously in the background. iOS may grant
 `CKSyncEngine` bounded background execution for remote database notifications;
 persisted timestamps remain the clock authority when the interface returns.
 
 ## Checkable lines
 
 WHEN the app is idle
-THE SYSTEM SHALL show 00:00, Start, today’s focus total, History, and Data. On a truly new store it SHALL explain count-up Focus and earned break inside the aperture. When available, Use next SHALL reveal only the latest completed session’s explicit next step for confirmation; otherwise Use last SHALL reveal the saved intention.
+THE SYSTEM SHALL show 00:00, Start, today’s Focus total, History, and Data. On a truly new store it SHALL explain count-up Focus and earned Break inside the aperture. When this phone just completed an exact Close Beat with a nonblank Next Step, Idle SHALL show that step as the editable Intention and SHALL NOT start. Otherwise, when available, Use next SHALL reveal only the latest Completed Session’s explicit Next Step for confirmation; Use last SHALL reveal the saved Intention.
 
 WHEN the user opens History from Idle
 THE SYSTEM SHALL show completed sessions newest-first. Each card shows intention, Focus duration, and local date. Tapping a card SHALL expand that session in place with Focused, Break earned, parked lines, and next step when present. An expanded card SHALL offer Use next step, or Use intention when that is the only cue; choosing it SHALL return to Idle with the line visible and SHALL NOT start automatically. If Idle already has a typed intention, the app SHALL ask before replacing it. Back SHALL return to Idle.
 
 WHEN Reflection has parked thoughts and its next-step field is empty
 THE SYSTEM SHALL offer a newest-first review inside the same frame. Use as next SHALL fill and persist the selected line as editable Reflection text without removing the parked line. Existing Reflection text SHALL never be overwritten.
+
+WHEN the user taps Done on an unpaused Close Beat
+THE SYSTEM SHALL complete that exact session once. If its Reflection next step
+is nonblank, the phone SHALL return to Idle with that exact trimmed text in the
+editable intention field and SHALL NOT start Prime. A blank next step SHALL
+leave Idle empty, and a stale Done action SHALL NOT advance a replacement
+session or borrow a cue from older History.
 
 WHEN the user starts
 THE SYSTEM SHALL enter Prime for 120s with that intention and SHALL NOT ask for it again during Prime.
@@ -83,7 +90,7 @@ problems remain visible.
 WHEN the process is killed during a live session
 THE SYSTEM SHALL restore paused with Continue and Restart. Appearing SHALL NOT resume. Restart SHALL drop the frozen session and start Prime with the same intention.
 
-WHEN a timed phase (prime, break, recall) will end while the app is not foreground
+WHEN a timed phase (Prime, Break, Reflection) will end while the app is not foreground
 THE SYSTEM SHALL schedule a local notification for that end. Skip, Stop, or an earlier phase change SHALL cancel it. Activating the notification SHALL open the app and SHALL NOT Continue.
 
 WHEN `world.json` is a Mac-shaped document

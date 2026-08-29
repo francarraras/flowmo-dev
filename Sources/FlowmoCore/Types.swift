@@ -377,11 +377,14 @@ public enum HistoryOrder {
 /// The most recent explicit next step, if the latest completed session has one.
 public enum NextStepSuggestion {
     public static func latest(in sessions: [CompletedSession]) -> String? {
-        guard let latest = HistoryOrder.newestFirst(sessions).first,
-            let recall = latest.recallText
-        else {
-            return nil
-        }
+        guard let latest = HistoryOrder.newestFirst(sessions).first else { return nil }
+        return forSession(latest)
+    }
+
+    /// The explicit next step from this exact session, with no intention or
+    /// older-session fallback.
+    public static func forSession(_ session: CompletedSession) -> String? {
+        guard let recall = session.recallText else { return nil }
         let trimmed = recall.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }

@@ -29,6 +29,23 @@ final class NextStepSuggestionTests: XCTestCase {
         XCTAssertNil(NextStepSuggestion.latest(in: sessions))
     }
 
+    func testExactSessionSuggestionUsesOnlyItsTrimmedReflection() {
+        let explicit = session(
+            id: "00000000-0000-0000-0000-000000000001",
+            endedAt: 100,
+            recall: " \n carry this forward \t "
+        )
+        var blank = session(
+            id: "00000000-0000-0000-0000-000000000002",
+            endedAt: 200,
+            recall: " \n "
+        )
+        blank.intention = "must not be used as a fallback"
+
+        XCTAssertEqual(NextStepSuggestion.forSession(explicit), "carry this forward")
+        XCTAssertNil(NextStepSuggestion.forSession(blank))
+    }
+
     func testEqualTimestampsUseHistoryOrderDeterministically() {
         let sessions = [
             session(id: "ffffffff-ffff-ffff-ffff-ffffffffffff", endedAt: 100, recall: "later UUID"),

@@ -144,6 +144,109 @@ final class PhoneContinuityTests: XCTestCase {
         }
     }
 
+    func testCloseDoneCarriesExactNextStepIntoEditableIdleWithoutStarting() throws {
+        try withStore { store in
+            let sessionID = try saveCloseBeatSession(
+                to: store,
+                recallText: "  finish the conclusion \n"
+            )
+            let controller = makeController(store: store)
+
+            controller.dismissCloseBeat()
+
+            XCTAssertNil(controller.world.live)
+            XCTAssertEqual(controller.intentionDraft, "finish the conclusion")
+            XCTAssertEqual(controller.world.history.last?.id, sessionID)
+            XCTAssertEqual(try store.load(), controller.world)
+
+            controller.intentionDraft = "finish and proofread the conclusion"
+            controller.start()
+            XCTAssertEqual(controller.world.live?.phase, .prime)
+            XCTAssertEqual(
+                controller.world.live?.intention,
+                "finish and proofread the conclusion"
+            )
+        }
+    }
+
+    func testStaleRecoveryContinueCannotResumeAReplacementSession() throws {
+        try withStore { store in
+            let observed = try pausedPrimeWorld(intention: "original task")
+            try store.save(observed)
+            let controller = makeController(store: store)
+
+            let winningWorld = try replaceWithPausedPrime(in: store)
+            controller.continueSession()
+
+            XCTAssertEqual(controller.world, winningWorld)
+            XCTAssertEqual(try store.load(), winningWorld)
+            XCTAssertTrue(controller.world.live?.isPaused == true)
+        }
+    }
+
+    func testStaleRecoveryRestartCannotReplaceAReplacementSession() throws {
+        try withStore { store in
+            let observed = try pausedPrimeWorld(intention: "original task")
+            try store.save(observed)
+            let controller = makeController(store: store)
+
+            let winningWorld = try replaceWithPausedPrime(in: store)
+            controller.restartSession()
+
+            XCTAssertEqual(controller.world, winningWorld)
+            XCTAssertEqual(try store.load(), winningWorld)
+            XCTAssertTrue(controller.world.live?.isPaused == true)
+        }
+    }
+
+    func testCloseDoneWithBlankNextStepNeverFallsBackToOlderWork() throws {
+        try withStore { store in
+            let older = CompletedSession(
+                id: UUID(),
+                intention: "older task",
+                focusSeconds: 600,
+                breakSeconds: 120,
+                captureCount: 0,
+                recallText: "do not carry this",
+                endedAt: start.addingTimeInterval(-100)
+            )
+            _ = try saveCloseBeatSession(
+                to: store,
+                recallText: " \n ",
+                history: [older]
+            )
+            let controller = makeController(store: store)
+
+            controller.dismissCloseBeat()
+
+            XCTAssertNil(controller.world.live)
+            XCTAssertTrue(controller.intentionDraft.isEmpty)
+            XCTAssertNil(NextStepSuggestion.latest(in: controller.world.history))
+        }
+    }
+
+    func testStaleCloseDoneCannotAdvanceOrBridgeAReplacementSession() throws {
+        try withStore { store in
+            _ = try saveCloseBeatSession(to: store, recallText: "stale next step")
+            let controller = makeController(store: store)
+
+            _ = try store.update { engine in
+                try engine.apply(.skip, now: start.addingTimeInterval(64))
+                try engine.apply(
+                    .start(intention: "replacement task"),
+                    now: start.addingTimeInterval(65)
+                )
+            }
+
+            controller.dismissCloseBeat()
+
+            XCTAssertEqual(controller.world.live?.phase, .prime)
+            XCTAssertEqual(controller.world.live?.intention, "replacement task")
+            XCTAssertEqual(try store.load().live?.phase, .prime)
+            XCTAssertTrue(controller.intentionDraft.isEmpty)
+        }
+    }
+
     private func makeRecallController(store: Store) throws -> PhoneSessionController {
         let start = Date().addingTimeInterval(-60)
         var engine = Engine()

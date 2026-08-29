@@ -159,8 +159,25 @@ public final class PhoneSessionController: ObservableObject {
     public func start() { apply(.start(intention: intentionDraft)) }
     public func skip() { apply(.skip) }
     public func stopFocus() { apply(.stopFocus) }
-    public func continueSession() { apply(.`continue`) }
-    public func restartSession() { apply(.restart) }
+    public func continueSession() {
+        guard let live = world.live, live.isPaused else { return }
+        apply(
+            .`continue`,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: live.phase,
+            expectedLiveIsPaused: true
+        )
+    }
+
+    public func restartSession() {
+        guard let live = world.live, live.isPaused else { return }
+        apply(
+            .restart,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: live.phase,
+            expectedLiveIsPaused: true
+        )
+    }
 
     public func submitCapture() {
         let trimmed = captureDraft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -177,8 +194,19 @@ public final class PhoneSessionController: ObservableObject {
     }
 
     public func dismissCloseBeat() {
-        guard world.live?.phase == .closeBeat, world.live?.isPaused != true else { return }
-        apply(.skip)
+        guard let live = world.live, live.phase == .closeBeat, !live.isPaused else { return }
+        let completedSessionID = live.id
+        guard
+            apply(
+                .skip,
+                expectedLiveSessionID: completedSessionID,
+                expectedLivePhase: .closeBeat
+            ),
+            world.live == nil,
+            let completed = world.history.first(where: { $0.id == completedSessionID }),
+            let nextStep = NextStepSuggestion.forSession(completed)
+        else { return }
+        intentionDraft = nextStep
     }
 
     public func discardCapture() {
