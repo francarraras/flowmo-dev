@@ -51,6 +51,27 @@ final class PersistenceAndFormatSecurityTests: XCTestCase {
         }
     }
 
+    func testUnshippedLegacySourceFieldIsIgnoredWithoutLosingTheSession() throws {
+        try withStore { store in
+            let startedAt = Date(timeIntervalSince1970: 1_800_000_000)
+            var engine = Engine()
+            try engine.apply(.start(intention: "keep this session"), now: startedAt)
+            var root = try XCTUnwrap(
+                JSONSerialization.jsonObject(with: JSONEncoder.flowmo.encode(engine.world))
+                    as? [String: Any]
+            )
+            root["localSourceAnchor"] = [
+                "sessionID": try XCTUnwrap(engine.world.live?.id).uuidString,
+                "anchor": ["kind": "webURL", "value": "https://example.com/old"],
+            ]
+            try JSONSerialization.data(withJSONObject: root).write(to: store.worldURL)
+
+            let loaded = try store.load()
+            XCTAssertEqual(loaded.live?.id, engine.world.live?.id)
+            XCTAssertEqual(loaded.live?.intention, "keep this session")
+        }
+    }
+
     func testContinueBoundaryRoundTripsAndInvalidBoundaryIsRejected() throws {
         try withStore { store in
             let startedAt = Date(timeIntervalSince1970: 1_800_000_000)

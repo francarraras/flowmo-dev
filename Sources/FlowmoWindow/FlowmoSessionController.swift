@@ -27,9 +27,10 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public var recallDraft: String = ""
     @Published public var showCapture: Bool = false
     @Published public var showParkedReview: Bool = false
-    @Published public var isPinned: Bool = false
+    @Published public private(set) var isPinned: Bool = false
     @Published public var showGuardConfig: Bool = false
     @Published public private(set) var displayMode: DisplayMode
+    @Published private(set) var focusScenePresentation: FocusScenePresentation? = nil
     @Published public private(set) var storeNeedsRecovery = false
     @Published public private(set) var lifecycleNeedsRecovery = false
     @Published public var activeIssue: FlowmoPresentedIssue?
@@ -40,9 +41,11 @@ public final class FlowmoSessionController: ObservableObject {
     let store: Store
     let attention: AttentionAdapter
     let focusGuard: FocusGuardAdapter
+    private let workContextHandoff: any WorkContextHandoff
     private let evidence: LocalEvidenceRecorder
     private let macRecovery: MacProcessRecoveryMarker
     private let syncMetadataStore: WorldSyncMetadataStore
+    private let userDefaults: UserDefaults
     private var cloudSync: CloudWorldSync?
 
     private var timer: Timer?
@@ -74,6 +77,10 @@ public final class FlowmoSessionController: ObservableObject {
         )
     }
 
+    public var isFocusSceneActive: Bool {
+        focusScenePresentation != nil
+    }
+
     static func windowContentSize(
         displayMode: DisplayMode,
         storeNeedsRecovery: Bool,
@@ -94,15 +101,20 @@ public final class FlowmoSessionController: ObservableObject {
     public init(
         store: Store = .default,
         attention: AttentionAdapter = AttentionAdapter(),
-        focusGuard: FocusGuardAdapter = FocusGuardAdapter()
+        focusGuard: FocusGuardAdapter = FocusGuardAdapter(),
+        workContextHandoff: any WorkContextHandoff = WorkspaceWorkContextHandoff(),
+        userDefaults: UserDefaults = .standard,
+        syncStatus: WorldSyncStatus = WorldSyncStatus()
     ) {
         self.store = store
         self.attention = attention
         self.focusGuard = focusGuard
+        self.workContextHandoff = workContextHandoff
+        self.userDefaults = userDefaults
         self.evidence = LocalEvidenceRecorder(root: store.root)
         self.macRecovery = MacProcessRecoveryMarker(store: store)
         self.syncMetadataStore = WorldSyncMetadataStore(root: store.root)
-        self.syncStatus = WorldSyncStatus()
+        self.syncStatus = syncStatus
 
         let loaded: World
         do {
@@ -122,7 +134,7 @@ public final class FlowmoSessionController: ObservableObject {
         self.sessionWasLive = loaded.live != nil
         self.displayMode =
             DisplayMode(
-                rawValue: UserDefaults.standard.string(forKey: "FlowmoDisplayMode") ?? ""
+                rawValue: userDefaults.string(forKey: "FlowmoDisplayMode") ?? ""
             ) ?? .classic
         if loaded.live?.phase == .recall {
             self.recallDraft = loaded.live?.recallText ?? ""
@@ -137,12 +149,29 @@ public final class FlowmoSessionController: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+        syncStatus.$conflict
+            .sink { [weak self] conflict in
+                guard conflict != nil else { return }
+                self?.discardFocusSceneForBlockingState()
+            }
+            .store(in: &cancellables)
     }
 
     public func setDisplayMode(_ mode: DisplayMode) {
+        if focusScenePresentation != nil {
+            leaveFocusScene()
+        }
         guard mode != displayMode else { return }
         displayMode = mode
-        UserDefaults.standard.set(mode.rawValue, forKey: "FlowmoDisplayMode")
+        userDefaults.set(mode.rawValue, forKey: "FlowmoDisplayMode")
+    }
+
+    public func togglePin() {
+        let shouldPin = !isPinned
+        if focusScenePresentation != nil {
+            leaveFocusScene()
+        }
+        isPinned = shouldPin
     }
 
     public func startRunning() {
@@ -178,23 +207,128 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func start() {
-        apply(.start(intention: intentionDraft))
+        guard apply(.start(intention: intentionDraft)), let sessionID = world.live?.id else { return }
+        workContextHandoff.bindCandidate(to: sessionID)
     }
 
     public func skip() {
         apply(.skip)
     }
 
+    public func focusNow() {
+        guard let live = world.live, live.phase == .prime, !live.isPaused else { return }
+        apply(
+            .skip,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: .prime,
+            activateWorkContextIfEnteringFocus: true
+        )
+    }
+
+    public func startFocusScene() {
+        guard let live = world.live, live.phase == .prime, !live.isPaused else { return }
+        let requestedScene = FocusScenePresentation(
+            sessionID: live.id,
+            previousDisplayMode: displayMode,
+            previousPinned: isPinned
+        )
+        apply(
+            .skip,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: .prime,
+            requestedFocusScene: requestedScene
+        )
+    }
+
+    /// Presents the exact Focus already shown in the normal Flowmo window.
+    /// The locked store check prevents a stale window from presenting a
+    /// replacement session that another local surface started first.
+    public func enterFocusScene() {
+        guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return }
+        guard syncStatus.conflict == nil, focusScenePresentation == nil else { return }
+        guard let observedLive = world.live,
+            observedLive.phase == .focus,
+            !observedLive.isPaused
+        else { return }
+
+        let requestedScene = FocusScenePresentation(
+            sessionID: observedLive.id,
+            previousDisplayMode: displayMode,
+            previousPinned: isPinned
+        )
+        let before = world.live?.phase
+        let timestamp = Date()
+        var statePreconditionMatched = true
+        applying = true
+        defer { applying = false }
+
+        do {
+            let engine = try store.update { engine in
+                guard let live = engine.world.live,
+                    live.id == observedLive.id,
+                    live.phase == .focus,
+                    !live.isPaused
+                else {
+                    statePreconditionMatched = false
+                    return
+                }
+            }
+            let changed = engine.world != world
+            world = engine.world
+            now = timestamp
+            if statePreconditionMatched {
+                activateFocusScene(requestedScene, for: observedLive.id)
+            }
+            reconcileWorkContextRetention()
+            refreshDraftsAfterChange()
+            reconcileGuard()
+            if changed {
+                attention.phaseChanged(
+                    from: before,
+                    to: world.live?.phase,
+                    cuesEnabled: world.config.cuesEnabled
+                )
+            }
+        } catch {
+            handlePersistenceFailure(error, operation: .load)
+        }
+    }
+
+    /// Leaves only the transient presentation. Lifecycle exits and window close
+    /// deliberately do not activate another app.
+    public func leaveFocusScene() {
+        guard focusScenePresentation != nil else { return }
+        restoreFocusScenePresentation()
+        workContextHandoff.retainOnly(sessionID: nil)
+    }
+
     public func stopFocus() {
-        apply(.stopFocus)
+        guard let live = world.live, live.phase == .focus, !live.isPaused else { return }
+        apply(
+            .stopFocus,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: .focus
+        )
     }
 
     public func continueSession() {
-        apply(.`continue`)
+        guard let live = world.live, live.isPaused else { return }
+        apply(
+            .`continue`,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: live.phase,
+            expectedLiveIsPaused: true
+        )
     }
 
     public func restartSession() {
-        apply(.restart)
+        guard let live = world.live, live.isPaused else { return }
+        apply(
+            .restart,
+            expectedLiveSessionID: live.id,
+            expectedLivePhase: live.phase,
+            expectedLiveIsPaused: true
+        )
     }
 
     @discardableResult
@@ -227,6 +361,8 @@ public final class FlowmoSessionController: ObservableObject {
             )
             world = engine.world
             now = timestamp
+            reconcileWorkContextRetention()
+            reconcileFocusScenePresentation()
         } catch let error as MacProcessRecoveryError {
             handleMarkerRecoveryFailure(error, operation: .recoveryFinish)
         } catch {
@@ -249,8 +385,19 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func dismissCloseBeat() {
-        guard world.live?.phase == .closeBeat, world.live?.isPaused != true else { return }
-        apply(.skip)
+        guard let live = world.live, live.phase == .closeBeat, !live.isPaused else { return }
+        let completedSessionID = live.id
+        guard
+            apply(
+                .skip,
+                expectedLiveSessionID: completedSessionID,
+                expectedLivePhase: .closeBeat
+            ),
+            world.live == nil,
+            let completed = world.history.first(where: { $0.id == completedSessionID }),
+            let nextStep = NextStepSuggestion.forSession(completed)
+        else { return }
+        intentionDraft = nextStep
     }
 
     public func configureFocusGuard(_ config: FocusGuardConfiguration) {
@@ -404,10 +551,12 @@ public final class FlowmoSessionController: ObservableObject {
             _ = try store.quarantineInvalidWorldAndReset()
             world = try store.load()
             now = Date()
+            restoreFocusScenePresentation()
             storeNeedsRecovery = false
             activeIssue = nil
             userNotice = "Original data was preserved and Flowmo was reset."
             intentionDraft = ""
+            workContextHandoff.retainOnly(sessionID: nil)
             captureDraft = ""
             recallDraft = ""
             showCapture = false
@@ -568,6 +717,7 @@ public final class FlowmoSessionController: ObservableObject {
             case .contended:
                 world = engine.world
                 now = timestamp
+                reconcileWorkContextRetention()
                 didClaimMacProcessLifetime = false
                 handleMarkerRecoveryFailure(
                     MacProcessRecoveryError.claimContended,
@@ -578,6 +728,7 @@ public final class FlowmoSessionController: ObservableObject {
             }
             world = engine.world
             now = timestamp
+            reconcileWorkContextRetention()
             didClaimMacProcessLifetime = true
             markerRecoveryFailed = false
             clearRecoveryIssueIfResolved()
@@ -622,6 +773,7 @@ public final class FlowmoSessionController: ObservableObject {
             }
             world = engine.world
             now = timestamp
+            reconcileWorkContextRetention()
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
@@ -648,38 +800,96 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     @discardableResult
-    private func apply(_ event: Event) -> Bool {
+    private func apply(
+        _ event: Event,
+        expectedLiveSessionID: UUID? = nil,
+        expectedLivePhase: SessionPhase? = nil,
+        expectedLiveIsPaused: Bool = false,
+        activateWorkContextIfEnteringFocus: Bool = false,
+        requestedFocusScene: FocusScenePresentation? = nil
+    ) -> Bool {
         guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return false }
         guard syncStatus.conflict == nil else { return false }
         let before = world.live?.phase
+        let beforeSessionID = world.live?.id
         applying = true
         defer { applying = false }
         let timestamp = Date()
-        let wasRemote = syncMetadataStore.isRemoteLiveSession(world.live?.id)
+        let wasRemote = syncMetadataStore.isRemoteLiveSession(world.live)
+        var statePreconditionMatched = true
         do {
             let engine = try store.update(
                 { engine in
+                    if let expectedLiveSessionID {
+                        guard let live = engine.world.live,
+                            live.id == expectedLiveSessionID,
+                            expectedLivePhase.map({ live.phase == $0 }) ?? true,
+                            live.isPaused == expectedLiveIsPaused
+                        else {
+                            statePreconditionMatched = false
+                            return
+                        }
+                    }
                     try engine.apply(event, now: timestamp)
                     if let sessionID = engine.world.live?.id {
                         try macRecovery.recordObservation(wasRemote ? nil : sessionID, at: timestamp)
                     }
                 },
                 afterPersist: { engine in
+                    guard statePreconditionMatched else { return }
                     try? self.syncMetadataStore.markLocalControl()
                     if engine.world.live == nil {
                         try self.macRecovery.recordObservation(nil, at: timestamp)
                     } else if wasRemote {
                         try self.macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
                     }
+                    if activateWorkContextIfEnteringFocus,
+                        before == .prime,
+                        let beforeSessionID,
+                        let live = engine.world.live,
+                        live.id == beforeSessionID,
+                        live.phase == .focus,
+                        !live.isPaused
+                    {
+                        self.workContextHandoff.activateBoundTarget(
+                            for: beforeSessionID,
+                            excludingBundleIdentifiers: self.guardedBundleIdentifiers(in: engine.world)
+                        )
+                        self.workContextHandoff.retainOnly(sessionID: nil)
+                    }
                 }
             )
             world = engine.world
             now = timestamp
+            if statePreconditionMatched,
+                case .restart = event,
+                let beforeSessionID,
+                let afterSessionID = world.live?.id
+            {
+                workContextHandoff.transferBoundTarget(
+                    from: beforeSessionID,
+                    to: afterSessionID
+                )
+            }
+            let didEnterFocus =
+                statePreconditionMatched
+                && isEnteringFocus(from: before, sessionID: beforeSessionID)
+            if didEnterFocus, let requestedFocusScene, let beforeSessionID {
+                activateFocusScene(requestedFocusScene, for: beforeSessionID)
+            }
+            let shouldActivateWorkContext =
+                didEnterFocus
+                && activateWorkContextIfEnteringFocus
+            if !shouldActivateWorkContext {
+                reconcileWorkContextRetention()
+            }
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reconcileGuard()
-            cloudSync?.localWorldDidChange()
-            return true
+            if statePreconditionMatched {
+                cloudSync?.localWorldDidChange()
+            }
+            return statePreconditionMatched
         } catch is EngineError {
             // Expected state race: another local surface won. Reload will reconcile.
             return false
@@ -713,6 +923,7 @@ public final class FlowmoSessionController: ObservableObject {
             let changed = engine.world != world
             world = engine.world
             now = timestamp
+            reconcileWorkContextRetention()
             storeNeedsRecovery = false
             if activeIssue?.code == .storeUnreadable {
                 activeIssue = nil
@@ -749,6 +960,7 @@ public final class FlowmoSessionController: ObservableObject {
                     guard let self else { return }
                     world = syncedWorld
                     now = Date()
+                    reconcileWorkContextRetention()
                     refreshDraftsAfterChange()
                     reconcileGuard()
                 }
@@ -780,6 +992,7 @@ public final class FlowmoSessionController: ObservableObject {
             }
             world = engine.world
             now = request.requestedAt
+            reconcileWorkContextRetention()
             if !requestStillMatches || engine.world.live?.isPaused == true {
                 pendingRecoveryPause = nil
                 pauseRecoveryFailed = false
@@ -798,6 +1011,7 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     private func refreshDraftsAfterChange() {
+        reconcileFocusScenePresentation()
         let phase = world.live?.phase
         if phase == .recall {
             let stored = world.live?.recallText ?? ""
@@ -834,10 +1048,42 @@ public final class FlowmoSessionController: ObservableObject {
         focusGuard.reconcile(world: world)
     }
 
+    private func activateFocusScene(
+        _ presentation: FocusScenePresentation,
+        for sessionID: UUID
+    ) {
+        guard presentation.sessionID == sessionID,
+            presentation.remainsActive(in: world)
+        else { return }
+        focusScenePresentation = presentation
+    }
+
+    private func reconcileFocusScenePresentation() {
+        guard let focusScenePresentation,
+            !focusScenePresentation.remainsActive(in: world)
+        else { return }
+        restoreFocusScenePresentation()
+    }
+
+    private func restoreFocusScenePresentation() {
+        guard let focusScenePresentation else { return }
+        self.focusScenePresentation = nil
+        displayMode = focusScenePresentation.previousDisplayMode
+        isPinned = focusScenePresentation.previousPinned
+    }
+
+    private func discardFocusSceneForBlockingState() {
+        guard focusScenePresentation != nil else { return }
+        restoreFocusScenePresentation()
+        reconcileWorkContextRetention()
+    }
+
     private func finishDataDeletion(world nextWorld: World = .empty) {
         world = nextWorld
         now = Date()
+        restoreFocusScenePresentation()
         intentionDraft = ""
+        reconcileWorkContextRetention()
         captureDraft = ""
         recallDraft = ""
         showCapture = false
@@ -848,6 +1094,34 @@ public final class FlowmoSessionController: ObservableObject {
         }
         sessionWasLive = nextWorld.live != nil
         reconcileGuard()
+    }
+
+    private func isEnteringFocus(
+        from previousPhase: SessionPhase?,
+        sessionID: UUID?
+    ) -> Bool {
+        previousPhase == .prime
+            && sessionID != nil
+            && world.live?.id == sessionID
+            && world.live?.phase == .focus
+            && world.live?.isPaused == false
+    }
+
+    private func guardedBundleIdentifiers(in world: World) -> Set<String> {
+        guard case .active(_, let bundleIdentifiers) = FocusGuard.demand(world: world) else {
+            return []
+        }
+        return bundleIdentifiers
+    }
+
+    private func reconcileWorkContextRetention() {
+        guard world.live?.phase == .prime,
+            let sessionID = world.live?.id
+        else {
+            workContextHandoff.retainOnly(sessionID: nil)
+            return
+        }
+        workContextHandoff.retainOnly(sessionID: sessionID)
     }
 
     private func handlePersistenceFailure(_ error: Error, operation: FlowmoDiagnosticOperation) {
@@ -875,6 +1149,7 @@ public final class FlowmoSessionController: ObservableObject {
     private func updateLifecycleRecoveryState() {
         lifecycleNeedsRecovery = markerRecoveryFailed || pauseRecoveryFailed
         if lifecycleNeedsRecovery {
+            discardFocusSceneForBlockingState()
             focusGuard.reconcile(world: .empty)
         }
     }
@@ -917,6 +1192,7 @@ public final class FlowmoSessionController: ObservableObject {
         let timestamp = Date()
         if blocksStore {
             storeNeedsRecovery = true
+            discardFocusSceneForBlockingState()
             focusGuard.reconcile(world: .empty)
         }
         guard timestamp.timeIntervalSince(lastIssuePresentedAt[code] ?? .distantPast) >= 60 else { return }

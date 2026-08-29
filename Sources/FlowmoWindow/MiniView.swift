@@ -84,7 +84,21 @@ struct MiniView: View {
                 InkButton(miniStartTitle, compact: true) { performIdleAction() }
                     .disabled(!canStart)
             case .prime:
-                QuietButton("Focus now", minHeight: 26) { controller.skip() }
+                HStack(spacing: 6) {
+                    miniIcon(
+                        "rectangle.inset.filled",
+                        help: "Start Focus in a large movable horizon scene"
+                    ) {
+                        controller.startFocusScene()
+                    }
+                    QuietButton("Focus now", minHeight: 26) { controller.focusNow() }
+                        .help(
+                            "Starts Focus and returns to your previous work app when available and not guarded"
+                        )
+                        .accessibilityHint(
+                            "Starts Focus and returns to your previous work app when available and not guarded."
+                        )
+                }
             case .recall:
                 if canReviewParkedThoughts {
                     HStack(spacing: 8) {
@@ -108,7 +122,16 @@ struct MiniView: View {
                     QuietButton("Stop", minHeight: 26) { controller.stopFocus() }
                 }
             case .closeBeat:
-                QuietButton("Done", minHeight: 26) { controller.dismissCloseBeat() }
+                QuietButton("Done", minHeight: 26) {
+                    controller.dismissCloseBeat()
+                    if controller.world.live == nil,
+                        !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    {
+                        controller.setDisplayMode(.classic)
+                    }
+                }
+                .help(closeActionHelp)
+                .accessibilityHint(closeActionHelp)
             }
         }
     }
@@ -146,6 +169,12 @@ struct MiniView: View {
         controller.recallDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? "Skip"
             : "Done"
+    }
+
+    private var closeActionHelp: String {
+        status.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Finish this session"
+            : "Finish this session and open the next step in Classic for editing. Focus does not start."
     }
 
     private var canReviewParkedThoughts: Bool {

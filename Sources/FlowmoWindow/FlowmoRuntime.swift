@@ -3,6 +3,12 @@ import Combine
 import Darwin
 import SwiftUI
 
+/// The root host always keeps SwiftUI controls interactive. Focus Scene moves
+/// the window with an explicit gesture attached only to its empty backdrop.
+final class FlowmoHostingView<Content: View>: NSHostingView<Content> {
+    override var mouseDownCanMoveWindow: Bool { false }
+}
+
 /// Hosts the compact window. `swift run` and the Xcode Dock app both call this entry.
 @MainActor
 public enum FlowmoRuntime {
@@ -18,6 +24,11 @@ public enum FlowmoRuntime {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private struct WindowPresentationState: Equatable {
+        let contentSize: CGSize
+        let focusSceneActive: Bool
+    }
+
     static var retained: AppDelegate?
 
     let controller: FlowmoSessionController
@@ -25,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let glance = StatusGlance()
     private var signalSources: [DispatchSourceSignal] = []
     private var modeCancellables = Set<AnyCancellable>()
+    private var focusSceneWindowCoordinator: FocusSceneWindowCoordinator?
 
     init(controller: FlowmoSessionController = FlowmoSessionController()) {
         self.controller = controller
@@ -34,6 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let window = makeWindow()
         self.window = window
+        window.sceneCloseHandler = { [weak self] in
+            self?.closeFocusSceneFromCommand() ?? false
+        }
+        focusSceneWindowCoordinator = FocusSceneWindowCoordinator(window: window)
         controller.attention.window = window
         window.delegate = self
         controller.startRunning()
@@ -45,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate()
         watchSleep()
+        watchScreenChanges()
         watchTerminationSignals()
     }
 
@@ -63,8 +80,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if controller.isFocusSceneActive,
+            controller.focusGuard.runtime.interception != nil
+        {
+            NSSound.beep()
+            return false
+        }
+        controller.leaveFocusScene()
         sender.orderOut(nil)
         return false
+    }
+
+    /// Borderless windows have no native close button, so Cmd-W enters here
+    /// before AppKit's ordinary close path. A pending Guard decision still
+    /// blocks the escape exactly like the window delegate path.
+    private func closeFocusSceneFromCommand() -> Bool {
+        guard controller.isFocusSceneActive else { return false }
+        guard controller.focusGuard.runtime.interception == nil else {
+            NSSound.beep()
+            return true
+        }
+        controller.leaveFocusScene()
+        window?.orderOut(nil)
+        return true
     }
 
     @objc func macWillSleep(_ notification: Notification) {
@@ -87,6 +125,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
     }
 
+    private func watchScreenChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(screenParametersDidChange(_:)),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+
+    @objc private func screenParametersDidChange(_ notification: Notification) {
+        focusSceneWindowCoordinator?.reflow()
+    }
+
+    func windowDidChangeScreen(_ notification: Notification) {
+        focusSceneWindowCoordinator?.reflow()
+    }
+
     /// `swift run` is often stopped with Ctrl+C; route it through the same
     /// termination owner as a normal app quit.
     private func watchTerminationSignals() {
@@ -102,12 +157,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// Both modes are fixed-size. Free resizing is gone on purpose: every
-    /// pane is laid out against these exact bounds.
-    func makeWindow() -> NSWindow {
-        let hosting = NSHostingView(rootView: FlowmoRootView(controller: controller))
+    /// Classic and Mini stay fixed-size. The same key-capable window can also
+    /// become a large movable canvas while a transient Focus Scene is active.
+    func makeWindow() -> SceneCapableWindow {
+        let hosting = FlowmoHostingView(rootView: FlowmoRootView(controller: controller))
         let size = controller.effectiveWindowContentSize
-        let window = NSWindow(
+        let window = SceneCapableWindow(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
@@ -134,7 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// this binding beside the computed size prevents recovery-only changes
     /// from leaving the fixed NSWindow at its previous dimensions.
     func observeWindowContentSize() {
-        Publishers.CombineLatest3(
+        let contentSize = Publishers.CombineLatest3(
             controller.$displayMode,
             controller.$storeNeedsRecovery,
             controller.$lifecycleNeedsRecovery
@@ -146,11 +201,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 lifecycleNeedsRecovery: lifecycleNeedsRecovery
             )
         }
-        .removeDuplicates()
-        .sink { [weak self] size in
-            self?.applyWindowMode(size)
+
+        let focusSceneActive = Publishers.CombineLatest4(
+            controller.$focusScenePresentation,
+            controller.$storeNeedsRecovery,
+            controller.$lifecycleNeedsRecovery,
+            controller.syncStatus.$conflict
+        )
+        .map { presentation, storeNeedsRecovery, lifecycleNeedsRecovery, conflict in
+            Self.shouldPresentFocusScene(
+                presentation: presentation,
+                storeNeedsRecovery: storeNeedsRecovery,
+                lifecycleNeedsRecovery: lifecycleNeedsRecovery,
+                hasSyncConflict: conflict != nil
+            )
         }
-        .store(in: &modeCancellables)
+
+        Publishers.CombineLatest(contentSize, focusSceneActive)
+            .map { contentSize, focusSceneActive in
+                WindowPresentationState(
+                    contentSize: contentSize,
+                    focusSceneActive: focusSceneActive
+                )
+            }
+            .removeDuplicates()
+            .sink { [weak self] state in
+                guard let self, let window = self.window else { return }
+                if self.focusSceneWindowCoordinator == nil {
+                    self.focusSceneWindowCoordinator = FocusSceneWindowCoordinator(window: window)
+                }
+                if state.focusSceneActive {
+                    self.focusSceneWindowCoordinator?.present()
+                } else {
+                    self.focusSceneWindowCoordinator?.restore()
+                    self.applyWindowMode(state.contentSize)
+                }
+            }
+            .store(in: &modeCancellables)
+    }
+
+    static func shouldPresentFocusScene(
+        presentation: FocusScenePresentation?,
+        storeNeedsRecovery: Bool,
+        lifecycleNeedsRecovery: Bool,
+        hasSyncConflict: Bool
+    ) -> Bool {
+        presentation != nil
+            && !storeNeedsRecovery
+            && !lifecycleNeedsRecovery
+            && !hasSyncConflict
     }
 
     /// Switches size without offering a resize grip. Equal min/max while
@@ -166,10 +265,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.styleMask = mask
         window.setContentSize(size)
         let frame = window.frame
-        window.setFrameOrigin(NSPoint(x: pinnedTopLeft.x, y: pinnedTopLeft.y - frame.height))
+        window.setFrameOrigin(
+            Self.clampedWindowOrigin(
+                pinnedTopLeft: pinnedTopLeft,
+                windowSize: frame.size,
+                visibleFrame: window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+            )
+        )
         window.contentMinSize = size
         window.contentMaxSize = size
         mask.remove(.resizable)
         window.styleMask = mask
+    }
+
+    static func clampedWindowOrigin(
+        pinnedTopLeft: NSPoint,
+        windowSize: NSSize,
+        visibleFrame: NSRect?
+    ) -> NSPoint {
+        var origin = NSPoint(
+            x: pinnedTopLeft.x,
+            y: pinnedTopLeft.y - windowSize.height
+        )
+        guard let visibleFrame else { return origin }
+        let maximumX = max(visibleFrame.minX, visibleFrame.maxX - windowSize.width)
+        let maximumY = max(visibleFrame.minY, visibleFrame.maxY - windowSize.height)
+        origin.x = min(max(origin.x, visibleFrame.minX), maximumX)
+        origin.y = min(max(origin.y, visibleFrame.minY), maximumY)
+        return origin
     }
 }

@@ -5,19 +5,36 @@ import FlowmoSync
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum FocusSceneEntryControl {
+    static let accessibilityLabel = "Open Focus Scene"
+    static let accessibilityHint =
+        "Opens the same Focus in Scene. The menu also offers Focus Scene and window sizes."
+
+    static func isAvailable(phase: SessionPhase?, isPaused: Bool) -> Bool {
+        phase == .focus && !isPaused
+    }
+}
+
 struct FlowmoRootView: View {
     @ObservedObject var controller: FlowmoSessionController
 
     var body: some View {
         let status = controller.status
         let atmo = Atmosphere.of(status)
+        let focusScene =
+            controller.isFocusSceneActive
+            && !controller.storeNeedsRecovery
+            && !controller.lifecycleNeedsRecovery
+            && controller.syncStatus.conflict == nil
         let mini =
             controller.displayMode == .mini
             && !controller.storeNeedsRecovery
             && !controller.lifecycleNeedsRecovery
         let size = controller.effectiveWindowContentSize
         Group {
-            if controller.storeNeedsRecovery {
+            if focusScene {
+                DistantHorizonScene(controller: controller, status: status)
+            } else if controller.storeNeedsRecovery {
                 StoreRecoveryPane(controller: controller)
             } else if let conflict = controller.syncStatus.conflict {
                 SyncConflictPane(controller: controller, conflict: conflict)
@@ -31,18 +48,24 @@ struct FlowmoRootView: View {
                 phasePane(status)
             }
         }
-        .padding(.horizontal, mini ? 6 : 16)
-        .padding(.bottom, mini ? 8 : 14)
-        .padding(.top, mini ? 26 : 28)
-        .frame(width: size.width, height: size.height)
+        .padding(.horizontal, focusScene ? 0 : (mini ? 6 : 16))
+        .padding(.bottom, focusScene ? 0 : (mini ? 8 : 14))
+        .padding(.top, focusScene ? 0 : (mini ? 26 : 28))
+        .frame(
+            minWidth: focusScene ? 0 : size.width,
+            maxWidth: focusScene ? .infinity : size.width,
+            minHeight: focusScene ? 0 : size.height,
+            maxHeight: focusScene ? .infinity : size.height
+        )
         .foregroundStyle(atmo.ink)
         .background(FieldCanvas())
         .environment(\.atmosphere, atmo)
         .animation(Motion.phase, value: status.isPaused)
         .animation(Motion.phase, value: controller.displayMode)
+        .animation(Motion.phase, value: focusScene)
         .preferredColorScheme(.dark)
         .overlay(alignment: .topLeading) {
-            if mini {
+            if mini, !focusScene {
                 HStack(spacing: 0) {
                     muteButton(atmo, compact: true)
                     pinButton(atmo, compact: true)
@@ -51,27 +74,24 @@ struct FlowmoRootView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !controller.storeNeedsRecovery, !controller.lifecycleNeedsRecovery {
+            if !focusScene, !controller.storeNeedsRecovery, !controller.lifecycleNeedsRecovery {
                 HStack(spacing: 0) {
                     if mini {
-                        modeButton(
-                            atmo, to: .classic, icon: "arrow.up.left.and.arrow.down.right",
-                            help: "Expand to Classic", compact: true
-                        )
-                        .padding(.trailing, 4)
+                        presentationControl(status: status, compact: true)
+                            .padding(.trailing, 4)
                     } else {
                         muteButton(atmo)
+                            .opacity(atmo.chrome)
                         pinButton(atmo)
-                        modeButton(
-                            atmo, to: .mini, icon: "arrow.down.right.and.arrow.up.left", help: "Shrink to Mini"
-                        )
-                        .padding(.trailing, 8)
+                            .opacity(atmo.chrome)
+                        presentationControl(status: status)
+                            .opacity(canEnterFocusScene(status) ? 1 : atmo.chrome)
+                            .padding(.trailing, 8)
                     }
                 }
-                .opacity(mini ? 1 : atmo.chrome)
             }
         }
-        .background(WindowPin(pinned: controller.isPinned, field: atmo.field))
+        .background(WindowPin(pinned: controller.isPinned, field: atmo.field, focusSceneActive: focusScene))
         .alert(item: $controller.activeIssue) { issue in
             Alert(
                 title: Text(issue.title),
@@ -81,22 +101,72 @@ struct FlowmoRootView: View {
         }
     }
 
-    private func modeButton(
-        _ atmo: Atmosphere,
-        to mode: DisplayMode,
-        icon: String,
-        help: String,
-        compact: Bool = false
-    ) -> some View {
-        Button {
-            controller.setDisplayMode(mode)
-        } label: {
-            ChromeGlyph(icon, compact: compact)
+    private func canEnterFocusScene(_ status: SessionStatus) -> Bool {
+        FocusSceneEntryControl.isAvailable(phase: status.phase, isPaused: status.isPaused)
+    }
+
+    @ViewBuilder
+    private func presentationControl(status: SessionStatus, compact: Bool = false) -> some View {
+        if canEnterFocusScene(status) {
+            Menu {
+                Button {
+                    DispatchQueue.main.async {
+                        controller.enterFocusScene()
+                    }
+                } label: {
+                    Label("Focus Scene", systemImage: "sun.horizon")
+                }
+
+                Divider()
+                windowPresentationChoices()
+            } label: {
+                ChromeGlyph("sun.horizon", lit: true, compact: compact)
+            } primaryAction: {
+                controller.enterFocusScene()
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.visible)
+            .fixedSize()
+            .help(FocusSceneEntryControl.accessibilityLabel)
+            .accessibilityLabel(FocusSceneEntryControl.accessibilityLabel)
+            .accessibilityHint(FocusSceneEntryControl.accessibilityHint)
+            .padding(.top, compact ? 6 : 4)
+        } else {
+            Menu {
+                windowPresentationChoices()
+            } label: {
+                ChromeGlyph("rectangle.3.group", compact: compact)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Change window size")
+            .accessibilityLabel("Change window size")
+            .padding(.top, compact ? 6 : 4)
         }
-        .buttonStyle(PressStyle())
-        .help(help)
-        .accessibilityLabel(help)
-        .padding(.top, compact ? 6 : 4)
+    }
+
+    @ViewBuilder
+    private func windowPresentationChoices() -> some View {
+        Button {
+            controller.setDisplayMode(.classic)
+        } label: {
+            Label(
+                "Classic window",
+                systemImage: controller.displayMode == .classic ? "checkmark" : "rectangle"
+            )
+        }
+        .disabled(controller.displayMode == .classic)
+
+        Button {
+            controller.setDisplayMode(.mini)
+        } label: {
+            Label(
+                "Mini window",
+                systemImage: controller.displayMode == .mini ? "checkmark" : "rectangle.inset.filled"
+            )
+        }
+        .disabled(controller.displayMode == .mini)
     }
 
     private func muteButton(_ atmo: Atmosphere, compact: Bool = false) -> some View {
@@ -113,14 +183,15 @@ struct FlowmoRootView: View {
     }
 
     private func pinButton(_ atmo: Atmosphere, compact: Bool = false) -> some View {
-        Button {
-            controller.isPinned.toggle()
+        let actionLabel = controller.isPinned ? "Unpin" : "Pin on top"
+        return Button {
+            controller.togglePin()
         } label: {
             ChromeGlyph(controller.isPinned ? "pin.fill" : "pin", lit: controller.isPinned, compact: compact)
         }
         .buttonStyle(PressStyle())
-        .help(controller.isPinned ? "Unpin" : "Pin on top")
-        .accessibilityLabel(controller.isPinned ? "Unpin" : "Pin on top")
+        .help(actionLabel)
+        .accessibilityLabel(actionLabel)
         .padding(.top, compact ? 6 : 4)
         .padding(.trailing, compact ? 0 : 8)
     }
@@ -472,7 +543,22 @@ private struct PrimePane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else {
-                QuietButton("Focus now") { controller.skip() }
+                HStack(spacing: 10) {
+                    QuietButton("Focus now") { controller.focusNow() }
+                        .help(
+                            "Starts Focus and returns to your previous work app when available and not guarded"
+                        )
+                        .accessibilityHint(
+                            "Starts Focus and returns to your previous work app when available and not guarded."
+                        )
+                    InkButton("Focus scene") { controller.startFocusScene() }
+                        .help(
+                            "Start Focus in a large movable horizon scene"
+                        )
+                        .accessibilityHint(
+                            "Starts the same open-ended Focus in a large movable horizon. Back to window keeps Focus running without switching apps."
+                        )
+                }
             }
         }
     }
@@ -903,8 +989,16 @@ private struct CloseBeatPane: View {
             } else {
                 QuietButton("Done") { controller.dismissCloseBeat() }
                     .keyboardShortcut(.defaultAction)
+                    .help(closeActionHelp)
+                    .accessibilityHint(closeActionHelp)
             }
         }
+    }
+
+    private var closeActionHelp: String {
+        status.recallText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "Finish this session"
+            : "Finish this session and carry the next step into Idle for editing. Focus does not start."
     }
 }
 
@@ -1006,12 +1100,14 @@ private struct GuardConfig: View {
 private struct WindowPin: NSViewRepresentable {
     var pinned: Bool
     var field: Color
+    var focusSceneActive: Bool
 
     func makeNSView(context: Context) -> NSView {
         NSView(frame: .zero)
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+        guard !focusSceneActive else { return }
         guard let window = nsView.window else { return }
         window.level = pinned ? .floating : .normal
         window.hidesOnDeactivate = false

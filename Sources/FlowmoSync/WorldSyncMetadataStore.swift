@@ -259,13 +259,6 @@ public struct WorldSyncMetadataStore: Sendable {
         }
     }
 
-    /// Compatibility seam while callers migrate from identifier-only ownership
-    /// checks to exact Live Session snapshots.
-    public func isRemoteLiveSession(_ sessionID: UUID?) -> Bool {
-        guard let sessionID, let metadata = try? load() else { return false }
-        return metadata.remoteLiveSessionID == sessionID
-    }
-
     public func markLocalControl() throws {
         try update { metadata in
             metadata.remoteLiveSessionID = nil
