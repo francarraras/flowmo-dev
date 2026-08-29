@@ -27,7 +27,7 @@ public final class WorldSyncStatus: ObservableObject {
         update(phase: .unavailable, issueCode: issueCode)
     }
 
-    fileprivate func update(
+    package func update(
         phase: WorldSyncPhase,
         conflict: WorldSyncConflict? = nil,
         issueCode: String? = nil
@@ -178,12 +178,20 @@ public final class CloudWorldSync: NSObject, CKSyncEngineDelegate, @unchecked Se
 }
 
 private actor CloudWorldSyncState {
+    private enum ConflictCommit {
+        case staleWorld
+        case staleConflict
+        case staleRemote
+        case resolved(snapshot: WorldSyncSnapshot, shouldStage: Bool)
+    }
+
     private static let revisionKey = "revision"
     private static let payloadKey = "payload"
     private static let schemaVersionKey = "schemaVersion"
 
     private let worldStore: Store
     private let metadataStore: WorldSyncMetadataStore
+    private let localPersistence: WorldSyncLocalPersistence
     private let status: WorldSyncStatus
     private let onWorldChange: @MainActor @Sendable (World) -> Void
     private let zoneID = CKRecordZone.ID(zoneName: CloudWorldSync.zoneName, ownerName: CKCurrentUserDefaultName)
@@ -198,6 +206,10 @@ private actor CloudWorldSyncState {
     ) {
         self.worldStore = worldStore
         self.metadataStore = metadataStore
+        localPersistence = WorldSyncLocalPersistence(
+            worldStore: worldStore,
+            metadataStore: metadataStore
+        )
         self.metadata = metadata
         self.status = status
         self.onWorldChange = onWorldChange
@@ -217,7 +229,12 @@ private actor CloudWorldSyncState {
         if metadata.canSendCloudDeletion,
             metadata.pending != nil || !metadata.pendingDeletionRecordNames.isEmpty
         {
-            await enqueuePending(on: engine, refreshingRevisions: false)
+            do {
+                try enqueuePending(on: engine, refreshingRevisions: false)
+            } catch {
+                await publish(phase: .unavailable, issueCode: Self.issueCode(error))
+                return
+            }
         }
         await refresh(engine: engine)
     }
@@ -225,7 +242,7 @@ private actor CloudWorldSyncState {
     func refresh(engine: CKSyncEngine) async {
         do {
             try await engine.fetchChanges(.init(scope: .zoneIDs([zoneID])))
-            try await processRemote(engine: engine)
+            guard try await processRemote(engine: engine) else { return }
             if metadata.canSendCloudDeletion,
                 metadata.pending != nil || !metadata.pendingDeletionRecordNames.isEmpty
             {
@@ -256,7 +273,7 @@ private actor CloudWorldSyncState {
                 return
             }
             try metadataStore.save(metadata)
-            await stage(snapshot, on: engine)
+            try await stage(snapshot, on: engine)
         } catch {
             await publish(phase: .unavailable, issueCode: Self.issueCode(error))
         }
@@ -265,28 +282,99 @@ private actor CloudWorldSyncState {
     func resolveConflict(choosing choice: WorldSyncChoice, engine: CKSyncEngine) async {
         guard let conflict = metadata.conflict else { return }
         do {
-            let cloudHeadExists = try metadata.remoteSnapshot != nil
-            let resolved = WorldSyncReconciler.resolve(conflict, choosing: choice)
-            let cloudSide = conflict.remote
-            metadata.conflict = nil
-            metadata.accountChangeRequiresChoice = false
-            metadata.generation = resolved.head.generation
-            metadata.remoteLiveSessionID = choice == .remote ? resolved.head.live?.id : nil
-            metadata.base = cloudSide
-            let applied = try resolved.applying(to: worldStore.load())
-            try metadataStore.save(metadata)
-            try worldStore.save(applied)
-            await onWorldChange(applied)
-            if choice == .local || resolved != cloudSide || !cloudHeadExists {
-                await stage(resolved, on: engine)
-            } else {
-                metadata.base = resolved
-                metadata.pending = nil
-                metadata.pendingRevisions = [:]
-                try metadataStore.save(metadata)
-                await publish(phase: .synced)
+            let commit = try localPersistence.commit {
+                currentWorld, nextMetadata in
+                guard nextMetadata.conflict == conflict else {
+                    return WorldSyncLocalMutation(
+                        world: currentWorld,
+                        output: ConflictCommit.staleConflict
+                    )
+                }
+                guard
+                    try WorldSyncRemotePlanner.remoteFactsMatch(
+                        conflict,
+                        metadata: nextMetadata
+                    )
+                else {
+                    return WorldSyncLocalMutation(
+                        world: currentWorld,
+                        output: ConflictCommit.staleRemote
+                    )
+                }
+                let current = WorldSyncSnapshot(
+                    world: currentWorld,
+                    generation: conflict.local.head.generation
+                )
+                guard current == conflict.local else {
+                    return WorldSyncLocalMutation(
+                        world: currentWorld,
+                        output: ConflictCommit.staleWorld
+                    )
+                }
+
+                let cloudHeadExists = try nextMetadata.remoteSnapshot != nil
+                let resolved = WorldSyncReconciler.resolve(conflict, choosing: choice)
+                let cloudSide = conflict.remote
+                let shouldStage = choice == .local || resolved != cloudSide || !cloudHeadExists
+
+                nextMetadata.conflict = nil
+                nextMetadata.accountChangeRequiresChoice = false
+                nextMetadata.generation = resolved.head.generation
+                nextMetadata.remoteLiveSessionID = choice == .remote ? resolved.head.live?.id : nil
+                nextMetadata.base = cloudSide
+                if !shouldStage {
+                    nextMetadata.base = resolved
+                    nextMetadata.pending = nil
+                    nextMetadata.pendingRevisions = [:]
+                }
+
+                return WorldSyncLocalMutation(
+                    world: try resolved.applying(to: currentWorld),
+                    output: ConflictCommit.resolved(
+                        snapshot: resolved,
+                        shouldStage: shouldStage
+                    )
+                )
+            }
+            metadata = commit.metadata
+
+            switch commit.output {
+            case .staleWorld:
+                _ = try await processRemote(engine: engine, reconcileExistingConflict: true)
+            case .staleConflict:
+                _ = try await processRemote(engine: engine)
+            case .staleRemote:
+                _ = try await processRemote(engine: engine, reconcileExistingConflict: true)
+            case .resolved(let resolved, let shouldStage):
+                do {
+                    if shouldStage {
+                        try await stage(resolved, on: engine)
+                    } else {
+                        await publish(phase: .synced)
+                    }
+                } catch {
+                    await publishUnavailable(
+                        error,
+                        committedWorld: commit.world,
+                        shouldNotify: true
+                    )
+                    return
+                }
+                guard (try? worldStore.load()) == commit.world else { return }
+                await onWorldChange(commit.world)
             }
         } catch {
+            if let latestMetadata = try? metadataStore.load() {
+                metadata = latestMetadata
+            }
+            if let latestWorld = try? worldStore.load() {
+                await publishUnavailable(
+                    error,
+                    committedWorld: latestWorld,
+                    shouldNotify: true
+                )
+                return
+            }
             await publish(phase: .unavailable, issueCode: Self.issueCode(error))
         }
     }
@@ -303,7 +391,7 @@ private actor CloudWorldSyncState {
                 return false
             }
             try await engine.fetchChanges(.init(scope: .zoneIDs([zoneID])))
-            try await processRemote(engine: engine)
+            guard try await processRemote(engine: engine) else { return false }
             try await engine.sendChanges(.init(scope: .zoneIDs([zoneID])))
             let complete =
                 !metadata.cloudDeletionPending && metadata.pending == nil
@@ -337,7 +425,7 @@ private actor CloudWorldSyncState {
                 }
                 try metadataStore.save(metadata)
             case .didFetchChanges:
-                try await processRemote(engine: engine)
+                _ = try await processRemote(engine: engine)
             case .sentDatabaseChanges(let sent):
                 for failure in sent.failedZoneSaves where failure.zone.zoneID == zoneID {
                     await publish(phase: .unavailable, issueCode: Self.issueCode(failure.error))
@@ -417,162 +505,145 @@ private actor CloudWorldSyncState {
         try metadataStore.save(metadata)
     }
 
-    private func processRemote(engine: CKSyncEngine) async throws {
-        let localWorld = try worldStore.load()
-        let local = WorldSyncSnapshot(world: localWorld, generation: metadata.generation)
-        if metadata.cloudDeletionPending, !metadata.canSendCloudDeletion {
-            metadata.pending = local
-            metadata.remoteHeadData = nil
-            metadata.remoteSessionData = [:]
-            metadata.recordSystemFields = [:]
-            metadata.pendingRevisions = [:]
-            metadata.pendingDeletionRecordNames = []
-            try metadataStore.save(metadata)
-            let stale = engine.state.pendingRecordZoneChanges.filter {
-                Self.belongsToFlowmoZone($0, zoneID: zoneID)
-            }
-            engine.state.remove(pendingRecordZoneChanges: stale)
-            await publish(phase: .unavailable, issueCode: "sync_deletion_account_unavailable")
-            return
-        }
-        let remote = try metadata.remoteSnapshot
-        if metadata.cloudDeletionPending {
-            metadata.pending = local
-            metadata.base = nil
-            metadata.conflict = nil
-            metadata.remoteLiveSessionID = nil
-            metadata.forgetOrphanedRemoteSessions(referencedBy: nil)
-            metadata.remoteHeadData = nil
-            try metadataStore.save(metadata)
-            await enqueuePending(on: engine, refreshingRevisions: true)
-            await publish(phase: .syncing)
-            return
-        }
-        metadata.forgetOrphanedRemoteSessions(referencedBy: remote)
-        let outcome: WorldSyncReconciliation
-
-        if metadata.accountChangeRequiresChoice {
-            let cloud = remote ?? WorldSyncSnapshot(world: .empty, generation: UUID())
-            outcome = .conflict(
-                WorldSyncConflict(kind: .account, local: local, remote: cloud, ancestor: nil)
-            )
-        } else if let base = metadata.base {
-            if let remote {
-                outcome = WorldSyncReconciler.reconcile(local: local, remote: remote, ancestor: base)
-            } else {
-                let deleted = WorldSyncSnapshot(world: .empty, generation: UUID())
-                outcome = .conflict(
-                    WorldSyncConflict(
-                        kind: .resetGeneration,
-                        local: local,
-                        remote: deleted,
-                        ancestor: base
-                    )
+    private func processRemote(
+        engine: CKSyncEngine,
+        reconcileExistingConflict: Bool = false
+    ) async throws -> Bool {
+        let commit: WorldSyncLocalCommit<WorldSyncRemoteProcessing>
+        do {
+            commit = try localPersistence.commit { currentWorld, nextMetadata in
+                try WorldSyncRemotePlanner.process(
+                    currentWorld: currentWorld,
+                    metadata: &nextMetadata,
+                    reconcileExistingConflict: reconcileExistingConflict
                 )
             }
-        } else {
-            outcome = WorldSyncReconciler.bootstrap(local: local, remote: remote)
+        } catch {
+            if let latestMetadata = try? metadataStore.load() {
+                metadata = latestMetadata
+            }
+            guard let latestWorld = try? worldStore.load() else { throw error }
+            await publishUnavailable(
+                error,
+                committedWorld: latestWorld,
+                shouldNotify: true
+            )
+            return false
         }
+        metadata = commit.metadata
 
-        switch outcome {
+        switch commit.output {
+        case .deletionAccountUnavailable:
+            removePendingZoneChanges(from: engine)
+            await publish(phase: .unavailable, issueCode: "sync_deletion_account_unavailable")
+        case .deletionPending:
+            try enqueuePending(on: engine, refreshingRevisions: true)
+            await publish(phase: .syncing)
         case .conflict(let conflict):
-            metadata.conflict = conflict
-            metadata.pending = nil
-            metadata.pendingRevisions = [:]
-            let stale = engine.state.pendingRecordZoneChanges.filter {
-                Self.belongsToFlowmoZone($0, zoneID: zoneID)
-            }
-            engine.state.remove(pendingRecordZoneChanges: stale)
-            try metadataStore.save(metadata)
-            await enqueuePending(on: engine, refreshingRevisions: false)
+            removePendingZoneChanges(from: engine)
+            try enqueuePending(on: engine, refreshingRevisions: false)
             await publish(phase: .needsChoice, conflict: conflict)
-        case .merged(let merged):
-            let remoteChangedLive = merged.head.live != local.head.live
-            metadata.generation = merged.head.generation
-            metadata.base = remote ?? merged
-            metadata.remoteLiveSessionID = remoteChangedLive ? merged.head.live?.id : metadata.remoteLiveSessionID
-            let applied = try merged.applying(to: localWorld)
-            try metadataStore.save(metadata)
-            if applied != localWorld {
-                try worldStore.save(applied)
-                await onWorldChange(applied)
-            }
-            if merged != remote {
-                await stage(merged, on: engine)
-            } else {
-                metadata.pending = nil
-                metadata.pendingRevisions = [:]
-                try metadataStore.save(metadata)
-                if metadata.pendingDeletionRecordNames.isEmpty {
+        case .merged(let merged, let remote):
+            do {
+                if merged != remote {
+                    try await stage(merged, on: engine)
+                } else if metadata.pendingDeletionRecordNames.isEmpty {
                     await publish(phase: .synced)
                 } else {
-                    await enqueuePending(on: engine, refreshingRevisions: false)
+                    try enqueuePending(on: engine, refreshingRevisions: false)
                     await publish(phase: .syncing)
                 }
+            } catch {
+                await publishUnavailable(
+                    error,
+                    committedWorld: commit.world,
+                    shouldNotify: commit.worldChanged
+                )
+                return false
+            }
+            if commit.worldChanged, (try? worldStore.load()) == commit.world {
+                await onWorldChange(commit.world)
             }
         }
+        return true
     }
 
-    private func stage(_ snapshot: WorldSyncSnapshot, on engine: CKSyncEngine) async {
+    /// Publish transport failure before crossing to the UI actor. If the World
+    /// commit is still current, the UI adopts that durable result even though
+    /// its corresponding cloud staging failed.
+    private func publishUnavailable(
+        _ error: Error,
+        committedWorld: World,
+        shouldNotify: Bool
+    ) async {
+        await publish(phase: .unavailable, issueCode: Self.issueCode(error))
+        guard shouldNotify, (try? worldStore.load()) == committedWorld else { return }
+        await onWorldChange(committedWorld)
+    }
+
+    private func removePendingZoneChanges(from engine: CKSyncEngine) {
+        let stale = engine.state.pendingRecordZoneChanges.filter {
+            Self.belongsToFlowmoZone($0, zoneID: zoneID)
+        }
+        engine.state.remove(pendingRecordZoneChanges: stale)
+    }
+
+    private func stage(_ snapshot: WorldSyncSnapshot, on engine: CKSyncEngine) async throws {
         metadata.pending = snapshot
         metadata.generation = snapshot.head.generation
-        await enqueuePending(on: engine, refreshingRevisions: true)
+        try enqueuePending(on: engine, refreshingRevisions: true)
         await publish(phase: .syncing)
     }
 
-    private func enqueuePending(on engine: CKSyncEngine, refreshingRevisions: Bool) async {
-        do {
-            let pendingRecords = try metadata.pending.map(WorldSyncRecordCodec.records(for:)) ?? []
-            let baseRecords = try metadata.base.map(WorldSyncRecordCodec.records(for:)) ?? []
-            let pendingByName = Dictionary(uniqueKeysWithValues: pendingRecords.map { ($0.name, $0) })
-            let baseByName = Dictionary(uniqueKeysWithValues: baseRecords.map { ($0.name, $0) })
+    private func enqueuePending(on engine: CKSyncEngine, refreshingRevisions: Bool) throws {
+        let pendingRecords = try metadata.pending.map(WorldSyncRecordCodec.records(for:)) ?? []
+        let baseRecords = try metadata.base.map(WorldSyncRecordCodec.records(for:)) ?? []
+        let pendingByName = Dictionary(uniqueKeysWithValues: pendingRecords.map { ($0.name, $0) })
+        let baseByName = Dictionary(uniqueKeysWithValues: baseRecords.map { ($0.name, $0) })
 
-            let existing = engine.state.pendingRecordZoneChanges.filter { Self.belongsToFlowmoZone($0, zoneID: zoneID) }
-            engine.state.remove(pendingRecordZoneChanges: existing)
+        let existing = engine.state.pendingRecordZoneChanges.filter { Self.belongsToFlowmoZone($0, zoneID: zoneID) }
+        engine.state.remove(pendingRecordZoneChanges: existing)
 
-            var saves: [CKSyncEngine.PendingRecordZoneChange] = []
-            let changedSessions = pendingRecords.filter {
-                $0.kind == .completedSession && baseByName[$0.name]?.data != $0.data
+        var saves: [CKSyncEngine.PendingRecordZoneChange] = []
+        let changedSessions = pendingRecords.filter {
+            $0.kind == .completedSession && baseByName[$0.name]?.data != $0.data
+        }
+        for payload in changedSessions {
+            if refreshingRevisions || metadata.pendingRevisions[payload.name] == nil {
+                metadata.pendingRevisions[payload.name] = UUID()
             }
-            for payload in changedSessions {
-                if refreshingRevisions || metadata.pendingRevisions[payload.name] == nil {
-                    metadata.pendingRevisions[payload.name] = UUID()
-                }
-                saves.append(.saveRecord(recordID(payload.name)))
+            saves.append(.saveRecord(recordID(payload.name)))
+        }
+        if let head = pendingByName[WorldSyncRecordCodec.headRecordName],
+            baseByName[head.name]?.data != head.data
+        {
+            if refreshingRevisions || metadata.pendingRevisions[head.name] == nil {
+                metadata.pendingRevisions[head.name] = UUID()
             }
-            if let head = pendingByName[WorldSyncRecordCodec.headRecordName],
-                baseByName[head.name]?.data != head.data
-            {
-                if refreshingRevisions || metadata.pendingRevisions[head.name] == nil {
-                    metadata.pendingRevisions[head.name] = UUID()
-                }
-                saves.append(.saveRecord(recordID(head.name)))
+            saves.append(.saveRecord(recordID(head.name)))
+        }
+        let derivedDeletions =
+            metadata.pending == nil
+            ? []
+            : baseByName.keys.filter {
+                pendingByName[$0] == nil && $0 != WorldSyncRecordCodec.headRecordName
             }
-            let derivedDeletions =
-                metadata.pending == nil
-                ? []
-                : baseByName.keys.filter {
-                    pendingByName[$0] == nil && $0 != WorldSyncRecordCodec.headRecordName
-                }
-            var deletionNames = Set(metadata.pendingDeletionRecordNames)
-            deletionNames.formUnion(derivedDeletions)
-            deletionNames.subtract(pendingByName.keys)
-            metadata.pendingDeletionRecordNames = deletionNames.sorted()
-            let deletions = metadata.pendingDeletionRecordNames.map {
-                CKSyncEngine.PendingRecordZoneChange.deleteRecord(recordID($0))
-            }
+        var deletionNames = Set(metadata.pendingDeletionRecordNames)
+        deletionNames.formUnion(derivedDeletions)
+        deletionNames.subtract(pendingByName.keys)
+        metadata.pendingDeletionRecordNames = deletionNames.sorted()
+        let deletions = metadata.pendingDeletionRecordNames.map {
+            CKSyncEngine.PendingRecordZoneChange.deleteRecord(recordID($0))
+        }
 
-            metadata.pendingRevisions = metadata.pendingRevisions.filter { pendingByName[$0.key] != nil }
+        metadata.pendingRevisions = metadata.pendingRevisions.filter { pendingByName[$0.key] != nil }
+        try metadataStore.save(metadata)
+        engine.state.add(pendingRecordZoneChanges: saves + deletions)
+        if saves.isEmpty, deletions.isEmpty, let pending = metadata.pending {
+            metadata.base = pending
+            metadata.pending = nil
+            metadata.pendingRevisions = [:]
             try metadataStore.save(metadata)
-            engine.state.add(pendingRecordZoneChanges: saves + deletions)
-            if saves.isEmpty, deletions.isEmpty, let pending = metadata.pending {
-                metadata.base = pending
-                metadata.pending = nil
-                metadata.pendingRevisions = [:]
-                try metadataStore.save(metadata)
-            }
-        } catch {
-            await publish(phase: .unavailable, issueCode: Self.issueCode(error))
         }
     }
 
@@ -645,7 +716,7 @@ private actor CloudWorldSyncState {
                 needsFetch = true
             } else if failure.error.code == .zoneNotFound {
                 engine.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
-                await enqueuePending(on: engine, refreshingRevisions: false)
+                try enqueuePending(on: engine, refreshingRevisions: false)
             } else {
                 await publish(phase: .unavailable, issueCode: Self.issueCode(failure.error))
             }

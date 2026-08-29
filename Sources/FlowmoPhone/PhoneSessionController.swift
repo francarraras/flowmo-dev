@@ -93,7 +93,7 @@ public final class PhoneSessionController: ObservableObject {
         var didRecover = false
         if startupIssue == nil,
             loaded.live?.isPaused == false,
-            !syncMetadataStore.isRemoteLiveSession(loaded.live?.id)
+            !syncMetadataStore.isRemoteLiveSession(loaded.live)
         {
             do {
                 loaded = try store.update { engine in
@@ -424,27 +424,70 @@ public final class PhoneSessionController: ObservableObject {
     }
 
     @discardableResult
-    private func apply(_ event: Event) -> Bool {
+    private func apply(
+        _ event: Event,
+        expectedLiveSessionID: UUID? = nil,
+        expectedLivePhase: SessionPhase? = nil,
+        expectedLiveIsPaused: Bool = false
+    ) -> Bool {
         guard syncStatus.conflict == nil else { return false }
         let before = world.live?.phase
         applying = true
         defer { applying = false }
+        var statePreconditionMatched = true
+        var ownershipPersistenceError: Error?
         do {
-            let engine = try store.update { engine in
-                try engine.apply(event, now: Date())
-            }
-            try? syncMetadataStore.markLocalControl()
+            let engine = try store.update(
+                { engine in
+                    if let expectedLiveSessionID {
+                        guard let live = engine.world.live,
+                            live.id == expectedLiveSessionID,
+                            expectedLivePhase.map({ live.phase == $0 }) ?? true,
+                            live.isPaused == expectedLiveIsPaused
+                        else {
+                            statePreconditionMatched = false
+                            return
+                        }
+                    }
+                    try engine.apply(event, now: Date())
+                },
+                afterPersist: { _ in
+                    guard statePreconditionMatched else { return }
+                    do {
+                        try self.syncMetadataStore.markLocalControl()
+                    } catch {
+                        ownershipPersistenceError = error
+                    }
+                }
+            )
             world = engine.world
             now = Date()
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
             refreshDraftsAfterChange()
             reloadGlance()
-            cloudSync?.localWorldDidChange()
-            return true
+            if statePreconditionMatched {
+                cloudSync?.localWorldDidChange()
+            }
+            if let ownershipPersistenceError {
+                handlePersistenceFailure(ownershipPersistenceError, operation: .update)
+            }
+            return statePreconditionMatched
         } catch is EngineError {
             return false
         } catch {
+            if let persisted = try? store.load() {
+                world = persisted
+                now = Date()
+                attention.phaseChanged(
+                    from: before,
+                    to: world.live?.phase,
+                    cuesEnabled: world.config.cuesEnabled
+                )
+                attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+                refreshDraftsAfterChange()
+                reloadGlance()
+            }
             handlePersistenceFailure(error, operation: .update)
             return false
         }

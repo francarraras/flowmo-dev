@@ -11,9 +11,15 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
         try withStore { store in
             let world = try focusWorld(at: Date().addingTimeInterval(-120))
             let sessionID = try XCTUnwrap(world.live?.id)
+            let generation = uuid(1)
+            let snapshot = WorldSyncSnapshot(world: world, generation: generation)
             try store.save(world)
             try WorldSyncMetadataStore(root: store.root).save(
-                WorldSyncMetadata(remoteLiveSessionID: sessionID)
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: snapshot
+                )
             )
 
             let controller = PhoneSessionController(
@@ -47,8 +53,15 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
             let world = try focusWorld(at: Date().addingTimeInterval(-120))
             let sessionID = try XCTUnwrap(world.live?.id)
             let metadataStore = WorldSyncMetadataStore(root: store.root)
+            let generation = uuid(2)
             try store.save(world)
-            try metadataStore.save(WorldSyncMetadata(remoteLiveSessionID: sessionID))
+            try metadataStore.save(
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: WorldSyncSnapshot(world: world, generation: generation)
+                )
+            )
             let controller = PhoneSessionController(
                 store: store,
                 attention: PhoneAttention(notificationsEnabled: false)
@@ -66,6 +79,70 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
         }
     }
 
+    func testStaleRemoteOwnershipCannotSkipRecoveryAfterLocalWorldChange() throws {
+        try withStore { store in
+            let remoteWorld = try focusWorld(at: Date().addingTimeInterval(-120))
+            let sessionID = try XCTUnwrap(remoteWorld.live?.id)
+            let generation = uuid(3)
+            try WorldSyncMetadataStore(root: store.root).save(
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: WorldSyncSnapshot(world: remoteWorld, generation: generation)
+                )
+            )
+
+            var locallyChanged = Engine(world: remoteWorld)
+            try locallyChanged.apply(.stopFocus, now: Date())
+            try store.save(locallyChanged.world)
+
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+
+            XCTAssertEqual(controller.world.live?.phase, .onBreak)
+            XCTAssertTrue(try XCTUnwrap(controller.world.live).isPaused)
+        }
+    }
+
+    func testOwnershipWriteFailureSurfacesWithoutRepeatingDurableAction() throws {
+        try withStore { store in
+            let remoteWorld = try focusWorld(at: Date().addingTimeInterval(-120))
+            let sessionID = try XCTUnwrap(remoteWorld.live?.id)
+            let generation = uuid(4)
+            let metadataStore = WorldSyncMetadataStore(root: store.root)
+            try store.save(remoteWorld)
+            try metadataStore.save(
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: WorldSyncSnapshot(world: remoteWorld, generation: generation)
+                )
+            )
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+
+            try FileManager.default.removeItem(at: metadataStore.stateURL)
+            try FileManager.default.createDirectory(
+                at: metadataStore.stateURL,
+                withIntermediateDirectories: false
+            )
+
+            controller.captureDraft = "one durable thought"
+            controller.showCapture = true
+            controller.submitCapture()
+
+            XCTAssertEqual(try store.load().live?.captures.map(\.text), ["one durable thought"])
+            XCTAssertEqual(controller.world.live?.captures.map(\.text), ["one durable thought"])
+            XCTAssertTrue(controller.captureDraft.isEmpty)
+            XCTAssertFalse(controller.showCapture)
+            XCTAssertEqual(controller.activeIssue?.code, .persistenceFailed)
+        }
+    }
+
     private func focusWorld(at date: Date) throws -> World {
         var engine = Engine()
         try engine.apply(.start(intention: "phone sync recovery proof"), now: date)
@@ -79,5 +156,9 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try body(Store(root: root))
+    }
+
+    private func uuid(_ suffix: Int) -> UUID {
+        UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", suffix))!
     }
 }

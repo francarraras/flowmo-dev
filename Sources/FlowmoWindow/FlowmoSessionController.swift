@@ -200,7 +200,7 @@ public final class FlowmoSessionController: ObservableObject {
     @discardableResult
     public func pauseForRecovery() -> Bool {
         guard let live = world.live, !live.isPaused else { return true }
-        guard !syncMetadataStore.isRemoteLiveSession(live.id) else { return true }
+        guard !syncMetadataStore.isRemoteLiveSession(live) else { return true }
         if pendingRecoveryPause?.sessionID != live.id {
             pendingRecoveryPause = RecoveryPauseRequest(sessionID: live.id, requestedAt: Date())
         }
@@ -215,7 +215,7 @@ public final class FlowmoSessionController: ObservableObject {
                 { engine in
                     if let live = engine.world.live,
                         !live.isPaused,
-                        !self.syncMetadataStore.isRemoteLiveSession(live.id)
+                        !self.syncMetadataStore.isRemoteLiveSession(live)
                     {
                         let pauseAt = max(timestamp, live.phaseStartedAt)
                         try engine.apply(.pauseForRecovery, now: pauseAt)
@@ -380,7 +380,7 @@ public final class FlowmoSessionController: ObservableObject {
             do {
                 _ = try store.update { engine in
                     try macRecovery.refreshOwnership(
-                        for: markerSessionID(engine.world.live?.id),
+                        for: markerSessionID(engine.world.live),
                         at: timestamp
                     )
                 }
@@ -559,7 +559,7 @@ public final class FlowmoSessionController: ObservableObject {
                 preparation = try macRecovery.prepareClaim(
                     &engine,
                     now: timestamp,
-                    trackLiveSession: !syncMetadataStore.isRemoteLiveSession(engine.world.live?.id)
+                    trackLiveSession: !syncMetadataStore.isRemoteLiveSession(engine.world.live)
                 )
             }
             switch preparation {
@@ -618,7 +618,7 @@ public final class FlowmoSessionController: ObservableObject {
         do {
             let engine = try store.update { engine in
                 engine.sync(now: timestamp)
-                try macRecovery.recordObservation(markerSessionID(engine.world.live?.id), at: timestamp)
+                try macRecovery.recordObservation(markerSessionID(engine.world.live), at: timestamp)
             }
             world = engine.world
             now = timestamp
@@ -638,7 +638,7 @@ public final class FlowmoSessionController: ObservableObject {
         defer { applying = false }
         do {
             _ = try store.update { engine in
-                try macRecovery.recordObservation(markerSessionID(engine.world.live?.id), at: timestamp)
+                try macRecovery.recordObservation(markerSessionID(engine.world.live), at: timestamp)
             }
         } catch let error as MacProcessRecoveryError {
             handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
@@ -701,13 +701,13 @@ public final class FlowmoSessionController: ObservableObject {
             let before = world.live?.phase
             engine.sync(now: timestamp)
             if engine.world != loaded
-                || macRecovery.needsObservation(for: markerSessionID(engine.world.live?.id))
+                || macRecovery.needsObservation(for: markerSessionID(engine.world.live))
             {
                 applying = true
                 defer { applying = false }
                 engine = try store.update { engine in
                     engine.sync(now: timestamp)
-                    try macRecovery.recordObservation(markerSessionID(engine.world.live?.id), at: timestamp)
+                    try macRecovery.recordObservation(markerSessionID(engine.world.live), at: timestamp)
                 }
             }
             let changed = engine.world != world
@@ -760,8 +760,8 @@ public final class FlowmoSessionController: ObservableObject {
         sync.start()
     }
 
-    private func markerSessionID(_ id: UUID?) -> UUID? {
-        syncMetadataStore.isRemoteLiveSession(id) ? nil : id
+    private func markerSessionID(_ live: SessionSnapshot?) -> UUID? {
+        syncMetadataStore.isRemoteLiveSession(live) ? nil : live?.id
     }
 
     @discardableResult

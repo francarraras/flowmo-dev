@@ -195,6 +195,32 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
     }
 }
 
+/// Holds `sync.lock` across a World plan, World persistence, and the matching
+/// metadata save. It is acquired only while `world.lock` is already held.
+package final class WorldSyncMetadataLease {
+    private let store: WorldSyncMetadataStore
+    private let descriptor: Int32
+    package let metadata: WorldSyncMetadata
+
+    fileprivate init(
+        store: WorldSyncMetadataStore,
+        descriptor: Int32,
+        metadata: WorldSyncMetadata
+    ) {
+        self.store = store
+        self.descriptor = descriptor
+        self.metadata = metadata
+    }
+
+    deinit {
+        WorldSyncMetadataStore.releaseLock(descriptor)
+    }
+
+    package func save(_ metadata: WorldSyncMetadata) throws {
+        try store.saveUnlocked(metadata)
+    }
+}
+
 public struct WorldSyncMetadataStore: Sendable {
     public static let maximumStateBytes: Int64 = 64 * 1024 * 1024
     public static let maximumAssetBytes: Int64 = WorldPersistenceLimits.maximumFileBytes
@@ -213,9 +239,31 @@ public struct WorldSyncMetadataStore: Sendable {
         try withLock { try loadUnlocked() }
     }
 
-    public func isRemoteLiveSession(_ id: UUID?) -> Bool {
-        guard let id else { return false }
-        return (try? load().remoteLiveSessionID) == id
+    /// Remote ownership is valid only for the exact Live Session snapshot that
+    /// was applied. A same-ID local mutation therefore fails closed to normal
+    /// Recovery Pause even if clearing the metadata marker previously failed.
+    public func isRemoteLiveSession(_ live: SessionSnapshot?) -> Bool {
+        guard let live, let metadata = try? load(), metadata.remoteLiveSessionID == live.id else {
+            return false
+        }
+        if metadata.base?.head.live == live {
+            return true
+        }
+        if metadata.pending?.head.live == live {
+            return true
+        }
+        do {
+            return try metadata.remoteSnapshot?.head.live == live
+        } catch {
+            return false
+        }
+    }
+
+    /// Compatibility seam while callers migrate from identifier-only ownership
+    /// checks to exact Live Session snapshots.
+    public func isRemoteLiveSession(_ sessionID: UUID?) -> Bool {
+        guard let sessionID, let metadata = try? load() else { return false }
+        return metadata.remoteLiveSessionID == sessionID
     }
 
     public func markLocalControl() throws {
@@ -226,6 +274,20 @@ public struct WorldSyncMetadataStore: Sendable {
 
     public func save(_ metadata: WorldSyncMetadata) throws {
         try withLock { try saveUnlocked(metadata) }
+    }
+
+    package func acquireForWorldCommit() throws -> WorldSyncMetadataLease {
+        let descriptor = try acquireLock()
+        do {
+            return WorldSyncMetadataLease(
+                store: self,
+                descriptor: descriptor,
+                metadata: try loadPersistedUnlocked() ?? WorldSyncMetadata()
+            )
+        } catch {
+            Self.releaseLock(descriptor)
+            throw error
+        }
     }
 
     @discardableResult
@@ -294,8 +356,12 @@ public struct WorldSyncMetadataStore: Sendable {
     }
 
     private func loadUnlocked() throws -> WorldSyncMetadata {
+        try loadPersistedUnlocked() ?? WorldSyncMetadata()
+    }
+
+    private func loadPersistedUnlocked() throws -> WorldSyncMetadata? {
         guard let data = try readBoundedFile(stateURL, maximum: Self.maximumStateBytes) else {
-            return WorldSyncMetadata()
+            return nil
         }
         let metadata: WorldSyncMetadata
         do {
@@ -307,7 +373,7 @@ public struct WorldSyncMetadataStore: Sendable {
         return metadata
     }
 
-    private func saveUnlocked(_ metadata: WorldSyncMetadata) throws {
+    fileprivate func saveUnlocked(_ metadata: WorldSyncMetadata) throws {
         try validate(metadata)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try rejectUnsafeTarget(stateURL)
@@ -480,7 +546,7 @@ public struct WorldSyncMetadataStore: Sendable {
         keepTemporary = false
     }
 
-    private func withLock<T>(_ body: () throws -> T) throws -> T {
+    private func acquireLock() throws -> Int32 {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let fd = open(
             lockURL.path,
@@ -497,11 +563,21 @@ public struct WorldSyncMetadataStore: Sendable {
             throw WorldSyncMetadataError.cannotLock("sync.lock must be a private regular file")
         }
         let locked = flock(fd, LOCK_EX)
-        defer {
-            _ = flock(fd, LOCK_UN)
+        guard locked == 0 else {
             close(fd)
+            throw WorldSyncMetadataError.cannotLock(Self.posixMessage())
         }
-        guard locked == 0 else { throw WorldSyncMetadataError.cannotLock(Self.posixMessage()) }
+        return fd
+    }
+
+    fileprivate static func releaseLock(_ descriptor: Int32) {
+        _ = flock(descriptor, LOCK_UN)
+        close(descriptor)
+    }
+
+    private func withLock<T>(_ body: () throws -> T) throws -> T {
+        let descriptor = try acquireLock()
+        defer { Self.releaseLock(descriptor) }
         return try body()
     }
 

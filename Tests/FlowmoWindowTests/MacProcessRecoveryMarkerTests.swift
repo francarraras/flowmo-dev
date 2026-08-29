@@ -666,9 +666,14 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
             let startedAt = Date().addingTimeInterval(-120)
             let remoteWorld = try focusWorld(at: startedAt)
             let sessionID = try XCTUnwrap(remoteWorld.live?.id)
+            let generation = UUID()
             try store.save(remoteWorld)
             try WorldSyncMetadataStore(root: store.root).save(
-                WorldSyncMetadata(remoteLiveSessionID: sessionID)
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: WorldSyncSnapshot(world: remoteWorld, generation: generation)
+                )
             )
             try writeRecord(
                 identity: .init(

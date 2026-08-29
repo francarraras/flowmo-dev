@@ -7,6 +7,8 @@ import XCTest
 
 @MainActor
 final class PhoneContinuityTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 1_800_000_000)
+
     func testSelectedHistorySessionFillsDraftWithoutStarting() throws {
         try withStore { store in
             let session = CompletedSession(
@@ -151,12 +153,57 @@ final class PhoneContinuityTests: XCTestCase {
         try engine.apply(.capture("Write the release note"), now: start.addingTimeInterval(20))
         try engine.apply(.stopFocus, now: start.addingTimeInterval(30))
         try engine.apply(.skip, now: start.addingTimeInterval(31))
+        try store.save(engine.world)
+        try markRemote(engine.world, in: store)
+        return makeController(store: store)
+    }
+
+    private func pausedPrimeWorld(intention: String) throws -> World {
+        let timestamp = Date(timeIntervalSince1970: 1_800_000_000)
+        var engine = Engine()
+        try engine.apply(.start(intention: intention), now: timestamp)
+        try engine.apply(.pauseForRecovery, now: timestamp.addingTimeInterval(1))
+        return engine.world
+    }
+
+    private func replaceWithPausedPrime(in store: Store) throws -> World {
+        let timestamp = Date(timeIntervalSince1970: 1_900_000_000)
+        return try store.update { engine in
+            try engine.apply(.restart, now: timestamp)
+            try engine.apply(.pauseForRecovery, now: timestamp.addingTimeInterval(1))
+        }.world
+    }
+
+    @discardableResult
+    private func saveCloseBeatSession(
+        to store: Store,
+        recallText: String,
+        history: [CompletedSession] = []
+    ) throws -> UUID {
+        var world = World.empty
+        world.history = history
+        var engine = Engine(world: world)
+        try engine.apply(.start(intention: "write the report"), now: start)
+        try engine.apply(.skip, now: start.addingTimeInterval(1))
+        try engine.apply(.stopFocus, now: start.addingTimeInterval(60))
+        try engine.apply(.skip, now: start.addingTimeInterval(61))
+        try engine.apply(.setRecallText(recallText), now: start.addingTimeInterval(62))
+        try engine.apply(.skip, now: start.addingTimeInterval(63))
         let sessionID = try XCTUnwrap(engine.world.live?.id)
         try store.save(engine.world)
+        try markRemote(engine.world, in: store)
+        return sessionID
+    }
+
+    private func markRemote(_ world: World, in store: Store) throws {
+        let generation = UUID()
         try WorldSyncMetadataStore(root: store.root).save(
-            WorldSyncMetadata(remoteLiveSessionID: sessionID)
+            WorldSyncMetadata(
+                generation: generation,
+                remoteLiveSessionID: world.live?.id,
+                base: WorldSyncSnapshot(world: world, generation: generation)
+            )
         )
-        return makeController(store: store)
     }
 
     private func makeController(store: Store) -> PhoneSessionController {
