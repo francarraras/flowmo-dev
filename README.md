@@ -7,8 +7,14 @@ A Flowmodoro. You work until you stop. Rest is earned from how long you focused.
 The name and tagline are working placeholders. Branding, marketing, and
 commercial decisions are not current product work.
 
-**Behavior:** [`docs/PROJECT.md`](docs/PROJECT.md)
-**Look:** [`docs/visual.md`](docs/visual.md)
+Read in this order when landing work:
+
+1. **Terms:** [`CONTEXT.md`](CONTEXT.md)
+2. **Behavior:** [`docs/PROJECT.md`](docs/PROJECT.md)
+3. **Architecture:** [`docs/architecture.md`](docs/architecture.md)
+4. **Feature and proof routing:** [`docs/feature-map.md`](docs/feature-map.md)
+
+The current visual contract is in [`docs/visual.md`](docs/visual.md).
 
 ## Open the window
 
@@ -31,21 +37,27 @@ swift run flowmo skip                    # Focus
 swift run flowmo capture "parked line"
 swift run flowmo stop                    # Break
 swift run flowmo skip                    # Reflection
-swift run flowmo skip                    # Close
+swift run flowmo skip                    # Close Beat
 swift run flowmo skip                    # Idle
 swift run flowmo status
 ```
 
-In the app, Prime offers **Focus now**, Break offers **Reflect**, and Reflection
-offers **Skip** while empty or **Done** after a next step is written. The CLI
-keeps the stable `skip` verb for all three timed beats.
+In the Mac app, Prime offers **Focus now** and **Focus scene**. Focus scene
+starts the same open-ended Focus inside a large, borderless, movable **Distant
+Horizon** canvas. During Focus, the sun-and-horizon presentation control enters
+or re-enters that same Scene directly; its adjacent menu changes Classic/Mini.
+**Back to window** restores the prior Classic/Mini window without
+switching apps while Focus keeps counting; **End focus** starts the earned
+Break. Break offers **Reflect**, and Reflection offers **Skip** while empty or
+**Done** after a next step is written. The supporting CLI keeps the stable
+`skip` verb across these phase actions, including Close Beat.
 
 What should happen:
 
 - After Start, the circle stays put. Start is gone.
 - Focus counts up. Gold is rest you are earning.
 - Break is gold.
-- Close shows **Focused**, **Break earned**, and anything worth returning to. **Done** returns to an empty Idle, where **Use next** can reveal the latest next step for confirmation.
+- Close Beat shows **Focused**, **Break earned**, and anything worth returning to. When that session has an explicit next step, **Done** carries it into the editable Idle intention without starting; otherwise Idle stays empty. **Use next** can restore the newest explicit cue later.
 - During **Reflection**, review parked lines and use one as the editable next step.
 - **History** keeps every parked line and can return any chosen session’s next step—or its intention—to Idle for confirmation.
 
@@ -71,7 +83,7 @@ swift run flowmo-wp3-gate --help  # optional local WP3 field-audit evaluator
 action commands (`start`, `stop`, `skip`, `continue`, `restart`, `cancel`,
 `capture`, and `recall`) accept `--json` in any position after the command and
 return a structured success or error envelope. The action envelope deliberately
-does not echo intentions, captures, or recall text; call `status --json` only
+does not echo intentions, captures, or Reflection text; call `status --json` only
 when that text is needed.
 
 `pause` and `resume` are not CLI flow controls. Recovery uses `continue` or
@@ -84,7 +96,7 @@ keep working from local replicas when CloudKit is unavailable; simultaneous
 offline starts require an explicit choose-one decision. The old tree in
 `~/Flowmo` is reference only.
 
-## Verify a candidate
+## Fast checks
 
 ```bash
 swift format lint --strict --recursive Package.swift Sources Tests Apps
@@ -92,6 +104,9 @@ swift test -Xswiftc -warnings-as-errors
 swift run -Xswiftc -warnings-as-errors flowmo check
 swift build -c release -Xswiftc -warnings-as-errors
 ```
+
+These are fast development checks, not the complete candidate gate. Follow the
+[`release procedure`](docs/release.md) for full candidate verification.
 
 The Mac and iPhone apps also provide redacted diagnostic export, full-data
 export, invalid-store recovery, and confirmed deletion while Idle. The Mac Data

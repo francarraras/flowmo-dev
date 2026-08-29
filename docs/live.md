@@ -8,7 +8,7 @@ The file is internal storage, not a supported write API. Scripts should read
 
 ## In
 
-- Redraw Core status every 250 ms (idle / prime / focus / break / recall / close beat, including recovery pause).
+- Redraw Core status every 250 ms (Idle / Prime / Focus / Break / Reflection / Close Beat, including Recovery Pause).
 - Advance timed phases via the same `Engine.sync` the window uses.
 - `q`, Esc, or Ctrl+C leaves the view. Does **not** pause or stop the session.
 

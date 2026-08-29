@@ -4,6 +4,38 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Prevented private sync from overwriting a newer local action with a cloud
+  result computed from stale state. Remote reconciliation now reloads the
+  latest local state under the same store transaction and persists the World
+  before its corresponding sync metadata while holding one ordered lock lease.
+  Conflict choices expire when their cloud facts change, and a stale
+  same-session ownership marker can no longer skip Recovery Pause.
+- Replaced the temporary Mini preset with a real Mac **Focus scene**. From
+  Prime, one action starts the same open-ended Focus inside a borderless,
+  movable and resizable Distant Horizon canvas with the intention, count-up
+  clock, **End focus**, and **Back to window**. Back restores the prior Classic/Mini and
+  pin choices and keeps the exact Focus counting without switching apps. During
+  Focus, the sun-and-horizon presentation control now enters or re-enters Scene
+  directly; its adjacent menu repeats **Focus Scene** before the Classic/Mini
+  choices, so both sides of the control provide a clear way back. The menu
+  dismisses before Scene changes the window. This
+  removes the ambiguous hidden Scene action and the broken hybrid frame that
+  could appear on a second menu-based entry, without resetting the persisted
+  clock. End starts the earned Break. A
+  recovery pause, replacement, close, or process loss safely discards the
+  transient Scene. It adds no session data, permission, system Focus change, or
+  lockout.
+- Removed the redundant **Use next** hop after a completed session. On Mac and
+  iPhone, **Done** now carries that exact session’s explicit next step into the
+  editable Idle intention. It never starts automatically, falls back to older
+  work, or creates new persisted data; stale cross-surface actions leave the
+  winning session untouched. Mini opens Classic so the carried step is visible.
+- Made Mac Focus entry frictionless: choosing **Focus now** cooperatively
+  returns control to the already-running app the person came from. Automatic
+  Prime expiry never switches apps, and a target selected in Focus Guard stays
+  closed. The handoff exists only in memory, adds no setup or extra decision,
+  and never persists or logs an app identity, URL, file path, window title, or
+  browser tab.
 - Closed the parked-thought loop: Reflection can now review saved thoughts
   newest-first and turn one into the editable next step without deleting it.
   Mini opens this review in Classic, and iPhone mirrors the same flow.

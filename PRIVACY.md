@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 2026-08-25
+Last updated: 2026-08-29
 
 Flowmo does not currently operate a server and contains no third-party
 analytics, advertising, or crash-reporting SDK. The entitled Mac and iPhone
@@ -10,8 +10,8 @@ server.
 
 ## Data kept on the device
 
-Flowmo stores the current session, intentions, parked thoughts, recall text,
-completed-session history, cue preference, learned break ratio, and selected
+Flowmo stores the current session, intentions, parked thoughts, Reflection text,
+completed-session history, cue preference, fixed break ratio, and selected
 Focus Guard application identifiers. The Mac store is normally
 `~/.flowmo/world.json`; `FLOWMO_HOME` is a development override. The iPhone app
 and widget use the private `group.app.flowmo.phone` App Group container.
@@ -28,7 +28,7 @@ copies and are removed after upload.
 
 Flowmo uses container `iCloud.app.flowmo` and only the signed-in user's private
 CloudKit database. It sends the live phase and timestamps, intentions, parked
-thoughts, recall text, fixed break ratio, and completed-session history so the
+thoughts, Reflection text, fixed break ratio, and completed-session history so the
 same loop can appear on Mac and iPhone. Sync is app functionality only. It is
 not used for analytics, advertising, marketing, profiling, or tracking.
 
@@ -50,6 +50,13 @@ The Home Screen widget does not access CloudKit. It remains a read-only glance
 over the iPhone App Group store. The command-line and `swift run` launchers do
 not carry CloudKit entitlements; their Mac-store changes synchronize when the
 entitled Mac app observes them or next opens.
+
+On Mac, Work Handoff observes local application activation only to
+remember the most recently active regular app before Start. It keeps that exact
+running-app target only in process memory for the live session and may ask macOS
+to reactivate it after the user explicitly chooses **Focus now**. It does not
+persist or log the app identity, URL, file path, document or window title,
+browser tab, or content.
 
 On Mac, Focus Guard observes local application activation only to hide apps the
 user selected during Focus. It does not use Accessibility control, terminate
@@ -96,7 +103,7 @@ Group store.
 ## Diagnostics and exports
 
 Flowmo records privacy-safe issue codes in Apple's local unified logging system.
-It does not log intentions, parked thoughts, recall text, selected application
+It does not log intentions, parked thoughts, Reflection text, selected application
 identifiers, or store paths. A user can explicitly export a redacted diagnostic
 JSON report containing app/build/OS metadata, the current phase, counts, and
 recent issue codes with their operation categories and timestamps. The report

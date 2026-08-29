@@ -1,13 +1,22 @@
 # Flowmo repo rules
 
-Product behavior lives in [`docs/PROJECT.md`](docs/PROJECT.md). If chat, old code, or the frozen `~/Flowmo` tree conflicts with this file or PROJECT.md, this file and PROJECT.md win.
+Domain vocabulary lives in [`CONTEXT.md`](CONTEXT.md), product behavior in
+[`docs/PROJECT.md`](docs/PROJECT.md), and technical ownership in
+[`docs/architecture.md`](docs/architecture.md). If chat, old code, or the frozen
+`~/Flowmo` tree conflicts with this file or PROJECT.md, this file and PROJECT.md
+win. Architecture describes how behavior is implemented and does not override
+it.
+
+Agent feature, ownership, and proof routing lives in
+[`docs/feature-map.md`](docs/feature-map.md). It is an index; linked behavior
+docs remain authoritative, and mapped work is not necessarily shipped.
 
 ## Product invariants
 
 - Flowmo is a Flowmodoro. Focus counts up until the user stops. It must not feel like a 25/5 countdown timer.
 - The Mac window is the main product. The menu bar, terminal, CLI, JSON, and widget are supporting views or integrations.
 - The intention is typed once at idle. Prime only displays it.
-- Prime, break, and recall may use a determinate ring. Focus must not.
+- Prime, Break, and Reflection may use a determinate ring. Focus must not.
 - There is one live session per local store. Clocks come from persisted timestamps, not UI timer ticks.
 
 ## Do not add
@@ -25,7 +34,7 @@ Product behavior lives in [`docs/PROJECT.md`](docs/PROJECT.md). If chat, old cod
 - Focus Guard: [`docs/focus-guard.md`](docs/focus-guard.md).
 - Menu-bar clock: [`docs/menu-bar.md`](docs/menu-bar.md).
 - Living terminal: [`docs/live.md`](docs/live.md).
-- Local iPhone app: [`docs/iphone.md`](docs/iphone.md).
+- Native iPhone app: [`docs/iphone.md`](docs/iphone.md).
 - iPhone widget: [`docs/widget.md`](docs/widget.md). It is a glance over the phone App Group store, not a session controller.
 - Roadmap only: [`docs/v2.md`](docs/v2.md).
 

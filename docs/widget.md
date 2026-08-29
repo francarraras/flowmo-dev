@@ -13,7 +13,7 @@ iPhone has no menu bar. After the local phone app exists, a widget is the analog
 
 ## Outcome
 
-A small Home Screen widget that shows the **same** `Format.glance` string the Mac menu bar would: remaining on prime/break/recall, count-up on Focus, frozen with a leading `·` while recovery-paused, `Flowmo` when idle.
+A small Home Screen widget that shows the **same** `Format.glance` string the Mac menu bar would: remaining on Prime/Break/Reflection, count-up on Focus, frozen with a leading `·` while recovery-paused, `Flowmo` when Idle.
 
 Tap opens the existing iPhone app. Tap does **not** Continue.
 
@@ -29,7 +29,7 @@ Copy does not claim productivity, well-being, or flow.
 
 ## Out
 
-Start, Skip, Stop, +, mute, Continue from the widget. Live Activities, Watch, Lock Screen complications (unless they fall out of the same glance for free — do not chase them). Mac widgets. iCloud. History. Theme packs. Home, tabs, scores. `~/Flowmo`.
+Start, Skip, Stop, +, mute, Continue from the widget. Live Activities, Watch, Lock Screen complications (unless they fall out of the same glance for free — do not chase them). Mac widgets. Direct CloudKit access. History. Theme packs. Home, tabs, scores. `~/Flowmo`.
 
 ## Phone vs widget (honest)
 

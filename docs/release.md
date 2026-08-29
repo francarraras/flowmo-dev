@@ -125,6 +125,17 @@ From a clean checkout of the candidate revision:
    Confirm a second Mac process cannot mutate the first process's lifecycle and
    an immediate CLI Continue survives crash recovery without losing frozen
    time. Confirm Focus always counts up with no pause or progress ring.
+   From Prime, use a harmless app/window with synthetic content and verify
+   ordinary **Focus now** enters Focus and returns to that exact already-running
+   app when eligible, while a guarded target is not reopened. Keep app and
+   document identity out of screenshots, notes, and bug reports. Verify
+   **Focus scene** enters the same Focus from both Prime and an
+   active Focus, remains movable and resizable, and returns to the exact prior
+   Classic/Mini presentation without changing the clock. Complete a session
+   with a synthetic next step and confirm **Done** carries only that exact step
+   into editable Idle without starting; repeat with a blank step. Stale
+   competing completion remains a controller regression proof rather than a
+   live smoke setup.
    For an entitled sync candidate, also test two signed-in devices: make an
    offline change on each, confirm distinct history unions, confirm simultaneous
    live starts block for a choose-one decision, verify account switching never

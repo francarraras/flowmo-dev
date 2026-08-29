@@ -4,7 +4,7 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-25
+Last updated: 2026-08-29
 Owner: Fran Carrara  
 Status: 1.0 close-beta candidate; external Apple distribution remains gated.
 
@@ -17,7 +17,7 @@ principles, research on habit and attention, and the owner’s experience. It
 provides an open-ended focus ritual; it does not claim that one timer pattern is
 universally optimal for learning or productivity.
 
-You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before focus you still; after the break you briefly recall. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same privately synced loop on iPhone. Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
+You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before Focus you still; after the Break you briefly reflect. On Mac, choosing **Focus now** can hand control back to the already-running app you came from without persisting or logging its identity or contents. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same privately synced loop on iPhone. Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
 
 **Working copy:** Stop counting down. Start flowing up. The product name and
 tagline are placeholders; branding is not a roadmap dependency.
@@ -31,7 +31,7 @@ tagline are placeholders; branding is not a roadmap dependency.
 - A generic Pomodoro (fixed 25/5, countdown as the main act)
 - The old iPhone app grown sideways (Home, five tabs, score screen, flashcards, App Store hardening)
 - A terminal you drive command-by-command (`start`, then `status`, then `skip`, then `stop`)
-- A menu-bar chip as the product (a glance may come later)
+- A menu-bar chip as the product
 - A dashboard, streak game, or social app
 
 ---
@@ -180,14 +180,14 @@ The product must stay:
 
 You type **once**. That line is the intention. Prime does not ask again.
 
-1. **Idle → type → Start**. After a completed session, **Use next** reveals its next step for confirmation; otherwise **Use last** can reveal the prior intention. History can also bring any explicitly chosen thread back to Idle for confirmation.
-2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready.
+1. **Idle → type → Start**. After **Done** carries a just-completed session’s explicit next step into the editable field, Start remains a separate confirmation. When no step was carried, **Use next** can reveal the newest explicit cue; otherwise **Use last** can reveal the prior intention. History can also bring any explicitly chosen Completed Session back to Idle for confirmation.
+2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready. On Mac, **Focus now** hands control back to the already-running app used immediately before Flowmo when one is available and not guarded. **Focus scene** starts the same Focus in the large, movable Distant Horizon canvas.
 3. **Focus — count up** — work until you stop. **Park thought** saves one line without leaving Focus. No pause button.
 4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Take what you need, then Reflect whenever ready.
 5. **Reflection — 3:00** — “Where will you pick up next?” Optional line. If thoughts were parked, review them newest-first and use one as the editable next step. Skip allowed.
-6. **Quiet close beat** — focus time, break earned, next step, and parked-thought count — then Done returns to idle.
+6. **Quiet close beat** — focus time, break earned, next step, and parked-thought count — then Done returns to Idle. That exact session’s nonblank next step is already visible and editable there; nothing starts automatically.
 
-Encoding (focus) is the only required open-ended phase. Prime and recall have ends. Break is **not** a protocol phase in the old sense; it is the earned interlude between focus and recall.
+Focus is the only required open-ended phase. Prime and Reflection have ends. Break is **not** a protocol phase in the old sense; it is the earned interlude between Focus and Reflection.
 
 Timed beats always have an advance action: **Focus now** on Prime, **Reflect**
 on Break, and **Skip** or **Done** on Reflection. The CLI keeps the stable `skip` verb for
@@ -200,26 +200,26 @@ all three. Skip during Focus is the same as Stop (you have chosen to end Focus).
 The Mac **window is the product**.
 
 - **One surface.** Same compact frame. The insides change. No Home, no tabs, no setup-then-another-app.
-- **Size.** Two fixed modes, not a free-resize document. **Classic** is 320×460 and holds the full instrument. **Mini** is 168×176 — aperture plus the current verb. Mode persists.
+- **Size.** Two persisted fixed modes, not a free-resize document. **Classic** is 320×460 and holds the full instrument. **Mini** is 168×176 — aperture plus the current verb. Focus Scene is a transient large, movable, resizable presentation of the same window, never a third saved mode.
 - **Always on top.** Off by default. One control to pin over your work.
-- **Look.** Not designed yet. Do not invent a new brand in the first implementation pass unless asked. The old iPhone app was black + cyan; that is a *reference*, not a mandate.
+- **Look.** The shipped compact pass is defined in [`visual.md`](visual.md). It is a current product treatment, not a final brand or theme system.
 
 ### States
 
 | State | On screen | Actions |
 |---|---|---|
-| **Idle** | Empty field, placeholder **Intention**. The first empty store explains count-up focus and earned break inside the aperture. **Start**, or **Use next** / **Use last** when prior work exists. Today, **History**, **Data**, **New**. | Type a line; reveal and confirm the newest session’s explicit next step (without falling back to a stale older one) or the last intention; choose any completed History thread and return its next step—or its original intention—to Idle for confirmation, asking before replacing a typed draft; export/delete data; or New (clears only the typed draft). |
-| **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, or Focus now whenever ready. |
-| **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. | Work. Park a thought. Stop. |
+| **Idle** | Editable **Intention** field. It is prefilled only when this surface just completed a session with an explicit next step; otherwise it is empty. The first empty store explains count-up focus and earned break inside the aperture. **Start**, or **Use next** / **Use last** when prior work exists. Today, **History**, **Data**, **New**. | Edit and explicitly Start a carried step; reveal and confirm the newest session’s explicit next step (without falling back to a stale older one) or the last intention; choose any Completed Session in History and return its next step—or its original intention—to Idle for confirmation, asking before replacing a typed draft; export/delete data; or New (clears only the typed draft). |
+| **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, choose **Focus now**, or on Mac choose **Focus scene**. Focus now cooperatively returns to the prior work app. Focus scene stays in Flowmo and opens the Distant Horizon canvas. |
+| **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. The Mac sun-and-horizon presentation control shows the same Focus in Focus Scene; its adjacent menu repeats Scene and changes Classic/Mini. | Work. Park a thought. Change presentation. Stop. |
 | **Break** | Neutral **Break** caption and **Take what you need.** Recommended countdown + determinate gold ring, with the earned rest and source Focus duration stated plainly. | Rest, or Reflect whenever ready. |
 | **Reflection (3:00)** | **Where will you pick up next?** Optional text. Countdown + ring. When the session has parked thoughts and the field is empty, **Review N parked** opens a newest-first chooser inside the same frame. | Write and Done, use a parked thought as an editable next step, sit, or Skip. |
-| **Close beat** | Intention. **Focused** and **Break earned**, plus the optional next step and parked-thought count. No score, no share. | Done. Then idle. |
+| **Close beat** | Intention. **Focused** and **Break earned**, plus the optional next step and parked-thought count. No score, no share. | Done records this session exactly once, then returns to Idle. Its explicit next step is staged there for editing; blank Reflection leaves Idle empty. |
 
 ### Focus visual (important)
 
 Count-up has no finish line. A 0–100% “progress” ring during focus is a **lie** (that is Pomodoro). Do not add one.
 
-- Timed phases (prime, break, recall) → real ring/bar that has an end.
+- Timed phases (Prime, Break, Reflection) → real ring/bar that has an end.
 - Focus → big clock + **earned-break strip** (information: rest you are accruing).
 
 This is the “on steroids” visual that is still honest.
@@ -228,7 +228,85 @@ This is the “on steroids” visual that is still honest.
 
 Not an always-visible field. The quiet **Park thought** action on the focus state opens one line. Enter parks it and clears; the action’s count confirms that the thought stayed. During Reflection, the person can review parked lines newest-first and use one as the editable next step; this is non-destructive, so every line also stays on the session in **History**. Mini retains a compact `+` and opens review in Classic. No sheet, no categories in v1 (distraction vs idea can be inferred later; don’t ask now).
 
-### Pause
+### Next-step bridge
+
+When this surface successfully dismisses an exact live Close beat, its nonblank
+Reflection next step is staged as the visible, editable Idle intention. It does
+not start Prime. It never falls back to the completed intention, an older
+session, or whichever History item happens to be newest after a sync race.
+Blank Reflection leaves Idle empty. A stale Done action only adopts the winning
+store state and cannot advance or bridge a replacement session.
+
+The staged draft is process-local UI state, not a new persisted field. The
+durable source remains the completed session in History, so History can always
+restore that exact cue; **Use next** can restore it while that session remains
+newest. Sync, reload, and launch never manufacture a staged draft. Mini expands
+to Classic when it carries a step so the text is visible before Start.
+
+### Work Handoff
+
+The Mac window remembers the most recently active regular app before Start and
+binds that exact running app instance to the live session in process memory.
+When the person chooses **Focus now** and Prime successfully enters Focus,
+Flowmo asks macOS to hand control back to that app. **Focus scene** instead keeps
+Flowmo in front. Entering or leaving Scene is presentation-only and never
+activates another app. The Focus-now phase transition is durable first; its
+activation is best-effort and can never block Focus or produce an error loop.
+Automatic Prime expiry never changes the active app. If the remembered app is
+selected in Focus Guard, Flowmo does not open something the person asked it to
+block.
+
+Neither path adds a field, attachment, permission prompt, or setting. The
+handoff never persists or logs an app identity, URL, file path, document title,
+window title, browser tab, or content. It is cleared after the Focus-now
+activation request, when Prime ends through any other path, or when the bound
+session is replaced. Restart can carry it to
+the replacement session only within the same process; crash or relaunch recovery
+has no target. Close remains one clear **Done** action.
+
+This restores an already-running app, whose own window and document state remain
+untouched. It does not inspect or control a particular browser tab or document,
+and it must not grow into AppleScript, Accessibility control, clipboard
+surveillance, or browser-history inspection.
+
+### Focus Scene
+
+**Focus scene** is a Mac-only presentation of the same honest, open-ended Focus.
+It can be selected when Prime enters Focus or from the direct sun-and-horizon
+presentation control during an already-running Focus. Its adjacent menu repeats
+Scene before the Classic/Mini choices. Scene morphs the existing Flowmo window into a large,
+borderless, movable and resizable **Distant Horizon** canvas on one display. The
+canvas shows only the intention, count-up clock, a calm native horizon, **End
+focus**, and **Back to window**. It
+has no ring, percentage, deadline, new phase, setup, or claim that work is
+locked down.
+
+Entry remains in Flowmo. **Back to window** restores the exact prior
+Classic/Mini frame and pin choice and keeps the same Focus counting. The normal
+window's same sun-and-horizon control can re-enter Scene for that exact Focus. Escape
+performs Back to window only while the Scene is key. **End focus** performs the
+normal Stop and presents the earned Break. Closing the Scene restores the normal
+frame and hides Flowmo while Focus continues. If Focus Guard needs a decision,
+its **Stay focused** and
+**Open once** actions replace the Scene exits so Escape or close cannot bypass
+the decision.
+
+The Scene snapshot exists only in process memory for one exact unpaused Focus.
+Stop, recovery pause, session replacement, display-mode or pin changes, and
+process loss discard it safely. Relaunch and recovery Continue use the ordinary
+saved presentation and never recreate a Scene. Screen changes reflow the single
+canvas; Flowmo never clones it across displays or creates a macOS full-screen
+Space. It starts centered with space around it, drags from the empty canvas,
+resizes from its edges, and clamps back onto the visible display after a screen
+change. Normal **Focus now**, automatic Prime expiry, sync, and merely showing
+the window never activate a Scene.
+
+Focus Scene does not persist or sync, enable Focus Guard, hide or kill another
+app, change macOS Focus, use Accessibility or AppleScript, add a helper, or
+create new telemetry. Focus Guard remains the separate optional, fail-open
+friction layer.
+
+### Recovery Pause
 
 **No Pause button** while working. You are in, or you Stop (and earn the break).
 
@@ -237,7 +315,7 @@ Pause exists only as **recovery**:
 - Quit the app, or the Mac sleeps → on return the session is **paused**.
 - On return: same phase, clock frozen, **Continue** or **Restart**. Bringing the window forward does not resume. Continue resumes from the frozen time. Restart drops the frozen session (not recorded) and starts Prime with the same line.
 - While recovery-paused, Continue and Restart are the only actions that may
-  mutate the session. Skip, Stop, capture, recall edits, Cancel, and close-beat
+  mutate the session. Skip, Stop, capture, Reflection edits, Cancel, and Close Beat
   dismissal are rejected. Mute and presentation-only controls remain available
   and never resume the session.
 - A persisted Continue boundary protects the frozen clock even when Continue is
@@ -254,7 +332,7 @@ Pause exists only as **recovery**:
 
 ### Sound and attention
 
-- Soft cues **on by default** at phase changes (prime ended, you stopped, break ended, recall ended).
+- Soft cues **on by default** at phase changes (Prime ended, you stopped, Break ended, Reflection ended).
 - If the window is in the background: **sound + a system notification**. Clicking the banner brings the window forward.
 - Mute is a compact-window control. Default is audible. Mute silences the phase sound; background banners still post.
 
@@ -282,7 +360,7 @@ Scripts may fire verbs against the same session shown by the window or living te
 - skip current timed beat  
 - continue or restart a recovery-paused session
 - capture a line  
-- save recall text
+- save Reflection text
 - cancel the current session
 - status as JSON  
 - later: supported ratio configuration verbs; the ratio does not move automatically
@@ -300,7 +378,7 @@ The API talks to the **same** live session as the window. Two clocks is a bug.
 Data controls are deliberately reachable only from Idle. A full export is a
 validated snapshot of the user's local data. A redacted diagnostic export
 contains app/build/OS metadata, phase and counts, and stable issue codes with
-operation categories and timestamps—never intention, capture, recall,
+operation categories and timestamps—never Intention, capture, Reflection text,
 selected-app identifiers, or store paths.
 
 On Mac, a separate explicit Focus Guard counts export contains only the
@@ -321,7 +399,8 @@ The entitled Mac and iPhone apps synchronize the loop through the user's
 private `iCloud.app.flowmo` CloudKit database. The shared state is the live
 session, fixed break ratio, resumption intention, and completed history. Cue
 preference, Focus Guard configuration, local evidence, lifecycle markers, and
-widget/App Group mechanics stay on their device.
+widget/App Group mechanics stay on their device. The Mac work handoff is
+process memory rather than session data and never enters CloudKit.
 
 Each device remains usable offline. Completed sessions with distinct IDs merge;
 two offline live starts, an account change, or any other ambiguous concurrent
@@ -368,6 +447,8 @@ automatic movement to explain. The idle window does not need a lecture about it.
 | Break | `focus / ratio` | Ratio starts at 5 |
 | Reflection | 180 s | Skip allowed |
 | Intention | one string | Typed at idle; shown through prime |
+| Work handoff | zero or one running app | Mac process memory only; consumed by explicit **Focus now**; every other path out of Prime clears it |
+| Focus scene | zero or one exact live Focus | Mac process memory only; transient movable window snapshot, never session data |
 | Today line | sum of completed focus today | Local midnight; idle only |
 | Storage ids | stable tokens (`encoding`, `writing`) | Not display strings like `"Deep Code"` |
 | Clock | computed from timestamps | Not a 1-second UI timer as source of truth |
@@ -381,7 +462,7 @@ automatic movement to explain. The idle window does not need a lecture about it.
 Keep as **ideas and numbers**, not as a codebase to extend:
 
 - Count-up focus, you stop
-- `break = encoding / ratio` (tested path: 600 s / 5 = 120 s)
+- `break = focus / ratio` (tested path: 600 s / 5 = 120 s)
 - Prime 2 min, reflection 3 min
 - Park a thought mid-session
 - Dark compact session energy (reference only)
@@ -419,14 +500,14 @@ Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may
 
 The current implementation follows this shape:
 
-1. **One logical session**, persisted as timestamped local replicas plus a private CloudKit replica. Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The separate Mac evidence file contains aggregates only and is never session authority.
+1. **One logical session**, persisted as timestamped local replicas plus a private CloudKit replica. Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The optional Mac work-app handoff exists only in window-process memory and is never session authority. The separate Mac evidence file contains aggregates only and is never session authority.
 2. **One live session per local store**, with a file lock shared by the Mac window and CLI. Cross-device ambiguity becomes an explicit conflict; it never becomes two silently merged Focus sessions.
 3. **Native session frames** on Mac and iPhone. Menu bar, terminal, CLI, and widget remain supporting views.
 4. Do **not** start by opening a new Xcode clone of `~/Flowmo`.
 5. Persistence: a small local JSON store plus durable private-sync metadata. SwiftData is not required.
 6. Notifications and sound are adapters around phase transitions, not the engine.
 
-The shipped loop remains **idle → prime → focus → break → recall → close beat → idle**, with recovery pause, supporting glances, and a local completed-session list.
+The shipped Loop remains **Idle → Prime → Focus → Break → Reflection → Close Beat → Idle**, with Recovery Pause, supporting glances, and local History.
 
 ---
 
@@ -452,10 +533,12 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Decision | Choice |
 |---|---|
 | Science lineage | Oakley, habit and attention research, and owner experience guide hypotheses; claims remain evidence-bounded. |
-| Start | Setup then prime; do not drop the fundamentals |
-| Type intention | Once, at idle. Prime only displays it. |
-| After focus | Earned break, then short recall |
+| Start | Type once in Idle, then Prime; do not drop the fundamentals |
+| Confirm intention | Enter or edit it once in Idle. A carried next step remains editable there. Prime only displays it. |
+| After Focus | Earned Break, then short Reflection |
 | Capture in v1 | Yes, one line, via **Park thought** (compact `+` in Mini) |
+| Work handoff | Mac remembers the already-running app used before Flowmo only in process memory; explicit **Focus now** returns immediately |
+| Focus scene | Explicit Mac presentation at Prime or during Focus; large movable Distant Horizon for that exact Focus, then restores the prior Classic/Mini and pin presentation |
 | First place it lives | Mac, **real window** as the main thing |
 | Window structure | One frame, states change |
 | Prime | Intention + stilling (2:00) |
@@ -469,20 +552,20 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
 | Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
-| Idle | Empty Intention + Start; first-run promise; Use next before Use last; today + History + Data + New (clears only the typed draft) |
+| Idle | Editable Intention + Start; an exact just-completed next step may already be staged; first-run promise; Use next before Use last; today + History + Data + New (clears only the draft) |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |
 | Close / hide window | Session keeps running |
 | Quit / sleep | Restore **paused** |
 | Resume after quit / sleep | **Continue** or **Restart**. Window appearing does not resume. Restart primes the same intention. |
 | Pause button | No |
-| After recall | Quiet close beat with next-step and parked-thought payoff; visible Done. Then idle |
+| After Reflection | Quiet Close Beat with Next Step and Parked Thought payoff; visible Done. Then Idle |
 | History UI | Local list from Idle. Collapsed: intention, date, focus clock, writing count. Tap expands that session: Focused / Break earned, parked lines, next step, and an explicit return action that fills Idle without auto-starting. |
 | Window delivery | SwiftPM launcher (`swift run flowmo`) plus thin Xcode wrap of the same window (`Apps/Flowmo.xcodeproj`, bundle `app.flowmo.mac`) |
 | Session store | JSON at `~/.flowmo/world.json` with a file lock |
 | Store recovery | Preserve invalid bytes before reset; never silently replace them |
 | Data controls | Idle-only full export, redacted diagnostics, confirmed Delete All |
-| Mini | Aperture + verb. Mute and pin on the left, expand on the right. Typing expands to Classic. |
+| Mini | Aperture + verb. Mute and pin on the left, presentation control on the right. Typing expands to Classic. |
 | Guide | Process names the beat: Prepare / Focus / Break / Reflection. |
 
 ---

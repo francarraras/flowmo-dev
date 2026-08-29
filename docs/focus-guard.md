@@ -127,7 +127,7 @@ reactivation nor fewer clicks proves focus or productivity benefit.
 
 - One remembered set of `.app` bundles (bundle IDs in `world.json`).
 - Configure from **Idle** in the existing frame. No Home, tabs, second window, or wizard.
-- Guard only during **unpaused Focus**. Prime, break, recall, close beat, idle: off.
+- Guard only during **unpaused Focus**. Prime, Break, Reflection, Close Beat, and Idle: off.
 - Hide + bring Flowmo forward. **Stay focused** / **Open once** (that exact process instance until it loses activation).
 - Small factual Focus line (`Guarding 3 apps`). Clock stays the hero. No extra ring.
 - Same Core store. `swift run flowmo` and the Dock app, if the spike proves both.
