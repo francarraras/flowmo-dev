@@ -60,9 +60,15 @@ retains `sync.lock` inside `world.lock` while clearing remote ownership.
 
 The phone routes Continue, Restart, and Close Beat dismissal through the
 synchronized adapter. They use exact observations, and Close Beat receives its
-exact newly Completed Session from the commit. Other phone actions, the Mac,
-and CLI still use `Store.update` directly during this phase. Mac migration
-requires a typed recovery-marker adapter; recovery, reconciliation, conflict,
+exact newly Completed Session from the commit. A concrete actor-isolated
+`MacWorldAuthority` now provides typed exact-observation, current-World, and
+Prime-to-Focus operations. It coordinates the synchronized production recovery
+marker, ordered sync metadata, and the bounded Work Handoff exception, and its
+result distinguishes stale current state, durable success, nonblocking sync
+warning, blocking post-persist recovery failure, and pre-persist no-commit.
+Recording-adapter tests prove the write-ahead and post-persist boundaries.
+Other phone actions, the Mac controller call sites, and CLI still use
+`Store.update` directly during this phase; recovery, reconciliation, conflict,
 and maintenance operations retain their existing dedicated routes.
 
 `World` and sync metadata remain separate files for now. A reconciliation or

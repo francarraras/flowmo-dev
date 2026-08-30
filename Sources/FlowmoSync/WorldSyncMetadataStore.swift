@@ -92,6 +92,19 @@ public struct WorldSyncMetadata: Codable, Equatable, Sendable {
         }
     }
 
+    /// Remote ownership is valid only for the exact Live Session snapshot,
+    /// never for a reusable Session identifier alone.
+    package func identifiesRemoteLiveSession(_ live: SessionSnapshot?) -> Bool {
+        guard let live, remoteLiveSessionID == live.id else { return false }
+        if base?.head.live == live { return true }
+        if pending?.head.live == live { return true }
+        do {
+            return try remoteSnapshot?.head.live == live
+        } catch {
+            return false
+        }
+    }
+
     public mutating func replaceRemote(with snapshot: WorldSyncSnapshot?) throws {
         guard let snapshot else {
             remoteHeadData = nil
@@ -243,20 +256,8 @@ public struct WorldSyncMetadataStore: Sendable {
     /// was applied. A same-ID local mutation therefore fails closed to normal
     /// Recovery Pause even if clearing the metadata marker previously failed.
     public func isRemoteLiveSession(_ live: SessionSnapshot?) -> Bool {
-        guard let live, let metadata = try? load(), metadata.remoteLiveSessionID == live.id else {
-            return false
-        }
-        if metadata.base?.head.live == live {
-            return true
-        }
-        if metadata.pending?.head.live == live {
-            return true
-        }
-        do {
-            return try metadata.remoteSnapshot?.head.live == live
-        } catch {
-            return false
-        }
+        guard let metadata = try? load() else { return false }
+        return metadata.identifiesRemoteLiveSession(live)
     }
 
     public func markLocalControl() throws {

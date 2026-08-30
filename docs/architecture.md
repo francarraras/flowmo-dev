@@ -97,12 +97,15 @@ warning.
 
 The phone's exact Continue, Restart, and Close Beat actions now cross the
 synchronized authority adapter, which retains `sync.lock` inside `world.lock`
-when it can update local ownership. Other phone actions, the Mac controller,
-and CLI remain on the `Store.update` compatibility seam in this phase. Mac
-migration waits for a typed adapter that preserves its recovery marker
-ordering; the CLI can move after the action contract settles. Uncommon
-recovery, remote-reconciliation, and conflict writes may move behind typed
-authority operations only when those operations preserve their current
+when it can update local ownership. The concrete `@MainActor`
+`MacWorldAuthority` now defines the Mac action shape for exact observed actions,
+current-World actions, and exact Prime-to-Focus Work Handoff. It returns typed
+stale, durable, sync-warning, post-persist recovery-block, and pre-persist
+no-commit outcomes while preserving the recovery marker order below. The Mac
+controller deliberately remains on the `Store.update` compatibility seam until
+its call sites migrate; other phone actions and CLI remain there as well.
+Uncommon recovery, remote-reconciliation, and conflict writes may move behind
+typed authority operations only when those operations preserve their current
 contracts. This remains an incremental extraction, not a parallel engine or a
 repository-wide rewrite.
 
@@ -166,6 +169,11 @@ seam:
 - `WorldAuthority` has a package-internal persistence seam with two real
   adapters: the local `Store` adapter and the synchronized World-plus-metadata
   adapter. Feature callers cannot inject arbitrary lock-held callbacks.
+- `MacWorldAuthority` is a concrete actor-isolated module rather than a
+  protocol-shaped controller. Its recovery persistence seam has the real
+  synchronized process marker and a recording test adapter; Work Handoff keeps
+  its existing AppKit adapter. No caller can provide a generic transaction
+  callback.
 - CloudKit is external. Keep transport behind the `FlowmoSync` adapter and test
   reconciliation without a network account.
 - The filesystem and process-recovery marker are local-substitutable. Tests may
@@ -203,10 +211,9 @@ ownership; line count alone is not an architectural seam.
 
 - The phone controller now delegates the exact-observation checks and completion
   facts for Continue, Restart, and Close Beat to `WorldAuthority`. Its remaining
-  actions and the Mac controller still use the compatibility seam. Mac
-  recovery-marker and Work Handoff ordering must move through a typed adapter
-  rather than a generic callback. Draft and presentation handling remain
-  surface-owned.
+  actions and the Mac controller still use the compatibility seam. The typed
+  Mac adapter and its recording ordering proofs now exist; controller call-site
+  migration remains. Draft and presentation handling stay surface-owned.
 - `FlowmoCore` still mixes domain types with persistence and some supporting
   utilities. Separate them only along proven dependency seams; keep `Engine`
   behavior stable during that work.

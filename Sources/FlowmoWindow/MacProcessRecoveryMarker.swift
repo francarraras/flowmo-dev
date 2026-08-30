@@ -1,6 +1,7 @@
 import Darwin
 import FlowmoCore
 import Foundation
+import os
 
 enum MacProcessRecoveryError: LocalizedError {
     case cannotOpen(String)
@@ -63,13 +64,13 @@ enum MacProcessRecoveryDataDeletionError: LocalizedError {
     }
 }
 
-/// Owns the Mac host's crash marker for one store. Every public mutation is
-/// called while `Store.update` holds `world.lock`.
-@MainActor
-final class MacProcessRecoveryMarker {
+/// Owns the Mac host's crash marker for one store. Mutable process state is
+/// synchronized so action commits can use this AppKit-free production adapter
+/// without weakening Swift 6 isolation.
+final class MacProcessRecoveryMarker: MacRecoveryPersistence, Sendable {
     static let maximumMarkerBytes: Int64 = 4 * 1024
 
-    struct ProcessIdentity: Codable, Equatable {
+    struct ProcessIdentity: Codable, Equatable, Sendable {
         let pid: Int32
         let startedAtSeconds: UInt64
         let startedAtMicroseconds: UInt64
@@ -112,30 +113,34 @@ final class MacProcessRecoveryMarker {
         case legacy(LegacyRecord)
     }
 
-    private struct PendingClaim {
+    private struct PendingClaim: Sendable {
         let identity: ProcessIdentity
         let sessionID: UUID?
         let observedAt: Date
+    }
+
+    private struct State: Sendable {
+        var processIdentity: ProcessIdentity?
+        var pendingClaim: PendingClaim?
+        var lifetimeClaimFileDescriptor: Int32?
+        var ownsMarker = false
+        var trackedSessionID: UUID?
+        var lastObservedAt: Date?
     }
 
     private let url: URL
     private let lifetimeLockURL: URL
     private let ownerID: UUID
     private let processID: Int32
-    private let identityLookup: (Int32) throws -> ProcessIdentity?
-    private var processIdentity: ProcessIdentity?
-    private var pendingClaim: PendingClaim?
-    private var lifetimeClaimFileDescriptor: Int32?
-    private var ownsMarker = false
-    private var trackedSessionID: UUID?
-    private var lastObservedAt: Date?
+    private let identityLookup: @Sendable (Int32) throws -> ProcessIdentity?
+    private let state: OSAllocatedUnfairLock<State>
 
     var ownsLifecycle: Bool {
-        ownsMarker
+        state.withLock { $0.ownsMarker }
     }
 
     var claimedLifetimeFileDescriptor: Int32? {
-        lifetimeClaimFileDescriptor
+        state.withLock { $0.lifetimeClaimFileDescriptor }
     }
 
     init(store: Store) {
@@ -144,6 +149,7 @@ final class MacProcessRecoveryMarker {
         self.ownerID = UUID()
         self.processID = getpid()
         self.identityLookup = Self.lookupProcessIdentity
+        self.state = OSAllocatedUnfairLock(initialState: State())
     }
 
     init(
@@ -151,20 +157,24 @@ final class MacProcessRecoveryMarker {
         ownerID: UUID,
         processID: Int32,
         processIdentity: ProcessIdentity,
-        identityLookup: @escaping (Int32) throws -> ProcessIdentity?
+        identityLookup: @escaping @Sendable (Int32) throws -> ProcessIdentity?
     ) {
         self.url = store.root.appendingPathComponent("mac-process-recovery.json")
         self.lifetimeLockURL = store.root.appendingPathComponent("mac-process-recovery.lock")
         self.ownerID = ownerID
         self.processID = processID
-        self.processIdentity = processIdentity
         self.identityLookup = identityLookup
+        self.state = OSAllocatedUnfairLock(
+            initialState: State(processIdentity: processIdentity)
+        )
     }
 
     deinit {
-        if let lifetimeClaimFileDescriptor {
-            _ = flock(lifetimeClaimFileDescriptor, LOCK_UN)
-            close(lifetimeClaimFileDescriptor)
+        state.withLock { state in
+            if let descriptor = state.lifetimeClaimFileDescriptor {
+                _ = flock(descriptor, LOCK_UN)
+                close(descriptor)
+            }
         }
     }
 
@@ -176,46 +186,66 @@ final class MacProcessRecoveryMarker {
         now: Date,
         trackLiveSession: Bool = true
     ) throws -> ClaimPreparation {
-        if ownsMarker { return .prepared }
-        try requireFinite(now)
-        guard try acquireLifetimeClaim() else { return .contended }
+        try state.withLockUnchecked { state in
+            if state.ownsMarker { return .prepared }
+            try requireFinite(now)
+            guard try acquireLifetimeClaim(state: &state) else { return .contended }
 
-        let currentIdentity = try resolvedCurrentIdentity()
-        let previous = try previousMarker()
-        switch previous {
-        case .versioned(let record):
-            if trackLiveSession, record.liveSessionID == engine.world.live?.id {
-                try freeze(&engine, at: record.lastObservedAt, noLaterThan: now)
+            let currentIdentity = try resolvedCurrentIdentity(state: &state)
+            let previous = try previousMarker()
+            switch previous {
+            case .versioned(let record):
+                if trackLiveSession, record.liveSessionID == engine.world.live?.id {
+                    try freeze(&engine, at: record.lastObservedAt, noLaterThan: now)
+                }
+            case .legacy(let record):
+                if trackLiveSession, record.liveSessionID == engine.world.live?.id {
+                    try freeze(&engine, at: record.lastObservedAt, noLaterThan: now)
+                }
+            case .absent:
+                break
             }
-        case .legacy(let record):
-            if trackLiveSession, record.liveSessionID == engine.world.live?.id {
-                try freeze(&engine, at: record.lastObservedAt, noLaterThan: now)
-            }
-        case .absent:
-            break
+
+            let sessionID = trackLiveSession ? engine.world.live?.id : nil
+            try writeRecord(identity: currentIdentity, sessionID: sessionID, observedAt: now)
+            state.pendingClaim = PendingClaim(
+                identity: currentIdentity,
+                sessionID: sessionID,
+                observedAt: now
+            )
+            return .prepared
         }
-
-        let sessionID = trackLiveSession ? engine.world.live?.id : nil
-        try writeRecord(identity: currentIdentity, sessionID: sessionID, observedAt: now)
-        pendingClaim = PendingClaim(identity: currentIdentity, sessionID: sessionID, observedAt: now)
-        return .prepared
     }
 
     /// Called only after the `Store.update` containing `prepareClaim` succeeds.
     func commitPreparedClaim() {
-        guard let pendingClaim else { return }
-        processIdentity = pendingClaim.identity
-        trackedSessionID = pendingClaim.sessionID
-        lastObservedAt = pendingClaim.observedAt
-        ownsMarker = true
-        self.pendingClaim = nil
+        state.withLock { state in
+            guard let pendingClaim = state.pendingClaim else { return }
+            state.processIdentity = pendingClaim.identity
+            state.trackedSessionID = pendingClaim.sessionID
+            state.lastObservedAt = pendingClaim.observedAt
+            state.ownsMarker = true
+            state.pendingClaim = nil
+        }
     }
 
     /// Write-ahead observation for a live session. Nil observations are used
     /// only after the terminal world is already durable.
     func recordObservation(_ sessionID: UUID?, at now: Date) throws {
-        guard ownsMarker else { throw MacProcessRecoveryError.ownershipLost }
-        try refreshOwnership(for: sessionID, at: now)
+        try state.withLock { state in
+            guard state.ownsMarker else { throw MacProcessRecoveryError.ownershipLost }
+            try refreshOwnership(for: sessionID, at: now, state: &state)
+        }
+    }
+
+    func persist(_ mutation: MacRecoveryMutation) throws {
+        switch mutation {
+        case .writeAheadLive(let sessionID, let observedAt),
+            .adoptLiveAfterWorldPersistence(let sessionID, let observedAt):
+            try recordObservation(sessionID, at: observedAt)
+        case .clearAfterWorldPersistence(let observedAt):
+            try recordObservation(nil, at: observedAt)
+        }
     }
 
     /// Clear prior session metadata and exact crash-orphaned marker temp files
@@ -228,43 +258,63 @@ final class MacProcessRecoveryMarker {
 
     /// Re-establish the on-disk marker after a transient lifecycle failure.
     func refreshOwnership(for sessionID: UUID?, at now: Date) throws {
-        guard ownsMarker, let processIdentity else { throw MacProcessRecoveryError.ownershipLost }
+        try state.withLock { state in
+            try refreshOwnership(for: sessionID, at: now, state: &state)
+        }
+    }
+
+    private func refreshOwnership(
+        for sessionID: UUID?,
+        at now: Date,
+        state: inout State
+    ) throws {
+        guard state.ownsMarker, let processIdentity = state.processIdentity else {
+            throw MacProcessRecoveryError.ownershipLost
+        }
         try requireFinite(now)
         try writeRecord(identity: processIdentity, sessionID: sessionID, observedAt: now)
-        trackedSessionID = sessionID
-        lastObservedAt = now
+        state.trackedSessionID = sessionID
+        state.lastObservedAt = now
     }
 
     func needsObservation(for sessionID: UUID?) -> Bool {
-        guard ownsMarker else { return false }
-        return trackedSessionID != sessionID
+        state.withLock { state in
+            guard state.ownsMarker else { return false }
+            return state.trackedSessionID != sessionID
+        }
     }
 
     func needsHeartbeat(at now: Date) -> Bool {
-        guard ownsMarker, trackedSessionID != nil, let lastObservedAt else { return false }
-        let interval = now.timeIntervalSince(lastObservedAt)
-        return interval < 0 || interval >= 5
+        state.withLock { state in
+            guard state.ownsMarker, state.trackedSessionID != nil, let lastObservedAt = state.lastObservedAt else {
+                return false
+            }
+            let interval = now.timeIntervalSince(lastObservedAt)
+            return interval < 0 || interval >= 5
+        }
     }
 
     /// Clear only this exact process owner's marker. The caller holds
     /// `world.lock`, after the recovery pause is durable.
     func finishNormally() throws {
-        guard ownsMarker, let processIdentity else { return }
-        guard let diskRecord = try readCurrentRecord() else {
-            clearOwnership()
-            return
-        }
-        guard diskRecord.ownerID == ownerID, diskRecord.processIdentity == processIdentity else {
-            throw MacProcessRecoveryError.ownershipLost
-        }
-        guard unlink(url.path) == 0 else {
-            if errno == ENOENT {
-                clearOwnership()
+        try state.withLock { state in
+            guard state.ownsMarker, let processIdentity = state.processIdentity else { return }
+            guard let diskRecord = try readCurrentRecord() else {
+                clearOwnership(state: &state)
                 return
             }
-            throw MacProcessRecoveryError.cannotWrite(Self.posixMessage())
+            guard diskRecord.ownerID == ownerID, diskRecord.processIdentity == processIdentity else {
+                throw MacProcessRecoveryError.ownershipLost
+            }
+            guard unlink(url.path) == 0 else {
+                if errno == ENOENT {
+                    clearOwnership(state: &state)
+                    return
+                }
+                throw MacProcessRecoveryError.cannotWrite(Self.posixMessage())
+            }
+            clearOwnership(state: &state)
         }
-        clearOwnership()
     }
 
     private func previousMarker() throws -> PreviousMarker {
@@ -484,20 +534,20 @@ final class MacProcessRecoveryMarker {
         }
     }
 
-    private func resolvedCurrentIdentity() throws -> ProcessIdentity {
-        if let processIdentity { return processIdentity }
+    private func resolvedCurrentIdentity(state: inout State) throws -> ProcessIdentity {
+        if let processIdentity = state.processIdentity { return processIdentity }
         guard let identity = try identityLookup(processID), identity.pid == processID else {
             throw MacProcessRecoveryError.cannotInspectProcess(processID, "process not found")
         }
-        processIdentity = identity
+        state.processIdentity = identity
         return identity
     }
 
     /// Open and lock one stable, empty inode. The file is deliberately never
     /// unlinked by lifecycle finish or Delete All: unlinking a held lock would
     /// let another process lock a replacement pathname concurrently.
-    private func acquireLifetimeClaim() throws -> Bool {
-        if lifetimeClaimFileDescriptor != nil { return true }
+    private func acquireLifetimeClaim(state: inout State) throws -> Bool {
+        if state.lifetimeClaimFileDescriptor != nil { return true }
         do {
             try FileManager.default.createDirectory(
                 at: lifetimeLockURL.deletingLastPathComponent(),
@@ -579,7 +629,7 @@ final class MacProcessRecoveryMarker {
             )
         }
 
-        lifetimeClaimFileDescriptor = fd
+        state.lifetimeClaimFileDescriptor = fd
         return true
     }
 
@@ -591,16 +641,16 @@ final class MacProcessRecoveryMarker {
         try engine.apply(.pauseForRecovery, now: freezeAt)
     }
 
-    private func clearOwnership() {
-        ownsMarker = false
-        trackedSessionID = nil
-        lastObservedAt = nil
-        processIdentity = nil
-        pendingClaim = nil
-        if let lifetimeClaimFileDescriptor {
-            _ = flock(lifetimeClaimFileDescriptor, LOCK_UN)
-            close(lifetimeClaimFileDescriptor)
-            self.lifetimeClaimFileDescriptor = nil
+    private func clearOwnership(state: inout State) {
+        state.ownsMarker = false
+        state.trackedSessionID = nil
+        state.lastObservedAt = nil
+        state.processIdentity = nil
+        state.pendingClaim = nil
+        if let descriptor = state.lifetimeClaimFileDescriptor {
+            _ = flock(descriptor, LOCK_UN)
+            close(descriptor)
+            state.lifetimeClaimFileDescriptor = nil
         }
     }
 

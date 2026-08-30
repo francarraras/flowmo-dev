@@ -133,6 +133,16 @@ package struct WorldActionRequest: Sendable {
     package let event: Event
     package let observed: ObservedLiveBeat?
     package let timestamp: Date
+
+    package init(
+        event: Event,
+        observed: ObservedLiveBeat?,
+        timestamp: Date
+    ) {
+        self.event = event
+        self.observed = observed
+        self.timestamp = timestamp
+    }
 }
 
 /// Internal seam for concrete persistence adapters. Feature callers only see

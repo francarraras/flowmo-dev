@@ -302,9 +302,10 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
                 to: store
             )
 
+            let currentIdentity = currentIdentity
             let versionedRecovery = marker(for: store) { pid in
                 XCTAssertNotEqual(pid, unrelatedLiveIdentity.pid, "foreign PID metadata must not be authoritative")
-                return self.currentIdentity
+                return currentIdentity
             }
             var versionedPreparation = MacProcessRecoveryMarker.ClaimPreparation.contended
             let versioned = try store.update { engine in
@@ -332,9 +333,10 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
                 observedAt: now,
                 to: store
             )
+            let currentIdentity = currentIdentity
             let legacyRecovery = marker(for: store) { pid in
                 XCTAssertNotEqual(pid, 100, "legacy foreign PID metadata must not be authoritative")
-                return self.currentIdentity
+                return currentIdentity
             }
             var legacyPreparation = MacProcessRecoveryMarker.ClaimPreparation.contended
             let legacy = try store.update { engine in
@@ -365,9 +367,10 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
                 observedAt: recoveryNow.addingTimeInterval(3_600),
                 to: store
             )
+            let currentIdentity = currentIdentity
             do {
                 let matchingMarker = marker(for: store) { pid in
-                    pid == deadIdentity.pid ? nil : self.currentIdentity
+                    pid == deadIdentity.pid ? nil : currentIdentity
                 }
                 var matchingEngine = Engine(world: world)
                 XCTAssertEqual(try matchingMarker.prepareClaim(&matchingEngine, now: recoveryNow), .prepared)
@@ -381,7 +384,7 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
                 to: store
             )
             let cliMarker = marker(for: store) { pid in
-                pid == deadIdentity.pid ? nil : self.currentIdentity
+                pid == deadIdentity.pid ? nil : currentIdentity
             }
             var cliEngine = Engine(world: world)
             XCTAssertEqual(try cliMarker.prepareClaim(&cliEngine, now: recoveryNow), .prepared)
@@ -401,8 +404,9 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
                 startedAtMicroseconds: 0
             )
             try writeRecord(identity: deadIdentity, sessionID: sessionID, observedAt: now, to: store)
+            let currentIdentity = currentIdentity
             let recovery = marker(for: store) { pid in
-                pid == deadIdentity.pid ? nil : self.currentIdentity
+                pid == deadIdentity.pid ? nil : currentIdentity
             }
 
             XCTAssertThrowsError(
@@ -950,15 +954,16 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
 
     private func marker(
         for store: Store,
-        lookup: @escaping (Int32) throws -> MacProcessRecoveryMarker.ProcessIdentity? = { _ in nil }
+        lookup: @escaping @Sendable (Int32) throws -> MacProcessRecoveryMarker.ProcessIdentity? = { _ in nil }
     ) -> MacProcessRecoveryMarker {
-        MacProcessRecoveryMarker(
+        let currentIdentity = currentIdentity
+        return MacProcessRecoveryMarker(
             store: store,
             ownerID: UUID(),
             processID: currentIdentity.pid,
             processIdentity: currentIdentity,
             identityLookup: { pid in
-                if pid == self.currentIdentity.pid { return self.currentIdentity }
+                if pid == currentIdentity.pid { return currentIdentity }
                 return try lookup(pid)
             }
         )
