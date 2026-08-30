@@ -946,8 +946,11 @@ public final class FlowmoSessionController: ObservableObject {
         }
     }
 
-    public func resolveSyncConflict(choosing choice: WorldSyncChoice) {
-        cloudSync?.resolveConflict(choosing: choice)
+    public func resolveSyncConflict(
+        _ conflict: WorldSyncConflict,
+        choosing choice: WorldSyncChoice
+    ) {
+        cloudSync?.resolveConflict(conflict, choosing: choice)
     }
 
     private func startCloudSync() {

@@ -5,6 +5,8 @@ import XCTest
 @testable import FlowmoSync
 
 final class WorldSyncLocalPersistenceTests: XCTestCase {
+    private let start = Date(timeIntervalSince1970: 1_700_000_000)
+
     func testMutationReceivesLatestPersistedWorld() throws {
         try withPersistence { worldStore, metadataStore, persistence in
             var initial = World.empty
@@ -172,6 +174,107 @@ final class WorldSyncLocalPersistenceTests: XCTestCase {
         }
     }
 
+    func testDisplayedConflictChoiceCannotResolveAReplacementConflict() throws {
+        try withPersistence { worldStore, metadataStore, persistence in
+            let generation = uuid(10)
+            let ancestor = WorldSyncSnapshot(world: .empty, generation: generation)
+            let displayedLocalWorld = world(live: live(id: uuid(11), intention: "displayed local"))
+            let displayedConflict = WorldSyncConflict(
+                id: uuid(12),
+                kind: .liveSession,
+                local: WorldSyncSnapshot(world: displayedLocalWorld, generation: generation),
+                remote: WorldSyncSnapshot(
+                    world: world(live: live(id: uuid(13), intention: "displayed remote")),
+                    generation: generation
+                ),
+                ancestor: ancestor
+            )
+
+            let replacementLocalWorld = world(
+                live: live(id: uuid(14), intention: "replacement local")
+            )
+            let replacementConflict = WorldSyncConflict(
+                id: uuid(15),
+                kind: .liveSession,
+                local: WorldSyncSnapshot(world: replacementLocalWorld, generation: generation),
+                remote: WorldSyncSnapshot(
+                    world: world(live: live(id: uuid(16), intention: "replacement remote")),
+                    generation: generation
+                ),
+                ancestor: ancestor
+            )
+            var replacementMetadata = WorldSyncMetadata(
+                generation: generation,
+                base: ancestor,
+                conflict: replacementConflict
+            )
+            try replacementMetadata.replaceRemote(with: replacementConflict.remote)
+            try worldStore.save(replacementLocalWorld)
+            try metadataStore.save(replacementMetadata)
+
+            let commit = try persistence.commit { currentWorld, nextMetadata in
+                try WorldSyncRemotePlanner.resolveDisplayedConflict(
+                    displayedConflict,
+                    choosing: .remote,
+                    currentWorld: currentWorld,
+                    metadata: &nextMetadata
+                )
+            }
+
+            XCTAssertEqual(commit.output, .staleConflict)
+            XCTAssertFalse(commit.worldChanged)
+            XCTAssertEqual(commit.world, replacementLocalWorld)
+            XCTAssertEqual(commit.metadata, replacementMetadata)
+            XCTAssertEqual(try worldStore.load(), replacementLocalWorld)
+            XCTAssertEqual(try metadataStore.load(), replacementMetadata)
+        }
+    }
+
+    func testDisplayedConflictChoiceResolvesMatchingLatestConflict() throws {
+        try withPersistence { worldStore, metadataStore, persistence in
+            let generation = uuid(20)
+            let ancestor = WorldSyncSnapshot(world: .empty, generation: generation)
+            let localWorld = world(live: live(id: uuid(21), intention: "local"))
+            let remoteWorld = world(live: live(id: uuid(22), intention: "remote"))
+            let conflict = WorldSyncConflict(
+                id: uuid(23),
+                kind: .liveSession,
+                local: WorldSyncSnapshot(world: localWorld, generation: generation),
+                remote: WorldSyncSnapshot(world: remoteWorld, generation: generation),
+                ancestor: ancestor
+            )
+            var metadata = WorldSyncMetadata(
+                generation: generation,
+                base: ancestor,
+                conflict: conflict
+            )
+            try metadata.replaceRemote(with: conflict.remote)
+            try worldStore.save(localWorld)
+            try metadataStore.save(metadata)
+
+            let commit = try persistence.commit { currentWorld, nextMetadata in
+                try WorldSyncRemotePlanner.resolveDisplayedConflict(
+                    conflict,
+                    choosing: .remote,
+                    currentWorld: currentWorld,
+                    metadata: &nextMetadata
+                )
+            }
+
+            XCTAssertEqual(
+                commit.output,
+                .resolved(snapshot: conflict.remote, shouldStage: false)
+            )
+            XCTAssertTrue(commit.worldChanged)
+            XCTAssertEqual(commit.world, remoteWorld)
+            XCTAssertNil(commit.metadata.conflict)
+            XCTAssertEqual(commit.metadata.base, conflict.remote)
+            XCTAssertEqual(commit.metadata.remoteLiveSessionID, remoteWorld.live?.id)
+            XCTAssertEqual(try worldStore.load(), remoteWorld)
+            XCTAssertEqual(try metadataStore.load(), commit.metadata)
+        }
+    }
+
     private func withPersistence(
         _ body: (
             Store,
@@ -207,6 +310,30 @@ final class WorldSyncLocalPersistenceTests: XCTestCase {
             captureCount: 0,
             recallText: nil,
             endedAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+    }
+
+    private func world(live: SessionSnapshot?) -> World {
+        var world = World.empty
+        world.live = live
+        return world
+    }
+
+    private func live(id: UUID, intention: String) -> SessionSnapshot {
+        SessionSnapshot(
+            id: id,
+            intention: intention,
+            phase: .focus,
+            breakRatio: 5,
+            startedAt: start,
+            phaseStartedAt: start,
+            focusStartedAt: start,
+            focusEndedAt: nil,
+            breakStartedAt: nil,
+            breakDuration: nil,
+            captures: [],
+            primeDuration: 120,
+            recallDuration: 180
         )
     }
 

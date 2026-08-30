@@ -8,9 +8,73 @@ package enum WorldSyncRemoteProcessing: Equatable {
     case merged(snapshot: WorldSyncSnapshot, remote: WorldSyncSnapshot?)
 }
 
+package enum WorldSyncConflictCommit: Equatable {
+    case staleWorld
+    case staleConflict
+    case staleRemote
+    case resolved(snapshot: WorldSyncSnapshot, shouldStage: Bool)
+}
+
 /// Pure reconciliation planning for remote facts already persisted in sync
 /// metadata. The caller supplies the latest World from the local transaction.
 package enum WorldSyncRemotePlanner {
+    /// Resolves only the exact conflict the person acted on. Every comparison
+    /// happens against the latest World and metadata loaded by the surrounding
+    /// ordered local transaction.
+    package static func resolveDisplayedConflict(
+        _ conflict: WorldSyncConflict,
+        choosing choice: WorldSyncChoice,
+        currentWorld: World,
+        metadata: inout WorldSyncMetadata
+    ) throws -> WorldSyncLocalMutation<WorldSyncConflictCommit> {
+        guard metadata.conflict == conflict else {
+            return WorldSyncLocalMutation(
+                world: currentWorld,
+                output: .staleConflict
+            )
+        }
+        guard try remoteFactsMatch(conflict, metadata: metadata) else {
+            return WorldSyncLocalMutation(
+                world: currentWorld,
+                output: .staleRemote
+            )
+        }
+        let current = WorldSyncSnapshot(
+            world: currentWorld,
+            generation: conflict.local.head.generation
+        )
+        guard current == conflict.local else {
+            return WorldSyncLocalMutation(
+                world: currentWorld,
+                output: .staleWorld
+            )
+        }
+
+        let cloudHeadExists = try metadata.remoteSnapshot != nil
+        let resolved = WorldSyncReconciler.resolve(conflict, choosing: choice)
+        let cloudSide = conflict.remote
+        let shouldStage = choice == .local || resolved != cloudSide || !cloudHeadExists
+
+        metadata.conflict = nil
+        metadata.accountChangeRequiresChoice = false
+        metadata.generation = resolved.head.generation
+        metadata.remoteLiveSessionID = choice == .remote ? resolved.head.live?.id : nil
+        metadata.base = cloudSide
+        if !shouldStage {
+            metadata.base = resolved
+            metadata.pending = nil
+            metadata.pendingRevisions = [:]
+        }
+
+        return WorldSyncLocalMutation(
+            world: try resolved.applying(to: currentWorld),
+            output: .resolved(
+                snapshot: resolved,
+                shouldStage: shouldStage
+            )
+        )
+    }
+
     /// A visible conflict can outlive a background fetch. A choice is valid
     /// only while the latest remote facts still describe the remote side the
     /// person saw. Account/reset conflicts may intentionally synthesize an

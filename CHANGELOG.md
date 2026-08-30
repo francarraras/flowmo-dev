@@ -4,6 +4,10 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Prevented a delayed private-sync conflict button from choosing a newer
+  conflict that replaced the one shown on screen. Conflict choices now carry
+  the exact displayed conflict and expire harmlessly when that conflict is no
+  longer current.
 - Made exact iPhone Continue, Restart, and Done actions commit through one
   World authority. Stale controls now adopt the newer saved Session, and a
   private-sync bookkeeping failure no longer makes a durable local action look

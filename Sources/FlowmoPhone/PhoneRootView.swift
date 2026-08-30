@@ -131,10 +131,10 @@ private struct SyncConflictPane: View {
                 .multilineTextAlignment(.center)
             VStack(spacing: 10) {
                 InkButton("Keep this iPhone") {
-                    controller.resolveSyncConflict(choosing: .local)
+                    controller.resolveSyncConflict(conflict, choosing: .local)
                 }
                 InkButton("Use iCloud version") {
-                    controller.resolveSyncConflict(choosing: .remote)
+                    controller.resolveSyncConflict(conflict, choosing: .remote)
                 }
             }
             Spacer()

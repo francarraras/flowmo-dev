@@ -114,8 +114,9 @@ The seam maintains these invariants:
 - Remote reconciliation is recomputed against the latest local `World` inside
   the transaction; a snapshot loaded before the transaction is never saved over
   a newer local action.
-- A Session Conflict choice is accepted only while the current remote facts
-  still match the remote side that was presented.
+- A Session Conflict choice carries the exact displayed conflict and is
+  accepted only while that conflict and the current remote facts still match
+  what was presented.
 - Sync reconciliation acquires `sync.lock` only after `world.lock` and retains
   that metadata lease from its read through World persistence and the matching
   metadata save. Another metadata writer cannot invalidate or overwrite the

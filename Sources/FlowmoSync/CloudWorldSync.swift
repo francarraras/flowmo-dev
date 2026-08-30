@@ -147,9 +147,18 @@ public final class CloudWorldSync: NSObject, CKSyncEngineDelegate, @unchecked Se
         Task { await state.localWorldDidChange(takesOwnership: takesOwnership, engine: engine) }
     }
 
-    public func resolveConflict(choosing choice: WorldSyncChoice) {
+    public func resolveConflict(
+        _ conflict: WorldSyncConflict,
+        choosing choice: WorldSyncChoice
+    ) {
         let engine = engine
-        Task { await state.resolveConflict(choosing: choice, engine: engine) }
+        Task {
+            await state.resolveConflict(
+                conflict,
+                choosing: choice,
+                engine: engine
+            )
+        }
     }
 
     /// Removes local sync replicas immediately and queues deletion of the
@@ -178,13 +187,6 @@ public final class CloudWorldSync: NSObject, CKSyncEngineDelegate, @unchecked Se
 }
 
 private actor CloudWorldSyncState {
-    private enum ConflictCommit {
-        case staleWorld
-        case staleConflict
-        case staleRemote
-        case resolved(snapshot: WorldSyncSnapshot, shouldStage: Bool)
-    }
-
     private static let revisionKey = "revision"
     private static let payloadKey = "payload"
     private static let schemaVersionKey = "schemaVersion"
@@ -279,61 +281,19 @@ private actor CloudWorldSyncState {
         }
     }
 
-    func resolveConflict(choosing choice: WorldSyncChoice, engine: CKSyncEngine) async {
-        guard let conflict = metadata.conflict else { return }
+    func resolveConflict(
+        _ conflict: WorldSyncConflict,
+        choosing choice: WorldSyncChoice,
+        engine: CKSyncEngine
+    ) async {
         do {
             let commit = try localPersistence.commit {
                 currentWorld, nextMetadata in
-                guard nextMetadata.conflict == conflict else {
-                    return WorldSyncLocalMutation(
-                        world: currentWorld,
-                        output: ConflictCommit.staleConflict
-                    )
-                }
-                guard
-                    try WorldSyncRemotePlanner.remoteFactsMatch(
-                        conflict,
-                        metadata: nextMetadata
-                    )
-                else {
-                    return WorldSyncLocalMutation(
-                        world: currentWorld,
-                        output: ConflictCommit.staleRemote
-                    )
-                }
-                let current = WorldSyncSnapshot(
-                    world: currentWorld,
-                    generation: conflict.local.head.generation
-                )
-                guard current == conflict.local else {
-                    return WorldSyncLocalMutation(
-                        world: currentWorld,
-                        output: ConflictCommit.staleWorld
-                    )
-                }
-
-                let cloudHeadExists = try nextMetadata.remoteSnapshot != nil
-                let resolved = WorldSyncReconciler.resolve(conflict, choosing: choice)
-                let cloudSide = conflict.remote
-                let shouldStage = choice == .local || resolved != cloudSide || !cloudHeadExists
-
-                nextMetadata.conflict = nil
-                nextMetadata.accountChangeRequiresChoice = false
-                nextMetadata.generation = resolved.head.generation
-                nextMetadata.remoteLiveSessionID = choice == .remote ? resolved.head.live?.id : nil
-                nextMetadata.base = cloudSide
-                if !shouldStage {
-                    nextMetadata.base = resolved
-                    nextMetadata.pending = nil
-                    nextMetadata.pendingRevisions = [:]
-                }
-
-                return WorldSyncLocalMutation(
-                    world: try resolved.applying(to: currentWorld),
-                    output: ConflictCommit.resolved(
-                        snapshot: resolved,
-                        shouldStage: shouldStage
-                    )
+                try WorldSyncRemotePlanner.resolveDisplayedConflict(
+                    conflict,
+                    choosing: choice,
+                    currentWorld: currentWorld,
+                    metadata: &nextMetadata
                 )
             }
             metadata = commit.metadata
