@@ -46,6 +46,62 @@ final class ContinuityControllerTests: XCTestCase {
         }
     }
 
+    func testControllerAdoptsDurableActionBeforePresentingSyncMetadataWarning() throws {
+        try withStore { store in
+            let controller = FlowmoSessionController(
+                store: store,
+                attention: AttentionAdapter(canNotify: false),
+                workContextHandoff: RecordingWorkContextHandoff()
+            )
+            controller.beginMacProcessLifetime()
+            let metadataStore = WorldSyncMetadataStore(root: store.root)
+            try FileManager.default.createDirectory(
+                at: metadataStore.stateURL,
+                withIntermediateDirectories: true
+            )
+            controller.intentionDraft = "synthetic sync warning"
+
+            controller.start()
+
+            XCTAssertEqual(controller.world.live?.phase, .prime)
+            let persisted = try store.load()
+            XCTAssertEqual(persisted.live?.id, controller.world.live?.id)
+            XCTAssertEqual(persisted.live?.phase, .prime)
+            XCTAssertEqual(persisted.live?.intention, "synthetic sync warning")
+            XCTAssertEqual(controller.activeIssue?.code, .syncMetadataUnavailable)
+            XCTAssertFalse(controller.lifecycleNeedsRecovery)
+        }
+    }
+
+    func testControllerAdoptsTerminalCommitBeforeBlockingOnRecoveryFailure() throws {
+        try withStore { store in
+            _ = try saveCloseBeatSession(
+                to: store,
+                recallText: "synthetic exact next step"
+            )
+            let controller = FlowmoSessionController(
+                store: store,
+                attention: AttentionAdapter(canNotify: false),
+                workContextHandoff: RecordingWorkContextHandoff()
+            )
+            controller.beginMacProcessLifetime()
+            let markerURL = store.root.appendingPathComponent("mac-process-recovery.json")
+            try FileManager.default.removeItem(at: markerURL)
+            try FileManager.default.createDirectory(
+                at: markerURL,
+                withIntermediateDirectories: false
+            )
+
+            controller.dismissCloseBeat()
+
+            XCTAssertNil(controller.world.live)
+            XCTAssertNil(try store.load().live)
+            XCTAssertEqual(controller.intentionDraft, "synthetic exact next step")
+            XCTAssertTrue(controller.lifecycleNeedsRecovery)
+            XCTAssertEqual(controller.activeIssue?.code, .recoveryUnavailable)
+        }
+    }
+
     func testFocusNowHandsOffBeforeACompetingLocalWriterCanEndFocus() throws {
         try withStore { store in
             let handoff = RecordingWorkContextHandoff()

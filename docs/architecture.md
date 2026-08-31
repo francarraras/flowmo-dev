@@ -102,12 +102,15 @@ when it can update local ownership. The concrete `@MainActor`
 current-World actions, and exact Prime-to-Focus Work Handoff. It returns typed
 stale, durable, sync-warning, post-persist recovery-block, and pre-persist
 no-commit outcomes while preserving the recovery marker order below. The Mac
-controller deliberately remains on the `Store.update` compatibility seam until
-its call sites migrate; other phone actions and CLI remain there as well.
-Uncommon recovery, remote-reconciliation, and conflict writes may move behind
-typed authority operations only when those operations preserve their current
-contracts. This remains an incremental extraction, not a parallel engine or a
-repository-wide rewrite.
+controller's ordinary Engine `Event` actions now cross this authority. Visual
+Live Session gestures carry the exact displayed observation; Idle and
+configuration actions target the locked current World. Timed catch-up,
+presentation-only validation, lifecycle claim and pause, maintenance,
+remote-reconciliation, and conflict routes retain their existing dedicated
+transactions. Other phone actions and CLI remain on the compatibility seam.
+Those uncommon routes may move only when typed operations preserve their
+current contracts. This remains an incremental extraction, not a parallel
+engine or a repository-wide rewrite.
 
 The seam maintains these invariants:
 
@@ -209,11 +212,13 @@ ownership; line count alone is not an architectural seam.
 
 ## Current pressure points
 
-- The phone controller now delegates the exact-observation checks and completion
-  facts for Continue, Restart, and Close Beat to `WorldAuthority`. Its remaining
-  actions and the Mac controller still use the compatibility seam. The typed
-  Mac adapter and its recording ordering proofs now exist; controller call-site
-  migration remains. Draft and presentation handling stay surface-owned.
+- The phone controller delegates the exact-observation checks and completion
+  facts for Continue, Restart, and Close Beat to `WorldAuthority`; its remaining
+  actions still use the compatibility seam. The Mac controller now delegates
+  ordinary Engine `Event` actions and exact completion facts to
+  `MacWorldAuthority`. Its timed catch-up and uncommon lifecycle, maintenance,
+  reconciliation, and presentation-validation transactions remain deliberately
+  separate. Draft and presentation handling stay surface-owned.
 - `FlowmoCore` still mixes domain types with persistence and some supporting
   utilities. Separate them only along proven dependency seams; keep `Engine`
   behavior stable during that work.

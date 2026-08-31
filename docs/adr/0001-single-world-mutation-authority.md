@@ -67,9 +67,12 @@ marker, ordered sync metadata, and the bounded Work Handoff exception, and its
 result distinguishes stale current state, durable success, nonblocking sync
 warning, blocking post-persist recovery failure, and pre-persist no-commit.
 Recording-adapter tests prove the write-ahead and post-persist boundaries.
-Other phone actions, the Mac controller call sites, and CLI still use
-`Store.update` directly during this phase; recovery, reconciliation, conflict,
-and maintenance operations retain their existing dedicated routes.
+The Mac controller's ordinary Engine `Event` actions now use this authority,
+including exact observations for displayed Live Session gestures and the exact
+completion fact for its Next Step bridge. Other phone actions and CLI still use
+`Store.update` directly during this phase. Timed catch-up, presentation-only
+validation, lifecycle pause and claim, reconciliation, conflict, and
+maintenance operations retain their existing dedicated routes.
 
 `World` and sync metadata remain separate files for now. A reconciliation or
 local-ownership commit involving both holds the ordered `world.lock` then

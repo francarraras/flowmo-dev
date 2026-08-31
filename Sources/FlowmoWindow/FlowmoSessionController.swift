@@ -45,6 +45,7 @@ public final class FlowmoSessionController: ObservableObject {
     private let evidence: LocalEvidenceRecorder
     private let macRecovery: MacProcessRecoveryMarker
     private let syncMetadataStore: WorldSyncMetadataStore
+    private let worldAuthority: MacWorldAuthority
     private let userDefaults: UserDefaults
     private var cloudSync: CloudWorldSync?
 
@@ -112,8 +113,16 @@ public final class FlowmoSessionController: ObservableObject {
         self.workContextHandoff = workContextHandoff
         self.userDefaults = userDefaults
         self.evidence = LocalEvidenceRecorder(root: store.root)
-        self.macRecovery = MacProcessRecoveryMarker(store: store)
-        self.syncMetadataStore = WorldSyncMetadataStore(root: store.root)
+        let macRecovery = MacProcessRecoveryMarker(store: store)
+        let syncMetadataStore = WorldSyncMetadataStore(root: store.root)
+        self.macRecovery = macRecovery
+        self.syncMetadataStore = syncMetadataStore
+        self.worldAuthority = MacWorldAuthority(
+            store: store,
+            metadataStore: syncMetadataStore,
+            recovery: macRecovery,
+            workContextHandoff: workContextHandoff
+        )
         self.syncStatus = syncStatus
 
         let loaded: World
@@ -207,21 +216,21 @@ public final class FlowmoSessionController: ObservableObject {
     }
 
     public func start() {
-        guard apply(.start(intention: intentionDraft)), let sessionID = world.live?.id else { return }
+        guard apply(.start(intention: intentionDraft)) != nil,
+            let sessionID = world.live?.id
+        else { return }
         workContextHandoff.bindCandidate(to: sessionID)
     }
 
     public func skip() {
-        apply(.skip)
+        apply(.skip, observed: world.live.map(ObservedLiveBeat.init))
     }
 
     public func focusNow() {
-        guard let live = world.live, live.phase == .prime, !live.isPaused else { return }
+        guard let observedPrime = ObservedPrime(world.live) else { return }
         apply(
             .skip,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: .prime,
-            activateWorkContextIfEnteringFocus: true
+            focusNow: observedPrime
         )
     }
 
@@ -234,8 +243,7 @@ public final class FlowmoSessionController: ObservableObject {
         )
         apply(
             .skip,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: .prime,
+            observed: ObservedLiveBeat(live),
             requestedFocusScene: requestedScene
         )
     }
@@ -306,8 +314,7 @@ public final class FlowmoSessionController: ObservableObject {
         guard let live = world.live, live.phase == .focus, !live.isPaused else { return }
         apply(
             .stopFocus,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: .focus
+            observed: ObservedLiveBeat(live)
         )
     }
 
@@ -315,9 +322,7 @@ public final class FlowmoSessionController: ObservableObject {
         guard let live = world.live, live.isPaused else { return }
         apply(
             .`continue`,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: live.phase,
-            expectedLiveIsPaused: true
+            observed: ObservedLiveBeat(live)
         )
     }
 
@@ -325,9 +330,7 @@ public final class FlowmoSessionController: ObservableObject {
         guard let live = world.live, live.isPaused else { return }
         apply(
             .restart,
-            expectedLiveSessionID: live.id,
-            expectedLivePhase: live.phase,
-            expectedLiveIsPaused: true
+            observed: ObservedLiveBeat(live)
         )
     }
 
@@ -373,7 +376,9 @@ public final class FlowmoSessionController: ObservableObject {
     public func submitCapture() {
         let trimmed = captureDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        guard apply(.capture(trimmed)) else { return }
+        guard apply(.capture(trimmed), observed: world.live.map(ObservedLiveBeat.init)) != nil else {
+            return
+        }
         captureDraft = ""
         showCapture = false
     }
@@ -381,23 +386,17 @@ public final class FlowmoSessionController: ObservableObject {
     public func persistRecall() {
         guard world.live?.phase == .recall else { return }
         guard world.live?.recallText != recallDraft else { return }
-        apply(.setRecallText(recallDraft))
+        apply(.setRecallText(recallDraft), observed: world.live.map(ObservedLiveBeat.init))
     }
 
     public func dismissCloseBeat() {
         guard let live = world.live, live.phase == .closeBeat, !live.isPaused else { return }
-        let completedSessionID = live.id
-        guard
-            apply(
-                .skip,
-                expectedLiveSessionID: completedSessionID,
-                expectedLivePhase: .closeBeat
-            ),
-            world.live == nil,
-            let completed = world.history.first(where: { $0.id == completedSessionID }),
-            let nextStep = NextStepSuggestion.forSession(completed)
+        guard let commit = apply(.skip, observed: ObservedLiveBeat(live)),
+            commit.after == nil
         else { return }
-        intentionDraft = nextStep
+        if let nextStep = commit.completedNextStep {
+            intentionDraft = nextStep
+        }
     }
 
     public func configureFocusGuard(_ config: FocusGuardConfiguration) {
@@ -463,7 +462,12 @@ public final class FlowmoSessionController: ObservableObject {
         else { return false }
         let text = capture.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return false }
-        guard apply(.useParkedThoughtAsNext(sessionID: live.id, capture: capture)) else {
+        guard
+            apply(
+                .useParkedThoughtAsNext(sessionID: live.id, capture: capture),
+                observed: ObservedLiveBeat(live)
+            ) != nil
+        else {
             reloadFromStore(cueIfChanged: false)
             return false
         }
@@ -802,103 +806,113 @@ public final class FlowmoSessionController: ObservableObject {
     @discardableResult
     private func apply(
         _ event: Event,
-        expectedLiveSessionID: UUID? = nil,
-        expectedLivePhase: SessionPhase? = nil,
-        expectedLiveIsPaused: Bool = false,
-        activateWorkContextIfEnteringFocus: Bool = false,
+        observed: ObservedLiveBeat? = nil,
+        focusNow observedPrime: ObservedPrime? = nil,
         requestedFocusScene: FocusScenePresentation? = nil
-    ) -> Bool {
-        guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return false }
-        guard syncStatus.conflict == nil else { return false }
+    ) -> WorldCommit? {
+        guard !storeNeedsRecovery, !lifecycleNeedsRecovery else { return nil }
+        guard syncStatus.conflict == nil else { return nil }
         let before = world.live?.phase
         let beforeSessionID = world.live?.id
         applying = true
         defer { applying = false }
         let timestamp = Date()
-        let wasRemote = syncMetadataStore.isRemoteLiveSession(world.live)
-        var statePreconditionMatched = true
-        do {
-            let engine = try store.update(
-                { engine in
-                    if let expectedLiveSessionID {
-                        guard let live = engine.world.live,
-                            live.id == expectedLiveSessionID,
-                            expectedLivePhase.map({ live.phase == $0 }) ?? true,
-                            live.isPaused == expectedLiveIsPaused
-                        else {
-                            statePreconditionMatched = false
-                            return
-                        }
-                    }
-                    try engine.apply(event, now: timestamp)
-                    if let sessionID = engine.world.live?.id {
-                        try macRecovery.recordObservation(wasRemote ? nil : sessionID, at: timestamp)
-                    }
-                },
-                afterPersist: { engine in
-                    guard statePreconditionMatched else { return }
-                    try? self.syncMetadataStore.markLocalControl()
-                    if engine.world.live == nil {
-                        try self.macRecovery.recordObservation(nil, at: timestamp)
-                    } else if wasRemote {
-                        try self.macRecovery.recordObservation(engine.world.live?.id, at: timestamp)
-                    }
-                    if activateWorkContextIfEnteringFocus,
-                        before == .prime,
-                        let beforeSessionID,
-                        let live = engine.world.live,
-                        live.id == beforeSessionID,
-                        live.phase == .focus,
-                        !live.isPaused
-                    {
-                        self.workContextHandoff.activateBoundTarget(
-                            for: beforeSessionID,
-                            excludingBundleIdentifiers: self.guardedBundleIdentifiers(in: engine.world)
-                        )
-                        self.workContextHandoff.retainOnly(sessionID: nil)
-                    }
-                }
+        let outcome: MacActionOutcome
+        if let observedPrime {
+            outcome = worldAuthority.focusNow(observedPrime, at: timestamp)
+        } else if let observed {
+            outcome = worldAuthority.apply(event, observed: observed, at: timestamp)
+        } else {
+            outcome = worldAuthority.applyCurrent(event, at: timestamp)
+        }
+
+        let commit: MacDurableCommit
+        let recoveryFailure: MacRecoveryFailure?
+        switch outcome {
+        case .stale(let current):
+            adoptActionWorld(current, at: timestamp, cueFrom: before)
+            return nil
+        case .committed(let durable):
+            commit = durable
+            recoveryFailure = nil
+        case .committedRecoveryBlocked(let durable, let failure):
+            commit = durable
+            recoveryFailure = failure
+        case .notCommitted(let failure):
+            handleActionFailure(failure)
+            return nil
+        }
+
+        world = commit.action.world
+        now = timestamp
+        if case .restart = event,
+            let beforeSessionID,
+            let afterSessionID = world.live?.id
+        {
+            workContextHandoff.transferBoundTarget(
+                from: beforeSessionID,
+                to: afterSessionID
             )
-            world = engine.world
-            now = timestamp
-            if statePreconditionMatched,
-                case .restart = event,
-                let beforeSessionID,
-                let afterSessionID = world.live?.id
-            {
-                workContextHandoff.transferBoundTarget(
-                    from: beforeSessionID,
-                    to: afterSessionID
-                )
-            }
-            let didEnterFocus =
-                statePreconditionMatched
-                && isEnteringFocus(from: before, sessionID: beforeSessionID)
-            if didEnterFocus, let requestedFocusScene, let beforeSessionID {
-                activateFocusScene(requestedFocusScene, for: beforeSessionID)
-            }
-            let shouldActivateWorkContext =
-                didEnterFocus
-                && activateWorkContextIfEnteringFocus
-            if !shouldActivateWorkContext {
-                reconcileWorkContextRetention()
-            }
-            attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
-            refreshDraftsAfterChange()
-            reconcileGuard()
-            if statePreconditionMatched {
-                cloudSync?.localWorldDidChange()
-            }
-            return statePreconditionMatched
-        } catch is EngineError {
-            // Expected state race: another local surface won. Reload will reconcile.
-            return false
-        } catch let error as MacProcessRecoveryError {
-            handleMarkerRecoveryFailure(error, operation: .recoveryHeartbeat)
-            return false
-        } catch {
-            handlePersistenceFailure(error, operation: .update)
-            return false
+        }
+        let didEnterFocus = isEnteringFocus(from: before, sessionID: beforeSessionID)
+        if didEnterFocus, let requestedFocusScene, let beforeSessionID {
+            activateFocusScene(requestedFocusScene, for: beforeSessionID)
+        }
+        if observedPrime == nil {
+            reconcileWorkContextRetention()
+        }
+        attention.phaseChanged(
+            from: before,
+            to: world.live?.phase,
+            cuesEnabled: world.config.cuesEnabled
+        )
+        refreshDraftsAfterChange()
+        reconcileGuard()
+        cloudSync?.localWorldDidChange()
+
+        if commit.syncWarning != nil {
+            presentIssue(.syncMetadataUnavailable, operation: .sync)
+        }
+        if let recoveryFailure {
+            handleMarkerRecoveryFailure(
+                recoveryFailure.underlyingError,
+                operation: .recoveryHeartbeat
+            )
+        }
+        return commit.action
+    }
+
+    private func adoptActionWorld(
+        _ current: World,
+        at timestamp: Date,
+        cueFrom before: SessionPhase?
+    ) {
+        let changed = current != world
+        world = current
+        now = timestamp
+        reconcileWorkContextRetention()
+        refreshDraftsAfterChange()
+        reconcileGuard()
+        if changed {
+            attention.phaseChanged(
+                from: before,
+                to: world.live?.phase,
+                cuesEnabled: world.config.cuesEnabled
+            )
+        }
+    }
+
+    private func handleActionFailure(_ failure: MacPrePersistFailure) {
+        if failure.underlyingError is EngineError {
+            return
+        }
+        if failure.stage == .recoveryWriteAhead {
+            handleMarkerRecoveryFailure(
+                failure.underlyingError,
+                operation: .recoveryHeartbeat
+            )
+        } else {
+            handlePersistenceFailure(failure.underlyingError, operation: .update)
         }
     }
 
@@ -1108,13 +1122,6 @@ public final class FlowmoSessionController: ObservableObject {
             && world.live?.id == sessionID
             && world.live?.phase == .focus
             && world.live?.isPaused == false
-    }
-
-    private func guardedBundleIdentifiers(in world: World) -> Set<String> {
-        guard case .active(_, let bundleIdentifiers) = FocusGuard.demand(world: world) else {
-            return []
-        }
-        return bundleIdentifiers
     }
 
     private func reconcileWorkContextRetention() {
