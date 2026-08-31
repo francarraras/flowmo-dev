@@ -169,6 +169,35 @@ final class PhoneContinuityTests: XCTestCase {
         }
     }
 
+    func testStaleFocusCaptureCannotLandOnAReplacementSession() throws {
+        try withStore { store in
+            var observed = Engine()
+            try observed.apply(.start(intention: "synthetic original focus"), now: start)
+            try observed.apply(.skip, now: start.addingTimeInterval(1))
+            try store.save(observed.world)
+            try markRemote(observed.world, in: store)
+            let controller = makeController(store: store)
+
+            var replacement = Engine()
+            try replacement.apply(
+                .start(intention: "synthetic replacement focus"),
+                now: start.addingTimeInterval(2)
+            )
+            try replacement.apply(.skip, now: start.addingTimeInterval(3))
+            try store.save(replacement.world)
+
+            controller.captureDraft = "synthetic stale capture"
+            controller.showCapture = true
+            controller.submitCapture()
+
+            XCTAssertEqual(controller.world, replacement.world)
+            XCTAssertEqual(try store.load(), replacement.world)
+            XCTAssertTrue(try XCTUnwrap(controller.world.live).captures.isEmpty)
+            XCTAssertEqual(controller.captureDraft, "synthetic stale capture")
+            XCTAssertTrue(controller.showCapture)
+        }
+    }
+
     func testStaleRecoveryContinueCannotResumeAReplacementSession() throws {
         try withStore { store in
             let observed = try pausedPrimeWorld(intention: "original task")

@@ -58,21 +58,22 @@ a stale result carrying the locked current World. Its package-internal
 persistence seam has a local `Store` adapter and a synchronized adapter that
 retains `sync.lock` inside `world.lock` while clearing remote ownership.
 
-The phone routes Continue, Restart, and Close Beat dismissal through the
-synchronized adapter. They use exact observations, and Close Beat receives its
-exact newly Completed Session from the commit. A concrete actor-isolated
-`MacWorldAuthority` now provides typed exact-observation, current-World, and
+The phone routes ordinary Engine `Event` actions through the synchronized
+adapter. Displayed Live Session gestures use exact observations, current-World
+actions remain current under the lock, and Close Beat receives its exact newly
+Completed Session from the commit. A concrete actor-isolated
+`MacWorldAuthority` provides typed exact-observation, current-World, and
 Prime-to-Focus operations. It coordinates the synchronized production recovery
 marker, ordered sync metadata, and the bounded Work Handoff exception, and its
 result distinguishes stale current state, durable success, nonblocking sync
 warning, blocking post-persist recovery failure, and pre-persist no-commit.
-Recording-adapter tests prove the write-ahead and post-persist boundaries.
-The Mac controller's ordinary Engine `Event` actions now use this authority,
+Recording-adapter tests prove the write-ahead and post-persist boundaries. The
+Mac controller's ordinary Engine `Event` actions also use this authority,
 including exact observations for displayed Live Session gestures and the exact
-completion fact for its Next Step bridge. Other phone actions and CLI still use
-`Store.update` directly during this phase. Timed catch-up, presentation-only
-validation, lifecycle pause and claim, reconciliation, conflict, and
-maintenance operations retain their existing dedicated routes.
+completion fact for its Next Step bridge. CLI still uses `Store.update`
+directly. Timed catch-up, presentation-only validation, lifecycle pause and
+claim, reconciliation, conflict, and maintenance operations retain their
+existing dedicated routes.
 
 `World` and sync metadata remain separate files for now. A reconciliation or
 local-ownership commit involving both holds the ordered `world.lock` then
