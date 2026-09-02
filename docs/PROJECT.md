@@ -181,7 +181,7 @@ The product must stay:
 You type **once**. That line is the intention. Prime does not ask again.
 
 1. **Idle → type → Start**. After **Done** carries a just-completed session’s explicit next step into the editable field, Start remains a separate confirmation. When no step was carried, **Use next** can reveal the newest explicit cue; otherwise **Use last** can reveal the prior intention. History can also bring any explicitly chosen Completed Session back to Idle for confirmation.
-2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready. On Mac, **Focus now** hands control back to the already-running app used immediately before Flowmo when one is available and not guarded. **Focus scene** starts the same Focus in the large, movable Distant Horizon canvas.
+2. **Prime — up to 2:00** — still with that line on screen. Focus now whenever ready. On Mac, **Focus now** hands control back to the already-running app used immediately before Flowmo when one is available and not guarded. **Focus scene** starts the same Focus in the large, movable Distant Horizon canvas. On iPhone, Focus opens in a phone-native Distant Horizon canvas whether Prime ends by action or time.
 3. **Focus — count up** — work until you stop. **Park thought** saves one line without leaving Focus. No pause button.
 4. **Stop → earned break** — `break = focus / ratio`. Default ratio **5** (50 min focus → 10 min break). Take what you need, then Reflect whenever ready.
 5. **Reflection — 3:00** — “Where will you pick up next?” Optional line. If thoughts were parked, review them newest-first and use one as the editable next step. Skip allowed.
@@ -209,8 +209,8 @@ The Mac **window is the product**.
 | State | On screen | Actions |
 |---|---|---|
 | **Idle** | Editable **Intention** field. It is prefilled only when this surface just completed a session with an explicit next step; otherwise it is empty. The first empty store explains count-up focus and earned break inside the aperture. **Start**, or **Use next** / **Use last** when prior work exists. Today, **History**, **Data**, **New**. | Edit and explicitly Start a carried step; reveal and confirm the newest session’s explicit next step (without falling back to a stale older one) or the last intention; choose any Completed Session in History and return its next step—or its original intention—to Idle for confirmation, asking before replacing a typed draft; export/delete data; or New (clears only the typed draft). |
-| **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle, choose **Focus now**, or on Mac choose **Focus scene**. Focus now cooperatively returns to the prior work app. Focus scene stays in Flowmo and opens the Distant Horizon canvas. |
-| **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. The Mac sun-and-horizon presentation control shows the same Focus in Focus Scene; its adjacent menu repeats Scene and changes Classic/Mini. | Work. Park a thought. Change presentation. Stop. |
+| **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle or choose **Focus now**. On Mac, Focus now cooperatively returns to the prior work app and **Focus scene** instead stays in Flowmo. On iPhone, either Prime exit opens the phone Distant Horizon. |
+| **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. iPhone places these facts and controls on its Distant Horizon canvas. The Mac sun-and-horizon presentation control shows the same Focus in Focus Scene; its adjacent menu repeats Scene and changes Classic/Mini. | Work. Park a thought. Change presentation where offered. Stop. |
 | **Break** | Neutral **Break** caption and **Take what you need.** Recommended countdown + determinate gold ring, with the earned rest and source Focus duration stated plainly. | Rest, or Reflect whenever ready. |
 | **Reflection (3:00)** | **Where will you pick up next?** Optional text. Countdown + ring. When the session has parked thoughts and the field is empty, **Review N parked** opens a newest-first chooser inside the same frame. | Write and Done, use a parked thought as an editable next step, sit, or Skip. |
 | **Close beat** | Intention. **Focused** and **Break earned**, plus the optional next step and parked-thought count. No score, no share. | Done records this session exactly once, then returns to Idle. Its explicit next step is staged there for editing; blank Reflection leaves Idle empty. |
@@ -271,15 +271,17 @@ surveillance, or browser-history inspection.
 
 ### Focus Scene
 
-**Focus scene** is a Mac-only presentation of the same honest, open-ended Focus.
-It can be selected when Prime enters Focus or from the direct sun-and-horizon
-presentation control during an already-running Focus. Its adjacent menu repeats
-Scene before the Classic/Mini choices. Scene morphs the existing Flowmo window into a large,
-borderless, movable and resizable **Distant Horizon** canvas on one display. The
-canvas shows only the intention, count-up clock, a calm native horizon, **End
-focus**, and **Back to window**. It
-has no ring, percentage, deadline, new phase, setup, or claim that work is
+**Focus scene** is the Distant Horizon presentation of the same honest,
+open-ended Focus. Its calm native horizon is ambient geometry, never progress.
+It has no ring, percentage, deadline, new phase, setup, or claim that work is
 locked down.
+
+On Mac, it can be selected when Prime enters Focus or from the direct
+sun-and-horizon presentation control during an already-running Focus. Its
+adjacent menu repeats Scene before the Classic/Mini choices. Scene morphs the
+existing Flowmo window into a large, borderless, movable and resizable canvas
+on one display. The canvas shows only the intention, count-up clock, **End
+focus**, and **Back to window**.
 
 Entry remains in Flowmo. **Back to window** restores the exact prior
 Classic/Mini frame and pin choice and keeps the same Focus counting. The normal
@@ -291,7 +293,7 @@ its **Stay focused** and
 **Open once** actions replace the Scene exits so Escape or close cannot bypass
 the decision.
 
-The Scene snapshot exists only in process memory for one exact unpaused Focus.
+The Mac Scene snapshot exists only in process memory for one exact unpaused Focus.
 Stop, recovery pause, session replacement, display-mode or pin changes, and
 process loss discard it safely. Relaunch and recovery Continue use the ordinary
 saved presentation and never recreate a Scene. Screen changes reflow the single
@@ -300,6 +302,17 @@ Space. It starts centered with space around it, drags from the empty canvas,
 resizes from its edges, and clamps back onto the visible display after a screen
 change. Normal **Focus now**, automatic Prime expiry, sync, and merely showing
 the window never activate a Scene.
+
+On iPhone, every active unpaused Focus uses an edge-to-edge, phone-native
+Distant Horizon inside the one app frame. It shows **Focus scene**, the
+intention, the timestamp-derived count-up, earned rest, **Park thought**, and
+**End focus**. Capture stays on that canvas and replaces the actions with
+**Discard** and **Park**. Prime expiry and **Focus now** both arrive there;
+there is no separate window choice because iPhone cannot hand off or morph a
+movable desktop window. Recovery Pause returns to the compact frozen aperture
+with Continue and Restart, while store recovery and sync conflicts replace the
+canvas. Background and foreground do not reset the clock or create another
+presentation state.
 
 Focus Scene does not persist or sync, enable Focus Guard, hide or kill another
 app, change macOS Focus, use Accessibility or AppleScript, add a helper, or
@@ -448,7 +461,7 @@ automatic movement to explain. The idle window does not need a lecture about it.
 | Reflection | 180 s | Skip allowed |
 | Intention | one string | Typed at idle; shown through prime |
 | Work handoff | zero or one running app | Mac process memory only; consumed by explicit **Focus now**; every other path out of Prime clears it |
-| Focus scene | zero or one exact live Focus | Mac process memory only; transient movable window snapshot, never session data |
+| Focus scene | Mac: zero or one exact live Focus; iPhone: the active unpaused Focus | Mac uses a process-local movable-window snapshot; iPhone derives the canvas from current presentation facts. Neither is session data. |
 | Today line | sum of completed focus today | Local midnight; idle only |
 | Storage ids | stable tokens (`encoding`, `writing`) | Not display strings like `"Deep Code"` |
 | Clock | computed from timestamps | Not a 1-second UI timer as source of truth |
@@ -538,7 +551,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | After Focus | Earned Break, then short Reflection |
 | Capture in v1 | Yes, one line, via **Park thought** (compact `+` in Mini) |
 | Work handoff | Mac remembers the already-running app used before Flowmo only in process memory; explicit **Focus now** returns immediately |
-| Focus scene | Explicit Mac presentation at Prime or during Focus; large movable Distant Horizon for that exact Focus, then restores the prior Classic/Mini and pin presentation |
+| Focus scene | Mac: explicit large movable Distant Horizon for one exact Focus, restoring Classic/Mini and pin afterward. iPhone: phone-native Distant Horizon for every active unpaused Focus, retaining Park and End controls. |
 | First place it lives | Mac, **real window** as the main thing |
 | Window structure | One frame, states change |
 | Prime | Intention + stilling (2:00) |

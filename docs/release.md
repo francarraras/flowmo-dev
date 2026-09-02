@@ -131,7 +131,13 @@ From a clean checkout of the candidate revision:
    document identity out of screenshots, notes, and bug reports. Verify
    **Focus scene** enters the same Focus from both Prime and an
    active Focus, remains movable and resizable, and returns to the exact prior
-   Classic/Mini presentation without changing the clock. Complete a session
+   Classic/Mini presentation without changing the clock.
+   On iPhone, confirm active unpaused Focus fills the frame with Distant
+   Horizon in portrait and landscape, keeps Park thought and End focus
+   reachable, and retains the timestamp clock across background/foreground.
+   Check Dynamic Type and Reduce Motion, then terminate during Focus and
+   confirm relaunch shows the compact Recovery Pause instead of resuming.
+   Complete a session
    with a synthetic next step and confirm **Done** carries only that exact step
    into editable Idle without starting; repeat with a blank step. Stale
    competing completion remains a controller regression proof rather than a

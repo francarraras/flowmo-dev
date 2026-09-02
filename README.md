@@ -93,8 +93,10 @@ commands return `recovery_paused` until recovery is resolved.
 iPhone is a native app (`Apps/FlowmoPhone.xcodeproj`) that synchronizes the loop
 with the entitled Mac app through the user's private CloudKit database. Both
 keep working from local replicas when CloudKit is unavailable; simultaneous
-offline starts require an explicit choose-one decision. The old tree in
-`~/Flowmo` is reference only.
+offline starts require an explicit choose-one decision. Active unpaused Focus
+uses a phone-native Distant Horizon with the same timestamp count-up, earned
+rest, Park thought, and End focus; Recovery Pause keeps the compact frozen
+aperture. The old tree in `~/Flowmo` is reference only.
 
 ## Fast checks
 

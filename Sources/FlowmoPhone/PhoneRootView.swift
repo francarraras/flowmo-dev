@@ -4,8 +4,23 @@ import FlowmoSync
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum PhoneFocusPresentation {
+    static func usesDistantHorizon(
+        phase: SessionPhase?,
+        isPaused: Bool,
+        storeNeedsRecovery: Bool,
+        hasSyncConflict: Bool
+    ) -> Bool {
+        phase == .focus
+            && !isPaused
+            && !storeNeedsRecovery
+            && !hasSyncConflict
+    }
+}
+
 public struct PhoneRootView: View {
     @ObservedObject var controller: PhoneSessionController
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(controller: PhoneSessionController) {
         self.controller = controller
@@ -14,6 +29,12 @@ public struct PhoneRootView: View {
     public var body: some View {
         let status = controller.status
         let atmo = Atmosphere.of(status)
+        let distantHorizon = PhoneFocusPresentation.usesDistantHorizon(
+            phase: status.phase,
+            isPaused: status.isPaused,
+            storeNeedsRecovery: controller.storeNeedsRecovery,
+            hasSyncConflict: controller.syncStatus.conflict != nil
+        )
         Group {
             if controller.storeNeedsRecovery {
                 StoreRecoveryPane(controller: controller)
@@ -22,25 +43,28 @@ public struct PhoneRootView: View {
             } else if status.isIdle {
                 IdlePane(controller: controller, status: status)
             } else {
-                phasePane(status)
+                phasePane(status, usesDistantHorizon: distantHorizon)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 20)
-        .padding(.top, 12)
+        .padding(.horizontal, distantHorizon ? 0 : 20)
+        .padding(.bottom, distantHorizon ? 0 : 20)
+        .padding(.top, distantHorizon ? 0 : 12)
         .foregroundStyle(atmo.ink)
         .background(FieldCanvas())
         .environment(\.atmosphere, atmo)
-        .animation(Motion.phase, value: status.isPaused)
+        .animation(reduceMotion ? nil : Motion.phase, value: status.isPaused)
+        .animation(reduceMotion ? nil : Motion.phase, value: distantHorizon)
         .preferredColorScheme(.dark)
         .safeAreaInset(edge: .top, spacing: 0) {
-            HStack {
-                Spacer()
-                muteButton(atmo)
+            if !distantHorizon {
+                HStack {
+                    Spacer()
+                    PhoneMuteButton(controller: controller)
+                }
+                .opacity(controller.storeNeedsRecovery ? 0 : atmo.chrome)
+                .allowsHitTesting(!controller.storeNeedsRecovery)
             }
-            .opacity(controller.storeNeedsRecovery ? 0 : atmo.chrome)
-            .allowsHitTesting(!controller.storeNeedsRecovery)
         }
         .alert(item: $controller.activeIssue) { issue in
             Alert(
@@ -69,25 +93,17 @@ public struct PhoneRootView: View {
         }
     }
 
-    private func muteButton(_ atmo: Atmosphere) -> some View {
-        let on = controller.world.config.cuesEnabled
-        return Button {
-            controller.setCuesEnabled(!on)
-        } label: {
-            ChromeGlyph(on ? "speaker.wave.2" : "speaker.slash", lit: on)
-                .frame(width: 44, height: 44)
-        }
-        .buttonStyle(PressStyle())
-        .accessibilityLabel(on ? "Mute cues" : "Unmute cues")
-    }
-
     @ViewBuilder
-    private func phasePane(_ status: SessionStatus) -> some View {
+    private func phasePane(_ status: SessionStatus, usesDistantHorizon: Bool) -> some View {
         switch status.phase {
         case .prime:
             PrimePane(controller: controller, status: status)
         case .focus:
-            FocusPane(controller: controller, status: status)
+            FocusPane(
+                controller: controller,
+                status: status,
+                usesDistantHorizon: usesDistantHorizon
+            )
         case .onBreak:
             BreakPane(controller: controller, status: status)
         case .recall:
@@ -97,6 +113,22 @@ public struct PhoneRootView: View {
         case nil:
             IdlePane(controller: controller, status: status)
         }
+    }
+}
+
+private struct PhoneMuteButton: View {
+    @ObservedObject var controller: PhoneSessionController
+
+    var body: some View {
+        let on = controller.world.config.cuesEnabled
+        Button {
+            controller.setCuesEnabled(!on)
+        } label: {
+            ChromeGlyph(on ? "speaker.wave.2" : "speaker.slash", lit: on)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(PressStyle())
+        .accessibilityLabel(on ? "Mute cues" : "Unmute cues")
     }
 }
 
@@ -562,44 +594,204 @@ private struct FocusPane: View {
     @Environment(\.atmosphere) private var atmo
     @ObservedObject var controller: PhoneSessionController
     var status: SessionStatus
-    @FocusState private var captureFocused: Bool
+    var usesDistantHorizon: Bool
 
     var body: some View {
-        PhaseColumn {
-            if controller.showCapture, !status.isPaused {
-                HairlineField("Park a thought", text: $controller.captureDraft)
-                    .focused($captureFocused)
-                    .onSubmit { controller.submitCapture() }
-                    .onAppear { captureFocused = true }
-            } else {
+        if usesDistantHorizon {
+            PhoneDistantHorizonFocusPane(controller: controller, status: status)
+        } else {
+            PhaseColumn {
                 PhaseLead(status.intention, cue: "Focus", tone: atmo.mute)
-            }
-        } hole: {
-            Aperture(ring: .none) {
-                VStack(spacing: 10) {
-                    InstrumentClock(Format.clock(status.elapsed), size: 56)
-                        .milestoneGrow(elapsed: status.elapsed, paused: status.isPaused)
-                    Accrual(seconds: status.earnedBreakSeconds, label: Format.earned(status.earnedBreakSeconds))
+            } hole: {
+                Aperture(ring: .none) {
+                    VStack(spacing: 10) {
+                        InstrumentClock(Format.clock(status.elapsed), size: 56)
+                        Accrual(
+                            seconds: status.earnedBreakSeconds,
+                            label: Format.earned(status.earnedBreakSeconds)
+                        )
+                    }
                 }
-            }
-        } verb: {
-            if status.isPaused {
+            } verb: {
                 RecoveryVerbs(
                     onRestart: { controller.restartSession() },
                     onContinue: { controller.continueSession() }
                 )
-            } else if controller.showCapture {
-                HStack(spacing: 10) {
-                    QuietButton("Discard", minHeight: 44) { controller.discardCapture() }
-                    InkButton("Park") { controller.submitCapture() }
-                        .disabled(controller.captureDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+    }
+}
+
+private struct PhoneDistantHorizonFocusPane: View {
+    @ObservedObject var controller: PhoneSessionController
+    var status: SessionStatus
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var titleScale: CGFloat = 1
+    @ScaledMetric(relativeTo: .body) private var interfaceScale: CGFloat = 1
+    @FocusState private var captureFocused: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let landscape = size.width > size.height
+            let baseHorizontalInset = min(64, max(24, size.width * 0.064))
+            let leadingInset = max(baseHorizontalInset, proxy.safeAreaInsets.leading + 16)
+            let trailingInset = max(baseHorizontalInset, proxy.safeAreaInsets.trailing + 16)
+            let topInset = max(
+                proxy.safeAreaInsets.top + 18,
+                landscape ? size.height * 0.08 : size.height * 0.105
+            )
+            let bottomInset = max(proxy.safeAreaInsets.bottom + 14, landscape ? 16 : 24)
+
+            ZStack {
+                DistantHorizonBackdrop()
+
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        sceneHeader(width: size.width, landscape: landscape)
+
+                        Spacer(minLength: landscape ? 18 : 44)
+
+                        sceneActions
+                    }
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: max(0, size.height - topInset - bottomInset),
+                        alignment: .topLeading
+                    )
+                    .padding(.leading, leadingInset)
+                    .padding(.trailing, trailingInset)
+                    .padding(.top, topInset)
+                    .padding(.bottom, bottomInset)
+                    .frame(width: size.width)
                 }
-            } else {
-                HStack(spacing: 12) {
-                    QuietButton(parkButtonTitle, minHeight: 44) {
+                .scrollIndicators(.hidden)
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .frame(width: size.width, height: size.height)
+        }
+        .background(Atmosphere.canvas.field)
+    }
+
+    @ViewBuilder
+    private func sceneHeader(width: CGFloat, landscape: Bool) -> some View {
+        let kickerSize = min(18, max(13, width * 0.033) * interfaceScale)
+        let baseTitleSize =
+            landscape
+            ? min(50, max(34, width * 0.064))
+            : min(52, max(38, width * 0.102))
+        let titleSize = min(dynamicTypeSize.isAccessibilitySize ? 68 : 58, baseTitleSize * titleScale)
+        let clockSize = min(42, max(27, width * (landscape ? 0.052 : 0.080)) * interfaceScale)
+        let spacing = landscape ? 9.0 : 14.0
+
+        if controller.showCapture {
+            VStack(alignment: .leading, spacing: spacing) {
+                sceneKicker("Park a thought", size: kickerSize)
+
+                HairlineField("Thought", text: $controller.captureDraft)
+                    .focused($captureFocused)
+                    .frame(maxWidth: min(620, width * 0.82), minHeight: 48, maxHeight: 68)
+                    .onSubmit { controller.submitCapture() }
+                    .onAppear { captureFocused = true }
+
+                InstrumentClock(Format.clock(status.elapsed), size: clockSize)
+                    .foregroundStyle(Atmosphere.rest)
+                    .milestoneGrow(elapsed: status.elapsed, paused: false)
+
+                Accrual(
+                    seconds: status.earnedBreakSeconds,
+                    label: Format.earned(status.earnedBreakSeconds)
+                )
+            }
+        } else {
+            VStack(alignment: .leading, spacing: spacing) {
+                sceneKicker("Focus scene", size: kickerSize)
+
+                VStack(alignment: .leading, spacing: spacing) {
+                    Text(status.intention)
+                        .font(.system(size: titleSize, weight: .regular, design: .rounded))
+                        .foregroundStyle(Atmosphere.canvas.ink)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 3)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    InstrumentClock(Format.clock(status.elapsed), size: clockSize)
+                        .foregroundStyle(Atmosphere.rest)
+                        .milestoneGrow(elapsed: status.elapsed, paused: false)
+
+                    Accrual(
+                        seconds: status.earnedBreakSeconds,
+                        label: Format.earned(status.earnedBreakSeconds)
+                    )
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    "\(status.intention). Focused \(Format.clock(status.elapsed)). \(Format.earned(status.earnedBreakSeconds))."
+                )
+            }
+        }
+    }
+
+    private func sceneKicker(_ title: String, size: CGFloat) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(title)
+                .font(.system(size: size, weight: .medium, design: .rounded))
+                .tracking(0.3)
+                .foregroundStyle(Atmosphere.canvas.mute)
+
+            Spacer(minLength: 12)
+
+            PhoneMuteButton(controller: controller)
+        }
+    }
+
+    @ViewBuilder
+    private var sceneActions: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                if controller.showCapture {
+                    PhoneHorizonAction("Discard", tone: Atmosphere.canvas.mute) {
+                        controller.discardCapture()
+                    }
+                    PhoneHorizonAction("Park", tone: Atmosphere.canvas.ink) {
+                        controller.submitCapture()
+                    }
+                    .disabled(
+                        controller.captureDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+                } else {
+                    PhoneHorizonAction(parkButtonTitle, tone: Atmosphere.canvas.ink) {
                         controller.showCapture = true
                     }
-                    QuietButton("Stop", minHeight: 44) { controller.stopFocus() }
+                    PhoneHorizonAction("End focus", tone: Atmosphere.rest) {
+                        controller.stopFocus()
+                    }
+                    .accessibilityHint("Stops Focus and starts your earned break.")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(spacing: 12) {
+                if controller.showCapture {
+                    PhoneHorizonAction("Discard", tone: Atmosphere.canvas.mute) {
+                        controller.discardCapture()
+                    }
+                    Spacer(minLength: 16)
+                    PhoneHorizonAction("Park", tone: Atmosphere.canvas.ink) {
+                        controller.submitCapture()
+                    }
+                    .disabled(
+                        controller.captureDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+                } else {
+                    PhoneHorizonAction(parkButtonTitle, tone: Atmosphere.canvas.ink) {
+                        controller.showCapture = true
+                    }
+                    Spacer(minLength: 16)
+                    PhoneHorizonAction("End focus", tone: Atmosphere.rest) {
+                        controller.stopFocus()
+                    }
+                    .accessibilityHint("Stops Focus and starts your earned break.")
                 }
             }
         }
@@ -608,6 +800,33 @@ private struct FocusPane: View {
     private var parkButtonTitle: String {
         let count = status.captures.count
         return count == 0 ? "Park thought" : "Park another · \(count)"
+    }
+}
+
+private struct PhoneHorizonAction: View {
+    let title: String
+    let tone: Color
+    let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    init(_ title: String, tone: Color, action: @escaping () -> Void) {
+        self.title = title
+        self.tone = tone
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(.body, design: .rounded).weight(.medium))
+                .foregroundStyle(tone)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .contentShape(Capsule())
+                .opacity(isEnabled ? 1 : 0.35)
+        }
+        .buttonStyle(PressStyle())
     }
 }
 

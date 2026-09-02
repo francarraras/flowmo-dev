@@ -93,8 +93,10 @@ The optional return to the work app active immediately before Flowmo after the
 person explicitly chooses Focus now.
 
 **Focus Scene**:
-A transient Mac presentation of Focus within the same Live Session. It is
-neither a new Session nor a new Loop Beat.
+The Distant Horizon presentation of Focus within the same Live Session. Mac
+offers it as a transient presentation choice; iPhone uses its phone-native
+canvas for every active unpaused Focus. It is neither a new Session nor a new
+Loop Beat.
 
 **Glance**:
 A read-only supporting view of the current clock that never controls the

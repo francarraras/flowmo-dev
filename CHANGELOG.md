@@ -4,6 +4,12 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Brought Distant Horizon to iPhone. Every active unpaused Focus now fills the
+  phone frame with the same ambient gold horizon, intention, honest count-up,
+  and earned-rest signal while keeping Park thought and End focus within reach.
+  Recovery Pause still returns to the frozen compact aperture with Continue
+  and Restart. The horizon adds no Focus deadline, progress ring, session data,
+  sync state, permission, or desktop-only window behavior.
 - Prevented a delayed private-sync conflict button from choosing a newer
   conflict that replaced the one shown on screen. Conflict choices now carry
   the exact displayed conflict and expire harmlessly when that conflict is no

@@ -8,10 +8,10 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 
 | Later item | This slice |
 |---|---|
-| **iPhone** | Yes. Same loop, one compact frame. |
+| **iPhone** | Yes. Same loop, one native frame; active Focus expands into its Distant Horizon canvas. |
 | Widgets | After the app exists. A widget is a glance, not a session. |
 | History | Plain local completed-session list from Idle. |
-| Theme packs | Black + cyan from [`visual.md`](visual.md). Not a pack. |
+| Theme packs | Charcoal, ink, and earned-rest gold from [`visual.md`](visual.md). Not a pack. |
 | iCloud | Private CloudKit sync with the Mac app. |
 | Watch | Later. |
 
@@ -29,8 +29,8 @@ Copy does not claim productivity, well-being, or flow.
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
 - Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write. The phone app synchronizes the loop through the user's private CloudKit database; the widget only reads the App Group copy.
-- Same controls as Mac: Start, Use next / Use last, restore a chosen Completed Session from History, Park thought, review parked thoughts into the Next Step, Stop, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. Close Beat Done carries that exact Session’s explicit Next Step into editable Idle without starting. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
-- Same look rules: black field, cyan on Start and timed rings, clock-in-ring on Prime/Break/Reflection, Focus is a count-up plus earned strip. No Focus progress ring. No Home. No tabs.
+- Same controls as Mac: Start, Use next / Use last, restore a chosen Completed Session from History, Park thought, review parked thoughts into the Next Step, End focus, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. Close Beat Done carries that exact Session’s explicit Next Step into editable Idle without starting. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
+- Same look rules: black field, ink on Start, determinate timed rings, and clock-in-ring on Prime/Break/Reflection. Gold is reserved for Break and earned rest. Active unpaused Focus uses a phone-native Distant Horizon with a count-up and earned-rest mark. No Focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Phase end while you are not looking: a local notification. Tap opens the app; it does not Continue.
 
 ## Out
@@ -38,6 +38,12 @@ Copy does not claim productivity, well-being, or flow.
 Home, tabs, setup, scores, streaks, flashcards, SM-2, history dashboard, Watch, Live Activities, a second engine, Pause during Focus, App Store launch work.
 
 ## Phone vs Mac (honest)
+
+The Mac Focus Scene is an optional movable, resizable window presentation. On
+iPhone there is no desktop window to morph or return from, so the Distant
+Horizon is the active unpaused Focus canvas itself. It keeps Park thought and
+End focus available for touch. A Recovery Pause returns to the compact frozen
+aperture with Continue and Restart.
 
 On Mac, hide/close leaves Flowmo running. On iPhone, background **suspends** the process. Clocks stay honest because they are timestamps, not a ticking timer. Timed phases that should have ended while you were away catch up when Core `sync`s on the next launch or foreground.
 
@@ -66,8 +72,8 @@ session or borrow a cue from older History.
 WHEN the user starts
 THE SYSTEM SHALL enter Prime for 120s with that intention and SHALL NOT ask for it again during Prime.
 
-WHEN Focus is showing
-THE SYSTEM SHALL count up from timestamps, show earned rest, offer Park thought, and SHALL NOT show Pause, a 0–100% focus ring, Home, or tabs.
+WHEN an active unpaused Focus is showing and no recovery or sync decision supersedes it
+THE SYSTEM SHALL fill the phone frame with the Distant Horizon, count up from timestamps, show earned rest, offer Park thought and End focus, and SHALL NOT show Pause, a 0–100% focus ring, Home, or tabs. The horizon SHALL remain ambient geometry rather than progress. Capture SHALL stay on the canvas with Discard and Park.
 
 WHEN the user backgrounds the app during a live session
 THE SYSTEM SHALL not pause. On return the same phase is still moving (or already advanced if a timed beat ran out).

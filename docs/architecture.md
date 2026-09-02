@@ -29,9 +29,9 @@ notifications, and process activation do not belong in the domain module.
 |---|---|---|
 | `FlowmoCore` | Loop state, transitions, timestamp-derived clocks, action-first World commits, validation, and the local `World` store | UI, CloudKit transport, app activation |
 | `FlowmoSync` | Reconciliation, synchronized World persistence, sync metadata, record encoding, and the CloudKit adapter | Session rules or an independent copy of `World` |
-| `FlowmoLook` | Shared visual primitives | Session authority or navigation |
+| `FlowmoLook` | Shared visual primitives, including the cross-platform Distant Horizon backdrop | Session authority or navigation |
 | `FlowmoWindow` | Mac presentation, lifecycle, Focus Guard adapter, Focus Scene, and Work Handoff | Domain transitions or direct file mutation |
-| `FlowmoPhone` | Phone presentation, lifecycle, attention, and widget reload coordination | A second phone-specific session model |
+| `FlowmoPhone` | Phone presentation, including its active-Focus Distant Horizon, lifecycle, attention, and widget reload coordination | A second phone-specific session model |
 | `FlowmoCLI` | Supported terminal commands and versioned JSON projections | Direct JSON editing |
 | App hosts | Bundle configuration, entitlements, and platform packaging | Product rules |
 
@@ -51,7 +51,8 @@ ticks, determine clocks and timed transitions.
 | Mac process-recovery marker | Mac lifecycle recovery | Recovery adapter in its documented lock-held write-ahead and post-persist order |
 | Focus Guard evidence | Local evidence recorder | Focus Guard evidence adapter only |
 | Display preferences | Platform presentation | Mac or phone presentation code |
-| Focus Scene and Work Handoff state | Current Mac process | `FlowmoWindow`; never persisted into `World` |
+| Mac Focus Scene and Work Handoff state | Current Mac process | `FlowmoWindow`; never persisted into `World` |
+| Phone Distant Horizon selection | Derived presentation state | `FlowmoPhone` derives it from the current unpaused Focus and blocking recovery/conflict facts; never persisted into `World` |
 
 The widget is a read-only projection. Glances may navigate to the main product,
 but they never issue Session actions or resume a Recovery Pause; a living view
