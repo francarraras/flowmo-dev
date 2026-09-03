@@ -4,6 +4,10 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Made returning to **Focus scene** unmistakable after **Back to window**. An
+  explicit named Scene action now sits with the live Focus controls in Classic
+  and Mini, so re-entry no longer depends on recognizing the sun-and-horizon
+  presentation icon; the same Focus and count-up clock continue unchanged.
 - Made exact iPhone Continue, Restart, and Done actions commit through one
   World authority. Stale controls now adopt the newer saved Session, and a
   private-sync bookkeeping failure no longer makes a durable local action look

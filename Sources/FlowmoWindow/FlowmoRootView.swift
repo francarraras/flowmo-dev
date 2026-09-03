@@ -6,6 +6,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum FocusSceneEntryControl {
+    static let title = "Focus scene"
+    static let compactTitle = "Scene"
     static let accessibilityLabel = "Open Focus Scene"
     static let accessibilityHint =
         "Opens the same Focus in Scene. The menu also offers Focus Scene and window sizes."
@@ -616,11 +618,16 @@ private struct FocusPane: View {
                         .disabled(controller.captureDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     QuietButton(parkActionTitle) {
                         controller.showCapture = true
                     }
                     .help("Save a thought without leaving Focus")
+                    QuietButton(FocusSceneEntryControl.title) {
+                        controller.enterFocusScene()
+                    }
+                    .help(FocusSceneEntryControl.accessibilityLabel)
+                    .accessibilityHint(FocusSceneEntryControl.accessibilityHint)
                     QuietButton("Stop") { controller.stopFocus() }
                 }
             }
