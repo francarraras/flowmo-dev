@@ -129,8 +129,11 @@ From a clean checkout of the candidate revision:
    ordinary **Focus now** enters Focus and returns to that exact already-running
    app when eligible, while a guarded target is not reopened. Keep app and
    document identity out of screenshots, notes, and bug reports. Verify
-   **Focus scene** enters the same Focus from both Prime and an
-   active Focus, remains movable and resizable, and returns to the exact prior
+   **Focus scene** enters the same Focus from Prime. During an active Focus,
+   enter from Classic's named **Focus scene**, Mini's named **Scene**, the
+   sun-and-horizon primary action, and its explicit menu row. After **Back to
+   window**, re-enter through a named action and the primary action. Confirm
+   Scene remains movable and resizable and returns to the exact prior
    Classic/Mini presentation without changing the clock.
    On iPhone, confirm active unpaused Focus fills the frame with Distant
    Horizon in portrait and landscape, keeps Park thought and End focus

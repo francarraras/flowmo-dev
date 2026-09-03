@@ -114,12 +114,18 @@ struct MiniView: View {
             case .onBreak:
                 QuietButton("Reflect", minHeight: 26) { controller.skip() }
             case .focus:
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     miniIcon("plus", help: "Park a thought — opens Classic") {
                         controller.showCapture = true
                         controller.setDisplayMode(.classic)
                     }
-                    QuietButton("Stop", minHeight: 26) { controller.stopFocus() }
+                    QuietButton(FocusSceneEntryControl.compactTitle, minHeight: 26, compact: true) {
+                        controller.enterFocusScene()
+                    }
+                    .help(FocusSceneEntryControl.accessibilityLabel)
+                    .accessibilityLabel(FocusSceneEntryControl.title)
+                    .accessibilityHint(FocusSceneEntryControl.accessibilityHint)
+                    QuietButton("Stop", minHeight: 26, compact: true) { controller.stopFocus() }
                 }
             case .closeBeat:
                 QuietButton("Done", minHeight: 26) {

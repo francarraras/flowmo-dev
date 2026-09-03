@@ -807,20 +807,28 @@ public struct QuietButton: View {
     @Environment(\.atmosphere) private var atmo
     var title: String
     var minHeight: CGFloat
+    var compact: Bool
     var action: () -> Void
 
-    public init(_ title: String, minHeight: CGFloat = 32, action: @escaping () -> Void) {
+    public init(
+        _ title: String,
+        minHeight: CGFloat = 32,
+        compact: Bool = false,
+        action: @escaping () -> Void
+    ) {
         self.title = title
         self.minHeight = minHeight
+        self.compact = compact
         self.action = action
     }
 
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(.body, design: .rounded).weight(.medium))
+                .font(.system(compact ? .footnote : .body, design: .rounded).weight(.medium))
                 .underline(false)
-                .padding(.horizontal, 12)
+                .lineLimit(compact ? 1 : nil)
+                .padding(.horizontal, compact ? 8 : 12)
                 .frame(minHeight: minHeight)
                 .contentShape(Capsule())
                 .modifier(QuietHoverInk(reach: .zero))

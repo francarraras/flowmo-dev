@@ -8,6 +8,12 @@ import XCTest
 @MainActor
 final class FocusSceneWindowTests: XCTestCase {
     func testSceneEntryControlIsDirectAndOnlyAvailableForAnUnpausedFocus() {
+        XCTAssertEqual(FocusSceneEntryControl.title, "Focus scene")
+        XCTAssertEqual(FocusSceneEntryControl.compactTitle, "Scene")
+        XCTAssertEqual(FocusSceneEntryControl.parkTitle(captureCount: 0), "Park thought")
+        XCTAssertEqual(FocusSceneEntryControl.parkTitle(captureCount: 1), "Park · 1")
+        XCTAssertEqual(FocusSceneEntryControl.parkTitle(captureCount: 10), "Park · 10")
+        XCTAssertEqual(FocusSceneEntryControl.parkTitle(captureCount: 100), "Park · 100")
         XCTAssertTrue(FocusSceneEntryControl.isAvailable(phase: .focus, isPaused: false))
         XCTAssertFalse(FocusSceneEntryControl.isAvailable(phase: .focus, isPaused: true))
         XCTAssertFalse(FocusSceneEntryControl.isAvailable(phase: .prime, isPaused: false))

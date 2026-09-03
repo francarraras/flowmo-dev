@@ -4,6 +4,10 @@ All notable changes to this private beta are recorded here.
 
 ## Unreleased
 
+- Made returning to **Focus scene** unmistakable after **Back to window**. An
+  explicit named Scene action now sits with the live Focus controls in Classic
+  and Mini, so re-entry no longer depends on recognizing the sun-and-horizon
+  presentation icon; the same Focus and count-up clock continue unchanged.
 - Brought Distant Horizon to iPhone. Every active unpaused Focus now fills the
   phone frame with the same ambient gold horizon, intention, honest count-up,
   and earned-rest signal while keeping Park thought and End focus within reach.

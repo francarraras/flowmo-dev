@@ -44,13 +44,14 @@ swift run flowmo status
 
 In the Mac app, Prime offers **Focus now** and **Focus scene**. Focus scene
 starts the same open-ended Focus inside a large, borderless, movable **Distant
-Horizon** canvas. During Focus, the sun-and-horizon presentation control enters
-or re-enters that same Scene directly; its adjacent menu changes Classic/Mini.
-**Back to window** restores the prior Classic/Mini window without
-switching apps while Focus keeps counting; **End focus** starts the earned
-Break. Break offers **Reflect**, and Reflection offers **Skip** while empty or
-**Done** after a next step is written. The supporting CLI keeps the stable
-`skip` verb across these phase actions, including Close Beat.
+Horizon** canvas. During Focus, Classic's named **Focus scene** action, Mini's
+named **Scene** action, and the sun-and-horizon presentation control each enter
+or re-enter that same Scene directly; its adjacent menu changes Classic/Mini.
+**Back to window** restores the prior Classic/Mini window without switching
+apps while Focus keeps counting; **End focus** starts the earned Break. Break
+offers **Reflect**, and Reflection offers **Skip** while empty or **Done** after
+a next step is written. The supporting CLI keeps the stable `skip` verb across
+these phase actions, including Close Beat.
 
 What should happen:
 
