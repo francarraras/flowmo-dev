@@ -1,6 +1,6 @@
 # ADR 0001: One World mutation authority
 
-Technical context and the current compatibility seam are described in
+Technical context and the implemented World mutation seam are described in
 [`../architecture.md`](../architecture.md).
 
 - Status: Accepted
@@ -10,9 +10,9 @@ Technical context and the current compatibility seam are described in
 
 Flowmo has one Live Session per local store. Mac, phone, CLI, recovery, and sync
 all need to change the same persisted `World`, while clocks and stale-action
-checks depend on persisted timestamps. Controllers currently repeat some
-preconditions, and Cloud reconciliation has historically composed a separate
-load and save. That permits a newer local action to be overwritten by a result
+checks depend on persisted timestamps. At the decision point, controllers
+repeated some preconditions, and Cloud reconciliation composed a separate load
+and save. That allowed a newer local action to be overwritten by a result
 computed from stale state.
 
 `Engine` already contains the product state machine, and `Store.update` already
@@ -45,13 +45,15 @@ The authority will:
   its explicit Engine recovery contract; Work Handoff cannot mutate `World`
   and is fail-open.
 
-The authority is extracted incrementally. Until every ordinary writer has
-migrated, `Store.update` remains its compatibility seam and direct `World`
-load/modify/save sequences are prohibited.
+Ordinary action extraction is complete across Mac, phone, and CLI.
+`Store.update` remains the local authority adapter's implementation mechanism
+and an explicitly documented route for selected non-action transactions; it is
+not an ordinary action interface. Direct `World` load/modify/save sequences
+remain prohibited.
 
 ## Implementation status
 
-The first action slice now exists in `FlowmoCore`: `WorldAuthority` accepts an
+The action interface in `FlowmoCore`, `WorldAuthority`, accepts an
 Engine `Event`, an explicit timestamp, and optionally an exact
 `ObservedLiveBeat`. It returns either a durable commit with transition facts or
 a stale result carrying the locked current World. Its package-internal
@@ -70,10 +72,11 @@ warning, blocking post-persist recovery failure, and pre-persist no-commit.
 Recording-adapter tests prove the write-ahead and post-persist boundaries. The
 Mac controller's ordinary Engine `Event` actions also use this authority,
 including exact observations for displayed Live Session gestures and the exact
-completion fact for its Next Step bridge. CLI still uses `Store.update`
-directly. Timed catch-up, presentation-only validation, lifecycle pause and
-claim, reconciliation, conflict, and maintenance operations retain their
-existing dedicated routes.
+completion fact for its Next Step bridge. Every CLI Engine `Event` action uses
+the local authority adapter as a nonvisual current-World action and preserves
+its existing human and JSON projections. Timed catch-up, presentation-only
+validation, lifecycle pause and claim, reconciliation, conflict, and maintenance
+operations retain their existing dedicated routes.
 
 `World` and sync metadata remain separate files for now. A reconciliation or
 local-ownership commit involving both holds the ordered `world.lock` then
@@ -91,8 +94,8 @@ decision with migration, crash-recovery, deletion, and privacy proofs.
 - New adapters cannot replace `World` from a precomputed stale snapshot.
 - A remote-ownership marker names an exact Live Session snapshot, not only a
   reusable session identifier.
-- Mac and phone orchestration can converge behind a small, high-leverage
-  interface without merging their presentation code.
+- Mac, phone, and CLI ordinary actions converge behind a small, high-leverage
+  interface without merging presentation or output code.
 - Ordinary post-commit platform effects may fail independently but cannot
   corrupt the Live Session. The recovery-marker sequence and Work Handoff stay
   small and explicitly proved because their lock-held ordering carries extra

@@ -34,11 +34,12 @@ public enum FlowmoCLI {
         }
     }
 
-    static func run(_ args: [String]) throws -> Int32 {
+    static func run(_ args: [String], store: Store = .default) throws -> Int32 {
         guard let invocation = Invocation(args: args) else {
             print(help)
             return 0
         }
+        let authority = WorldAuthority(store: store)
 
         switch invocation.command {
         case "help", "-h", "--help":
@@ -46,36 +47,26 @@ public enum FlowmoCLI {
             return 0
         case "start":
             let intention = invocation.operands.joined(separator: " ")
-            let engine = try mutate { engine, now in
-                try engine.apply(.start(intention: intention), now: now)
-            }
-            return action(command: invocation.command, message: "Priming.", engine: engine, json: invocation.json)
+            let world = try authority.apply(.start(intention: intention), at: Date()).world
+            return action(command: invocation.command, message: "Priming.", world: world, json: invocation.json)
         case "stop":
-            let engine = try mutate { engine, now in
-                try engine.apply(.stopFocus, now: now)
-            }
+            let world = try authority.apply(.stopFocus, at: Date()).world
             return action(
-                command: invocation.command, message: "Focus stopped. Break started.", engine: engine,
+                command: invocation.command, message: "Focus stopped. Break started.", world: world,
                 json: invocation.json)
         case "skip":
-            let engine = try mutate { engine, now in
-                try engine.apply(.skip, now: now)
-            }
+            let world = try authority.apply(.skip, at: Date()).world
             return action(
                 command: invocation.command,
-                message: skipMessage(for: engine),
-                engine: engine,
+                message: skipMessage(for: world),
+                world: world,
                 json: invocation.json)
         case "continue":
-            let engine = try mutate { engine, now in
-                try engine.apply(.`continue`, now: now)
-            }
-            return action(command: invocation.command, message: "Continued.", engine: engine, json: invocation.json)
+            let world = try authority.apply(.`continue`, at: Date()).world
+            return action(command: invocation.command, message: "Continued.", world: world, json: invocation.json)
         case "restart":
-            let engine = try mutate { engine, now in
-                try engine.apply(.restart, now: now)
-            }
-            return action(command: invocation.command, message: "Priming.", engine: engine, json: invocation.json)
+            let world = try authority.apply(.restart, at: Date()).world
+            return action(command: invocation.command, message: "Priming.", world: world, json: invocation.json)
         case "pause", "resume":
             let message =
                 "pause/resume are not flow controls. Quit or sleep pauses for recovery; continue resumes that phase, restart primes the same intention again."
@@ -85,52 +76,40 @@ public enum FlowmoCLI {
             writeError(message)
             return 2
         case "cancel":
-            let engine = try mutate { engine, now in
-                try engine.apply(.cancel, now: now)
-            }
+            let world = try authority.apply(.cancel, at: Date()).world
             return action(
-                command: invocation.command, message: "Session cancelled.", engine: engine, json: invocation.json)
+                command: invocation.command, message: "Session cancelled.", world: world, json: invocation.json)
         case "capture", "log":
             let text = invocation.operands.joined(separator: " ")
-            let engine = try mutate { engine, now in
-                try engine.apply(.capture(text), now: now)
-            }
-            return action(command: invocation.command, message: "Parked.", engine: engine, json: invocation.json)
+            let world = try authority.apply(.capture(text), at: Date()).world
+            return action(command: invocation.command, message: "Parked.", world: world, json: invocation.json)
         case "recall":
             let text = invocation.operands.joined(separator: " ")
-            let engine = try mutate { engine, now in
-                try engine.apply(.setRecallText(text), now: now)
-            }
+            let world = try authority.apply(.setRecallText(text), at: Date()).world
             return action(
-                command: invocation.command, message: "Recall text saved.", engine: engine, json: invocation.json)
+                command: invocation.command, message: "Recall text saved.", world: world, json: invocation.json)
         case "status":
-            return try status(json: invocation.json)
+            return try status(json: invocation.json, store: store)
         case "live":
-            return try LiveView.run()
+            return try LiveView.run(store: store)
         default:
             writeError("Unknown command: \(invocation.command)\n\n\(help)")
             return 2
         }
     }
 
-    static func mutate(_ body: (inout Engine, Date) throws -> Void) throws -> Engine {
-        try Store.default.update { engine in
-            try body(&engine, Date())
-        }
-    }
-
-    static func action(command: String, message: String, engine: Engine, json: Bool) -> Int32 {
+    static func action(command: String, message: String, world: World, json: Bool) -> Int32 {
         guard json else {
             print(message)
             return 0
         }
         writeJSON(
-            ActionEnvelope(command: command, message: message, state: StatePayload(world: engine.world, now: Date())))
+            ActionEnvelope(command: command, message: message, state: StatePayload(world: world, now: Date())))
         return 0
     }
 
-    static func skipMessage(for engine: Engine) -> String {
-        guard let live = engine.world.live else {
+    static func skipMessage(for world: World) -> String {
+        guard let live = world.live else {
             return "Idle."
         }
         switch live.phase {
@@ -142,8 +121,8 @@ public enum FlowmoCLI {
         }
     }
 
-    static func status(json: Bool) throws -> Int32 {
-        let world: World = try Store.default.update { engine in
+    static func status(json: Bool, store: Store = .default) throws -> Int32 {
+        let world: World = try store.update { engine in
             engine.sync(now: Date())
         }.world
 

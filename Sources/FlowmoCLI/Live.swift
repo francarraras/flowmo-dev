@@ -3,7 +3,7 @@ import FlowmoCore
 import Foundation
 
 enum LiveView {
-    static func run() throws -> Int32 {
+    static func run(store: Store = .default) throws -> Int32 {
         signal(SIGINT, SIG_IGN)
         hideCursor()
         defer { showCursor() }
@@ -11,7 +11,7 @@ enum LiveView {
         let fd = FileHandle.standardInput.fileDescriptor
 
         while true {
-            let world = try Store.default.update { engine in
+            let world = try store.update { engine in
                 engine.sync(now: Date())
             }.world
             let frame = Format.liveView(Engine.sessionStatus(world, now: Date()))

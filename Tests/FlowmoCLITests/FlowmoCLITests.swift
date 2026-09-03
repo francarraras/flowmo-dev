@@ -31,21 +31,34 @@ final class FlowmoCLITests: XCTestCase {
     }
 
     func testActionEnvelopeDoesNotEchoPrivateText() throws {
-        let world = World.empty
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let privateIntention = "synthetic private intention"
+        let privateCapture = "synthetic private parked thought"
+        var engine = Engine()
+        try engine.apply(.start(intention: privateIntention), now: start)
+        try engine.apply(.skip, now: start.addingTimeInterval(1))
+        try engine.apply(.capture(privateCapture), now: start.addingTimeInterval(2))
         let payload = ActionEnvelope(
             command: "start",
             message: "Priming.",
-            state: StatePayload(world: world, now: Date(timeIntervalSince1970: 1_700_000_000)),
+            state: StatePayload(world: engine.world, now: start.addingTimeInterval(3)),
             generatedAt: Date(timeIntervalSince1970: 1_700_000_001)
         )
 
-        let json = try object(payload)
+        let data = try JSONEncoder.flowmo.encode(payload)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
         XCTAssertEqual(json["schemaVersion"] as? Int, 1)
         XCTAssertEqual(json["ok"] as? Bool, true)
         XCTAssertEqual(json["command"] as? String, "start")
-        XCTAssertNotNil(json["state"] as? [String: Any])
-        XCTAssertNil(json["intention"])
-        XCTAssertNil(json["captures"])
+        XCTAssertEqual(
+            Set(json.keys),
+            Set(["schemaVersion", "generatedAt", "ok", "command", "message", "state"])
+        )
+        let state = try XCTUnwrap(json["state"] as? [String: Any])
+        XCTAssertEqual(Set(state.keys), Set(["running", "phase", "paused"]))
+        let rawJSON = String(decoding: data, as: UTF8.self)
+        XCTAssertFalse(rawJSON.contains(privateIntention))
+        XCTAssertFalse(rawJSON.contains(privateCapture))
     }
 
     func testEngineAndUnsupportedControlErrorsUseStableEnvelopes() throws {
@@ -77,22 +90,77 @@ final class FlowmoCLITests: XCTestCase {
         try engine.apply(.start(intention: "write"), now: start)
 
         try engine.apply(.skip, now: start)
-        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Focusing.")
+        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine.world), "Focusing.")
 
         try engine.apply(.skip, now: start.addingTimeInterval(100))
-        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Break started.")
+        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine.world), "Break started.")
 
         try engine.apply(.skip, now: start.addingTimeInterval(101))
         XCTAssertEqual(
-            FlowmoCLI.skipMessage(for: engine),
+            FlowmoCLI.skipMessage(for: engine.world),
             "Reflection: Where will you pick up next?"
         )
 
         try engine.apply(.skip, now: start.addingTimeInterval(102))
-        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Close beat.")
+        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine.world), "Close beat.")
 
         try engine.apply(.skip, now: start.addingTimeInterval(103))
-        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine), "Idle.")
+        XCTAssertEqual(FlowmoCLI.skipMessage(for: engine.world), "Idle.")
+    }
+
+    func testEveryActionVerbPersistsThroughTheSelectedStore() throws {
+        try withStore { store in
+            XCTAssertEqual(try FlowmoCLI.run(["start", "synthetic intention"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.phase, .prime)
+
+            XCTAssertEqual(try FlowmoCLI.run(["skip"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.phase, .focus)
+
+            XCTAssertEqual(try FlowmoCLI.run(["capture", "synthetic thought"], store: store), 0)
+            XCTAssertEqual(try FlowmoCLI.run(["log", "synthetic alias"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.captures.map(\.text), ["synthetic thought", "synthetic alias"])
+
+            XCTAssertEqual(try FlowmoCLI.run(["stop"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.phase, .onBreak)
+
+            XCTAssertEqual(try FlowmoCLI.run(["skip"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.phase, .recall)
+
+            XCTAssertEqual(try FlowmoCLI.run(["recall", "synthetic next step"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.recallText, "synthetic next step")
+
+            XCTAssertEqual(try FlowmoCLI.run(["skip"], store: store), 0)
+            XCTAssertEqual(try store.load().live?.phase, .closeBeat)
+
+            XCTAssertEqual(try FlowmoCLI.run(["skip"], store: store), 0)
+            let completed = try store.load()
+            XCTAssertNil(completed.live)
+            XCTAssertEqual(completed.history.last?.recallText, "synthetic next step")
+
+            XCTAssertEqual(try FlowmoCLI.run(["start", "synthetic recovery"], store: store), 0)
+            let originalID = try XCTUnwrap(store.load().live?.id)
+            _ = try store.update { engine in
+                try engine.apply(.pauseForRecovery, now: Date())
+            }
+
+            XCTAssertEqual(try FlowmoCLI.run(["continue"], store: store), 0)
+            let continued = try XCTUnwrap(store.load().live)
+            XCTAssertEqual(continued.id, originalID)
+            XCTAssertFalse(continued.isPaused)
+
+            _ = try store.update { engine in
+                try engine.apply(.pauseForRecovery, now: Date())
+            }
+            XCTAssertEqual(try FlowmoCLI.run(["restart"], store: store), 0)
+            let restarted = try XCTUnwrap(store.load().live)
+            XCTAssertNotEqual(restarted.id, originalID)
+            XCTAssertEqual(restarted.phase, .prime)
+            XCTAssertEqual(restarted.intention, "synthetic recovery")
+            XCTAssertFalse(restarted.isPaused)
+
+            XCTAssertEqual(try FlowmoCLI.run(["cancel"], store: store), 0)
+            XCTAssertNil(try store.load().live)
+        }
     }
 
     func testHumanErrorRenderingNeutralizesTerminalControlsFromHostileRawJSONKey() throws {
@@ -132,5 +200,13 @@ final class FlowmoCLITests: XCTestCase {
 
     private func errorCode(in object: [String: Any]) -> String? {
         (object["error"] as? [String: Any])?["code"] as? String
+    }
+
+    private func withStore(_ body: (Store) throws -> Void) throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("flowmo-cli-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try body(Store(root: root))
     }
 }
