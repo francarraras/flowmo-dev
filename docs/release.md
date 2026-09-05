@@ -105,6 +105,10 @@ Use the separate `FlowmoPhoneLocal` scheme in `Apps/FlowmoPhone.xcodeproj`:
    agreements, and device trust remain actions for the owner.
 3. Select that connected iPhone as the run destination and Run. If necessary,
    follow Xcode's on-device Developer Mode and provisioning instructions.
+4. If iOS reports an untrusted developer after installation, open **Settings →
+   General → VPN & Device Management → Developer App** on the iPhone and trust
+   the owner's Apple Account entry, then reopen Flowmo Local. This is separate
+   from trusting the connected Mac and enabling Developer Mode.
 
 The local target uses its own bundle identifier and app-container store. It
 does not request App Group, iCloud, or push entitlements and does not embed the
@@ -188,9 +192,9 @@ is moved elsewhere.
 
 ## Required verification
 
-`./Scripts/family-preview` is the executable form of the automated checks and
-packaging rules in this section. The commands remain documented here so CI and
-the release contract are independently reviewable.
+`./Scripts/family-preview` runs the shared gates, packages the Mac app, and
+checks the entitled phone/widget simulator build. Run the Flowmo Local and
+physical-device checks below separately; the script does not cover them.
 
 From a clean checkout of the candidate revision:
 
@@ -208,7 +212,18 @@ From a clean checkout of the candidate revision:
    An entitled candidate instead requires normal Apple provisioning and must
    not use the empty-entitlements or ad-hoc identity overrides.
 
-5. Build and analyze the iPhone app and widget in the simulator:
+5. Build and analyze the chosen local iPhone target in the simulator:
+
+   ```bash
+   xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhoneLocal -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+   xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhoneLocal -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
+   ```
+
+   Inspect the built `FlowmoLocal.app`: no App Group, iCloud, or push
+   entitlements, no remote-notification background mode, and no embedded widget.
+   Verify its independent store and local deletion without migration or sync.
+   Keep the existing entitled phone/widget build as regression proof when shared
+   phone code or project configuration changes; it is outside the chosen delivery scope:
 
    ```bash
    xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
@@ -220,7 +235,8 @@ From a clean checkout of the candidate revision:
 7. Launch and smoke-test on the intended latest macOS version and the latest-iOS
    iPhone 15, 16, and 17 simulators. Exercise each product phase, quit/sleep
    recovery, invalid-store repair, redacted diagnostics, full export, confirmed
-   deletion, Focus Guard failure, phone unavailable state, and widget glance.
+   deletion, Focus Guard failure, and phone unavailable state. Widget glance
+   checks apply only to the entitled target.
    Check first-launch guidance once, tutorial replay, and notification permission
    after its explanation. Install the CLI into a temporary prefix; verify help
    does not mutate a session, unknown commands fail, and q/Escape/Ctrl-C leave
@@ -251,15 +267,27 @@ From a clean checkout of the candidate revision:
    into editable Idle without starting; repeat with a blank step. Stale
    competing completion remains a controller regression proof rather than a
    live smoke setup.
+   For Flowmo Local, also follow [Free personal testing](#free-personal-testing)
+   on the owner's trusted iPhone with their Personal Team; the simulator's
+   ad-hoc signing overrides are not device provisioning instructions. Record
+   actual installation and launch separately from simulator success. With
+   synthetic data, verify tutorial persistence/replay and explicit notification
+   permission, Prime's background reminder, both Break and Reflection reminders
+   during one uninterrupted background period, and force-quit recovery with
+   Continue and Restart. Profile renewal must later be checked by reinstalling
+   over the same app and confirming its history remains; do not claim it from
+   an initial install.
    For an entitled sync candidate, also test two signed-in devices: make an
    offline change on each, confirm distinct history unions, confirm simultaneous
    live starts block for a choose-one decision, verify account switching never
    uploads the prior account's pending data, and verify offline Delete All stays
    visibly incomplete until CloudKit confirms deletion.
 8. Review `CHANGELOG.md`, `PRIVACY.md`, `SECURITY.md`, `PROVENANCE.md`, and
-   `THIRD_PARTY_NOTICES.md`. Validate `Apps/PrivacyInfo.xcprivacy` and confirm it
-   is present in the built Mac, phone, and widget bundles; then archive the exact
-   test results with the release revision.
+   `THIRD_PARTY_NOTICES.md`. Validate the local phone's
+   `Apps/FlowmoPhoneLocal/PrivacyInfo.xcprivacy`, confirm it is bundled and declares
+   no collected data or tracking. For the Mac and entitled phone/widget builds,
+   validate their shared `Apps/PrivacyInfo.xcprivacy` and bundled copies. Archive
+   the exact test results with the release revision.
 9. Record the candidate commit, Xcode version, macOS version, simulator runtime,
    and device models. Confirm `git diff --check` passes and the committed
    candidate checkout is clean.
