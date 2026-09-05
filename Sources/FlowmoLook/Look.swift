@@ -34,7 +34,7 @@ public struct Atmosphere: Equatable, Sendable {
         field: hex(0x090A0C),
         ink: hex(0xF3F1EA),
         mute: hex(0x9A958A),
-        faint: hex(0x4A4842),
+        faint: hex(0x817D73),
         line: hex(0x1C1B18),
         track: hex(0x32302C),
         chrome: 1

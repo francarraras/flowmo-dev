@@ -1,105 +1,159 @@
 # Flowmo
 
-Stop counting down. Start flowing up.
+**Focus until you're ready to stop. Let your break grow with you.**
 
-A Flowmodoro. You work until you stop. Rest is earned from how long you focused. One charcoal window. One circle that does not move.
+Flowmo is a Flowmodoro for Mac, iPhone, and the Mac terminal. Set an intention,
+work with an open-ended count-up clock, take the rest you earned, and leave a
+clear next step for later. No fixed Focus deadline, scores, or streaks.
 
-The name and tagline are working placeholders. Branding, marketing, and
-commercial decisions are not current product work.
+The Mac window is the main product, with a menu-bar clock and an optional
+Distant Horizon Focus scene. iPhone runs the same loop in a native interface.
+The terminal controls and displays the same local session as the Mac app.
 
-Read in this order when landing work:
+**Current status:** local release candidate. No public download or iPhone beta
+link is published here yet. Mac preview packages are ad-hoc signed and are not
+notarized. The working name is Flowmo. This candidate proposes the
+[MIT license](LICENSE) for open-source distribution; it has not been publicly
+released.
 
-1. **Terms:** [`CONTEXT.md`](CONTEXT.md)
-2. **Behavior:** [`docs/PROJECT.md`](docs/PROJECT.md)
-3. **Architecture:** [`docs/architecture.md`](docs/architecture.md)
-4. **Feature and proof routing:** [`docs/feature-map.md`](docs/feature-map.md)
+## The loop
 
-The current visual contract is in [`docs/visual.md`](docs/visual.md).
+1. **Intention:** write what you want to work on, then Start.
+2. **Prepare:** take up to two minutes to settle in, or choose Focus now.
+3. **Focus:** the clock counts up until you choose End focus. Park a thought
+   without leaving the session. Gold shows the rest you have earned.
+4. **Break:** rest in proportion to your Focus time. Choose Reflect when ready.
+5. **Reflection:** write where you will pick up next, or use a parked thought.
+6. **Finish:** review the session. Done carries its next step into editable Idle;
+   starting another session is always your choice.
 
-## Open the window
+There is no Pause during Focus. After quit, crash, or sleep recovery, Continue
+resumes the frozen phase and Restart begins preparation again. Opening the app
+never resumes a recovery-paused session automatically.
+
+On Mac, **Focus scene** opens a movable, resizable horizon canvas. **Back to
+window** restores Classic or Mini while the same Focus keeps counting. On
+iPhone, the horizon is the active Focus screen. History is a simple list of
+completed sessions from which you can restore a next step or intention.
+
+## Run from source
+
+You need a Mac running **macOS 14 or newer** and Xcode with **Swift 6 or newer**.
+Run these commands from the repository root; the included license describes
+source use and redistribution rights.
+
+To open the Mac window immediately:
 
 ```bash
-cd ~/dev/flowmo
 swift run flowmo
 ```
 
-Leave that running. That is the app.
-
-## Drive it from the terminal
-
-Open a second terminal in the same folder. Paste one line at a time. Watch the window, not the text that prints.
+To build the Dock app in local-only mode:
 
 ```bash
-cd ~/dev/flowmo
-
-swift run flowmo start "try the loop"    # Prime
-swift run flowmo skip                    # Focus
-swift run flowmo capture "parked line"
-swift run flowmo stop                    # Break
-swift run flowmo skip                    # Reflection
-swift run flowmo skip                    # Close Beat
-swift run flowmo skip                    # Idle
-swift run flowmo status
+xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release -derivedDataPath .build/mac CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS= AD_HOC_CODE_SIGNING_ALLOWED=YES build
+open .build/mac/Build/Products/Release/Flowmo.app
 ```
 
-In the Mac app, Prime offers **Focus now** and **Focus scene**. Focus scene
-starts the same open-ended Focus inside a large, borderless, movable **Distant
-Horizon** canvas. During Focus, Classic's named **Focus scene** action, Mini's
-named **Scene** action, and the sun-and-horizon presentation control each enter
-or re-enter that same Scene directly; its adjacent menu changes Classic/Mini.
-**Back to window** restores the prior Classic/Mini window without switching
-apps while Focus keeps counting; **End focus** starts the earned Break. Break
-offers **Reflect**, and Reflection offers **Skip** while empty or **Done** after
-a next step is written. The supporting CLI keeps the stable `skip` verb across
-these phase actions, including Close Beat.
+To use iPhone, open `Apps/FlowmoPhone.xcodeproj` in Xcode, select the FlowmoPhone
+scheme and an iPhone simulator, then Run. The app requires **iOS 17 or newer**.
+Physical-device builds need a development team and provisioning for the App
+Group, CloudKit, and push capabilities. A simulator build is not an installable
+iPhone download. See [distribution options](docs/release.md#github-first-distribution).
 
-What should happen:
+## Install the terminal command
 
-- After Start, the circle stays put. Start is gone.
-- Focus counts up. Gold is rest you are earning.
-- Break is gold.
-- Close Beat shows **Focused**, **Break earned**, and anything worth returning to. When that session has an explicit next step, **Done** carries it into the editable Idle intention without starting; otherwise Idle stays empty. **Use next** can restore the newest explicit cue later.
-- During **Reflection**, review parked lines and use one as the editable next step.
-- **History** keeps every parked line and can return any chosen session’s next step—or its intention—to Idle for confirmation.
-
-Same session as the window. The current local store is `~/.flowmo/world.json`,
-but it is internal storage—not a supported write API. Automation should use the
-CLI verbs against that same store; direct `world.json` writes are unsupported.
-The Mac app keeps privacy-bounded Focus Guard instrumentation separately in
-`~/.flowmo/evidence.json`; that file is also internal storage, not an automation
-contract. In the WP3 implementation, **Stay focused** may reactivate the exact
-prior unguarded process instance; a matching activation notification within
-one second is required before that attempt counts as confirmed.
+Build once and install into your own `~/.local/bin`:
 
 ```bash
-swift run flowmo live      # ticking view of that session
-swift run flowmo check     # core proofs
-swift run flowmo-wp3-gate --help  # optional local WP3 field-audit evaluator
+swift build -c release --product flowmo
+./Scripts/install-cli --binary "$(swift build -c release --show-bin-path)/flowmo"
+export PATH="$HOME/.local/bin:$PATH"
+flowmo --version
 ```
 
-## Script integration
+Add the PATH line to your shell configuration to keep it in new terminals.
+The installer does not change your shell configuration or session data, and
+does not replace an existing executable without `--replace`.
 
-`status --json` is the read contract for automation. Its response has
-`schemaVersion: 1`, a `generatedAt` timestamp, and a `status` object. Supported
-action commands (`start`, `stop`, `skip`, `continue`, `restart`, `cancel`,
-`capture`, and `recall`) accept `--json` in any position after the command and
-return a structured success or error envelope. The action envelope deliberately
-does not echo intentions, captures, or Reflection text; call `status --json` only
-when that text is needed.
+For a locally generated CLI archive, verify its separately supplied SHA-256
+checksum before extracting it. From the extracted folder, run `./install.sh`.
+These engineering archives are currently ad-hoc signed; they are not trusted
+public downloads. Follow the [release procedure](docs/release.md) for signing
+and review before broader distribution. Never disable macOS security settings
+or remove quarantine to get an archive running.
 
-`pause` and `resume` are not CLI flow controls. Recovery uses `continue` or
-`restart` after quit/sleep. There is no Focus pause command. Other action
-commands return `recovery_paused` until recovery is resolved.
+## Use the terminal
 
-iPhone is a native app (`Apps/FlowmoPhone.xcodeproj`) that synchronizes the loop
-with the entitled Mac app through the user's private CloudKit database. Both
-keep working from local replicas when CloudKit is unavailable; simultaneous
-offline starts require an explicit choose-one decision. Active unpaused Focus
-uses a phone-native Distant Horizon with the same timestamp count-up, earned
-rest, Park thought, and End focus; Recovery Pause keeps the compact frozen
-aperture. The old tree in `~/Flowmo` is reference only.
+```bash
+flowmo start "write the next section"  # Prepare
+flowmo skip                           # Enter Focus
+flowmo capture "check this later"     # Park a thought
+flowmo live                           # Watch the clock; q leaves this view
+flowmo stop                           # Earned Break
+flowmo skip                           # Reflection
+flowmo recall "continue with examples"
+flowmo skip                           # Session summary
+flowmo skip                           # Finish and return to Idle
+flowmo status
+```
 
-## Fast checks
+Run `flowmo --help` for commands, or `flowmo start --help` for usage without
+starting. With no arguments, `flowmo` opens a Mac window. `continue` and
+`restart` are recovery actions; there is no Focus pause command.
+
+The CLI and Mac app share one local session. Their store is internal storage,
+not a supported write API. Use CLI commands for automation instead of editing
+JSON files. Terminal session text can enter your shell history; use the window
+when you prefer not to put an intention in a command.
+
+### Automation
+
+`flowmo status --json` returns `schemaVersion: 1`, `generatedAt`, and `status`.
+Supported action commands accept `--json` and return a structured success/error
+envelope. Action responses do not echo intention, capture, or Reflection text;
+the status response includes private session text when present. Unknown commands
+and unsupported options fail without opening a window or performing an action.
+
+## Updates and removal
+
+Quit running Flowmo terminal/window instances before replacing the executable.
+Rebuild with the source-install instructions above and add `--replace` to the
+installer command. For a packaged CLI upgrade, use `./install.sh --replace`.
+For a Mac app upgrade, replace Flowmo.app in Applications after quitting it.
+Updates preserve session data; there is no automatic updater yet.
+
+To uninstall the default terminal installation, remove only its executable:
+
+```bash
+rm "$HOME/.local/bin/flowmo"
+```
+
+For a custom `--prefix`, remove `bin/flowmo` beneath that prefix instead. Move
+Flowmo.app to Trash to remove the Dock app. To remove session data as well, use
+**Data → Delete All Data** while Idle before uninstalling. Entitled sync builds
+also request deletion from private iCloud; offline deletion remains incomplete
+until the cloud confirms it. Review the confirmation before proceeding.
+
+## Privacy and sync
+
+There is no Flowmo server, advertising, or third-party analytics SDK. Mac and
+iPhone offer redacted diagnostics, full-data export, and confirmed deletion.
+Full exports contain private text and should not be attached to public issues.
+
+Appropriately signed Mac and iPhone apps can synchronize through the user's
+private CloudKit database. Both work locally when iCloud is unavailable;
+incompatible live sessions require an explicit choice. The local Mac preview
+and CLI carry no CloudKit entitlement. CLI changes synchronize only when an
+entitled Mac app observes the shared store. The phone widget is a read-only
+glance at the phone's local copy.
+
+Read the [privacy policy](PRIVACY.md) and [security-reporting policy](SECURITY.md).
+Public support and donation destinations have not been configured. Preview
+testers should contact the person who supplied their build, sharing a redacted
+diagnostic report and reproducible steps, not private session content.
+
+## Development and release checks
 
 ```bash
 swift format lint --strict --recursive Package.swift Sources Tests Apps
@@ -108,12 +162,15 @@ swift run -Xswiftc -warnings-as-errors flowmo check
 swift build -c release -Xswiftc -warnings-as-errors
 ```
 
-These are fast development checks, not the complete candidate gate. Follow the
-[`release procedure`](docs/release.md) for full candidate verification.
+These are development checks, not the complete candidate gate. Follow the
+[release procedure](docs/release.md) for platform analysis, manual smoke,
+signing, and packaging. `Scripts/package-cli` creates a local universal CLI
+archive; `Scripts/family-preview` prepares the reviewed Mac preview. Neither
+publishes a release.
 
-The Mac and iPhone apps also provide redacted diagnostic export, full-data
-export, invalid-store recovery, and confirmed deletion while Idle. The Mac Data
-view separately exports its best-effort aggregate Focus Guard counts; nothing
-is uploaded automatically, and **Delete All Data** removes them. See the
-[`release procedure`](docs/release.md), [`privacy policy`](PRIVACY.md), and
-[`security policy`](SECURITY.md) before sharing a build.
+For implementation work, read [terms](CONTEXT.md), [product behavior](docs/PROJECT.md),
+[architecture](docs/architecture.md), and the [feature/proof map](docs/feature-map.md).
+The [visual contract](docs/visual.md), [Focus Guard](docs/focus-guard.md),
+[menu-bar clock](docs/menu-bar.md), and [terminal view](docs/live.md) describe
+their respective behavior. `swift run flowmo-wp3-gate --help` opens the optional
+local Focus Guard field-audit evaluator.

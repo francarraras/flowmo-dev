@@ -1,6 +1,6 @@
 # Privacy
 
-Last updated: 2026-08-29
+Last updated: 2026-09-05
 
 Flowmo does not currently operate a server and contains no third-party
 analytics, advertising, or crash-reporting SDK. The entitled Mac and iPhone
@@ -15,6 +15,13 @@ completed-session history, cue preference, fixed break ratio, and selected
 Focus Guard application identifiers. The Mac store is normally
 `~/.flowmo/world.json`; `FLOWMO_HOME` is a development override. The iPhone app
 and widget use the private `group.app.flowmo.phone` App Group container.
+
+Mac and iPhone also keep a tutorial-completion version in the app's local
+preferences, so skipping or finishing the introduction prevents automatic
+repetition. This preference contains no session content, is not added to
+CloudKit or exports, and is not used for analytics. Tutorial pages and replay
+state are temporary UI state. Deleting session data leaves this presentation
+preference intact; **Data → How it works** remains available for replay.
 
 The Mac and phone apps also keep bounded sync metadata beside their local
 store. It can include a validated local or remote session replica, a durable
@@ -62,6 +69,9 @@ On Mac, Focus Guard observes local application activation only to hide apps the
 user selected during Focus. It does not use Accessibility control, terminate
 processes, or send application activity anywhere. Flowmo may also ask the
 operating system for local-notification permission and play system sounds.
+Permission is requested only when the person chooses **Enable notifications**
+in the tutorial or Data. Scheduled phone notifications contain generic phase
+messages and deadlines, never an intention, parked thought, or Reflection text.
 
 The local JSON file is internal storage, not a supported write API. Automation
 should use supported CLI commands.
@@ -73,6 +83,11 @@ apps retain the loop in the user's private iCloud account. It also declares
 required-reason code `C617.1` because Flowmo inspects the size and type of files
 inside its own app and App Group containers to read local stores safely. That
 file metadata is not sent to Flowmo or used for tracking.
+
+The shared manifest also declares UserDefaults reason `CA92.1` for app-only
+presentation preferences such as tutorial completion and Mac display mode,
+consistent with [Apple's approved API reasons](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype).
+These preferences are not shared through App Group defaults.
 
 On Mac, a small local lifecycle marker stores a process identity, the current
 session identifier (not its text), and an observation timestamp so a crash or

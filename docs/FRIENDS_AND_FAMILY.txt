@@ -1,6 +1,6 @@
 FLOWMO — FRIENDS & FAMILY MAC PREVIEW
 
-Version 1.0 (build 3)
+Version 1.0 (build 4)
 Requires macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
 
 BEFORE YOU OPEN IT
@@ -40,6 +40,29 @@ Type an intention and start. Focus counts upward until you stop; Flowmo is not
 a 25-minute countdown timer and there is no Focus pause button. This is preview
 software, so do not use it as the only copy of anything important.
 
+The loop is: write an intention, prepare, Focus, take earned Break, leave a next
+step in Reflection, then finish. Focus now skips the remaining preparation.
+Focus scene opens the larger horizon canvas; Back to window restores the
+smaller window while the clock continues. Park thought saves a distraction for
+later. Reflection can turn a parked thought into the next step, and Done puts
+that step back into editable Idle without starting another session.
+
+After quit or sleep recovery, the clock stays frozen until you choose Continue
+or Restart. Simply opening a window does not resume it. Please check first-run
+guidance, repeat access to the tutorial, readable text, and keyboard controls
+alongside your ordinary session.
+
+OPTIONAL TERMINAL COMMAND
+
+The Mac app ZIP does not install the separate terminal command. If you receive
+a matching terminal archive, verify its separately supplied checksum, extract
+it, and run ./install.sh from that folder. It installs into ~/.local/bin and
+prints the PATH instruction. Start with flowmo --help and flowmo --version.
+The command shares the Mac app's local session. To upgrade, quit running
+Flowmo instances and use ./install.sh --replace. Removing ~/.local/bin/flowmo
+uninstalls the command while preserving session data. Downloaded engineering
+archives may be blocked by macOS; do not disable security or remove quarantine.
+
 PRIVACY
 
 Flowmo keeps its session data on this Mac. It has no Flowmo server, advertising,
@@ -52,7 +75,7 @@ REPORTING A PROBLEM
 
 Reply privately to the person who sent you this preview with:
 
-- Flowmo version 1.0 (build 3)
+- Flowmo version 1.0 (build 4)
 - your macOS version and Mac model
 - what you did
 - what you expected

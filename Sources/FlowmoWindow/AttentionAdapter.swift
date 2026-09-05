@@ -16,6 +16,10 @@ public final class AttentionAdapter: NSObject, UNUserNotificationCenterDelegate 
         super.init()
         guard canNotify else { return }
         UNUserNotificationCenter.current().delegate = self
+    }
+
+    public func requestPermission() {
+        guard canNotify else { return }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
     }
 

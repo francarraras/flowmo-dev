@@ -5,6 +5,77 @@ The repository owner is recorded as Fran Carrara. Flowmo is the working name
 until the owner reopens branding. An owner-authorized Mac-only friends-and-family
 preview may be shared under the explicit limitations below.
 
+## GitHub-first distribution
+
+The near-term distribution target is a GitHub release with a Mac app and a
+separate Mac terminal executable. App Store publication is not a prerequisite
+or part of this candidate. No public download, donation address, or iPhone beta
+link is configured yet; do not add invented destinations or describe a local
+candidate as published.
+
+- **Mac:** direct downloads can use Developer ID signing, Hardened Runtime,
+  secure timestamping, notarization, and stapling without a Mac App Store
+  listing. An iCloud-enabled build additionally needs the correct Developer ID
+  provisioning profile. Current scripts produce ad-hoc local-only candidates,
+  not this trusted-download artifact. See [Apple Developer ID support](https://developer.apple.com/support/developer-id/).
+- **Terminal:** distribute a separate universal executable and installer, with
+  a checksum, matching app version/build, and installation, upgrade, and removal
+  instructions. The Xcode Mac app host does not serve CLI commands.
+- **iPhone:** a GitHub IPA is not a general installation route. Registered-device
+  Ad Hoc testing needs a paid team and device registration (up to 100 iPhones
+  per membership year). TestFlight is an optional beta channel without a public
+  App Store listing, but still uses Apple infrastructure, first external-build
+  review, and 90-day build expiry. Regional alternative distribution has separate
+  eligibility and review requirements; it is not a worldwide GitHub-download
+  shortcut. See [devices](https://developer.apple.com/help/account/devices/devices-overview),
+  [TestFlight](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/),
+  and [regional alternatives](https://developer.apple.com/documentation/marketplacekit/participating-in-alternative-distribution-for-specific-regions).
+
+The owner chose an open-source direction; this working-tree candidate proposes
+MIT in `LICENSE`, using the recorded copyright owner. Review that exact license
+with the candidate before public release. Add an actual public support route,
+privacy contact, and confidential security-report route. A donation can be a
+README/About link and `.github/FUNDING.yml` once the owner supplies a destination;
+no payment SDK or account system is needed. See [GitHub licensing](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository)
+and [funding links](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository).
+
+### Terminal candidate packaging
+
+After the code and version metadata are reviewed, run from a clean committed
+checkout:
+
+```bash
+./Scripts/package-cli
+```
+
+This builds the SwiftPM `flowmo` product for arm64 and x86_64, combines the
+executables, ad-hoc signs with Hardened Runtime, and creates a versioned `.tar.gz`,
+SHA-256 file, and manifest in ignored `dist/`. The archive includes an installer,
+executable checksum, license, privacy policy, and readme. Packaging extracts the
+exact archive and verifies its architectures, signature, checksum, version,
+and isolated idle JSON response. It refuses existing output names, checks that
+the embedded CLI version/build matches the Mac project, and never uploads,
+pushes, tags, or changes the preview ledger. A clean package is still a candidate
+and requires the complete gates and owner review before distribution.
+
+`--allow-dirty` builds an engineering archive visibly marked **DIRTY / DO NOT
+DISTRIBUTE**; use it only to test packaging before the candidate is committed.
+Both modes build an isolated source snapshot; dirty mode fingerprints the
+source around the copy and stops if concurrent edits change it. `--output-dir
+PATH` changes the output location. Neither mode applies Developer
+ID signing or notarization. Broader distribution requires a separately reviewed
+signed/notarized packaging route that includes the CLI executable.
+
+Verify a supplied archive with `shasum -a 256 -c ARCHIVE.tar.gz.sha256` using the
+actual checksum filename, then extract it. From the extracted folder, run
+`./install.sh`; installation defaults to `~/.local/bin` and prints the PATH
+instruction without editing shell configuration. The installer checks the
+executable checksum and preserves extended attributes, including quarantine.
+After quitting running Flowmo instances, `./install.sh --replace` explicitly
+upgrades an existing installation. `--prefix PATH` chooses another prefix.
+Removing only `PREFIX/bin/flowmo` uninstalls the command and preserves sessions.
+The README also documents installation directly from a permitted source build.
+
 ## Free personal testing
 
 An Apple Account with Xcode's Personal Team is enough for the owner to run local
@@ -55,7 +126,8 @@ After a change is finished:
 
 1. Add or update the relevant proof, move tester-visible notes from Unreleased
    into a `VERSION (BUILD)` changelog section, increment both Mac
-   `CURRENT_PROJECT_VERSION` settings, and synchronize
+   `CURRENT_PROJECT_VERSION` settings, synchronize the CLI’s embedded
+   `Sources/FlowmoApp/Info.plist` version/build, and synchronize
    `docs/FRIENDS_AND_FAMILY.txt`.
 2. Review and commit the exact candidate. Packaging a dirty worktree is not a
    release record.
@@ -120,6 +192,11 @@ From a clean checkout of the candidate revision:
    iPhone 15, 16, and 17 simulators. Exercise each product phase, quit/sleep
    recovery, invalid-store repair, redacted diagnostics, full export, confirmed
    deletion, Focus Guard failure, phone unavailable state, and widget glance.
+   Check first-launch guidance once, tutorial replay, and notification permission
+   after its explanation. Install the CLI into a temporary prefix; verify help
+   does not mutate a session, unknown commands fail, and q/Escape/Ctrl-C leave
+   the living view immediately with the terminal restored. Explicitly upgrade
+   that installation and verify its local session data is preserved.
    For WP3, confirm one real-app **Stay focused** path returns to the exact prior
    app, and confirm an unavailable prior app preserves the safe hidden fallback.
    Confirm a second Mac process cannot mutate the first process's lifecycle and
@@ -181,12 +258,15 @@ release described as Apple-trusted. They do not block the explicitly scoped,
 ad-hoc friends-and-family Mac preview above:
 
 - Enroll the legal owner in the paid Apple Developer Program. Apple currently
-  lists it as US$99/year. Create the app identifiers, App Group, certificates,
-  push capability, `iCloud.app.flowmo` CloudKit container, and provisioning
-  profiles under that team. Promote the tested CloudKit development schema to
-  production before a production-signed build.
-- Create the App Store Connect app record. Increase `CURRENT_PROJECT_VERSION`
-  for every uploaded build and keep the phone app and widget versions aligned.
+  lists it as US$99/year. A local-only Mac release needs Developer ID signing
+  and notarization; it does not require App Group, CloudKit, or push setup.
+- **For iPhone and entitled sync builds:** create the app identifiers, App
+  Group, certificates, push capability, `iCloud.app.flowmo` CloudKit container,
+  and provisioning profiles under that team. Promote the tested CloudKit
+  development schema to production before a production-signed sync build.
+- **For TestFlight only:** create the App Store Connect app record. Increase
+  `CURRENT_PROJECT_VERSION` for every uploaded build and keep the phone app and
+  widget versions aligned.
   Complete the required TestFlight metadata, review notes, export-compliance
   answers, privacy answers, and tester groups before inviting anyone.
 - Decide the distribution paths. External TestFlight builds receive TestFlight
@@ -195,22 +275,21 @@ ad-hoc friends-and-family Mac preview above:
   secure timestamping, Hardened Runtime, notarization, and stapling.
 - Supply an app icon/working visual identity, hosted privacy-policy URL, in-app
   privacy access, support contact, and confidential security channel.
-- Tell testers that Apple TestFlight automatically collects crash and usage
-  data. Use TestFlight crash reports plus Flowmo's opt-in redacted diagnostic
+- **For TestFlight only:** tell testers that Apple automatically collects crash
+  and usage data. Use TestFlight crash reports plus Flowmo's opt-in redacted diagnostic
   export; do not add third-party analytics merely to discover bugs.
 - Confirm export-compliance answers for every build. The current iPhone targets
   declare no non-exempt encryption because Flowmo ships no cryptography; review
   that declaration whenever networking or cryptographic code changes.
 - Re-audit required-reason APIs and `Apps/PrivacyInfo.xcprivacy` whenever file,
   device, preferences, or third-party SDK APIs change.
-- Keep App Store privacy answers aligned with the manifest: private iCloud
-  synchronization uses Other User Content and Product Interaction, linked to
+- **For an App Store Connect submission:** keep privacy answers aligned with the
+  manifest: private iCloud synchronization uses Other User Content and Product Interaction, linked to
   the user's iCloud identity, solely for app functionality, with no tracking.
-- Confirm the legal owner name and Git author aliases in `PROVENANCE.md`. Use
-  Apple's standard EULA for an App Store/TestFlight distribution unless counsel
-  chooses a custom agreement. Direct Mac distribution needs separately
-  presented terms. Get counsel before relying on custom consumer, liability,
-  confidentiality, feedback-IP, or commercial terms.
+- Confirm the copyright owner name and Git author aliases in `PROVENANCE.md`.
+  Include the reviewed `LICENSE` with direct Mac and terminal distributions.
+  Apple agreements and submission terms apply if TestFlight is chosen; they
+  are not a requirement to publish the source repository on GitHub.
 - Tag only a clean, reviewed revision. Retain the prior signed build, symbols,
   changelog, and rollback notes.
 
@@ -221,10 +300,11 @@ comparison](https://developer.apple.com/support/compare-memberships/),
 [app privacy](https://developer.apple.com/app-store/app-privacy-details/), and
 [license agreements](https://developer.apple.com/help/app-store-connect/manage-app-information/provide-a-custom-license-agreement).
 
-## Before charging
+## Optional support links
 
-Branding and the eventual business entity remain deferred decisions. Before a
-paid App Store release, the Account Holder must accept Apple's Paid Apps
-Agreement and complete banking/tax setup. Entity, consumer-law, tax, subscription,
-and custom-license choices require jurisdiction-specific professional advice;
-Estonian e-residency is not assumed by this codebase.
+Donation support is sufficient for the current GitHub-first direction. Add only
+a real owner-approved destination to README/About or `.github/FUNDING.yml`;
+do not interrupt a session or add payment infrastructure to ship this candidate.
+Branding and any later commercial model remain separate decisions. An App Store
+paid-app agreement, in-app purchases, subscriptions, and store marketing are not
+requirements for this direct-distribution candidate.

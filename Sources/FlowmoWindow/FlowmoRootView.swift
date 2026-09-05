@@ -23,10 +23,12 @@ enum FocusSceneEntryControl {
 
 struct FlowmoRootView: View {
     @ObservedObject var controller: FlowmoSessionController
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let status = controller.status
         let atmo = Atmosphere.of(status)
+        let introduction = controller.introduction.isPresented && controller.canShowIntroduction
         let focusScene =
             controller.isFocusSceneActive
             && !controller.storeNeedsRecovery
@@ -36,6 +38,8 @@ struct FlowmoRootView: View {
             controller.displayMode == .mini
             && !controller.storeNeedsRecovery
             && !controller.lifecycleNeedsRecovery
+            && controller.syncStatus.conflict == nil
+            && !introduction
         let size = controller.effectiveWindowContentSize
         Group {
             if focusScene {
@@ -46,6 +50,11 @@ struct FlowmoRootView: View {
                 SyncConflictPane(controller: controller, conflict: conflict)
             } else if controller.lifecycleNeedsRecovery {
                 LifecycleRecoveryPane(controller: controller)
+            } else if introduction {
+                IntroductionView(
+                    state: controller.introduction,
+                    onRequestNotifications: controller.requestNotifications
+                )
             } else if mini {
                 MiniView(controller: controller, status: status)
             } else if status.isIdle {
@@ -66,9 +75,13 @@ struct FlowmoRootView: View {
         .foregroundStyle(atmo.ink)
         .background(FieldCanvas())
         .environment(\.atmosphere, atmo)
-        .animation(Motion.phase, value: status.isPaused)
-        .animation(Motion.phase, value: controller.displayMode)
-        .animation(Motion.phase, value: focusScene)
+        .animation(reduceMotion ? nil : Motion.phase, value: status.isPaused)
+        .animation(reduceMotion ? nil : Motion.phase, value: controller.displayMode)
+        .animation(reduceMotion ? nil : Motion.phase, value: focusScene)
+        .onAppear { controller.presentIntroductionIfNeeded() }
+        .onChange(of: controller.canShowIntroduction) { _, _ in
+            controller.presentIntroductionIfNeeded()
+        }
         .preferredColorScheme(.dark)
         .overlay(alignment: .topLeading) {
             if mini, !focusScene {
@@ -80,7 +93,7 @@ struct FlowmoRootView: View {
             }
         }
         .overlay(alignment: .topTrailing) {
-            if !focusScene, !controller.storeNeedsRecovery, !controller.lifecycleNeedsRecovery {
+            if !focusScene, !introduction, !controller.storeNeedsRecovery, !controller.lifecycleNeedsRecovery {
                 HStack(spacing: 0) {
                     if mini {
                         presentationControl(status: status, compact: true)
@@ -748,38 +761,51 @@ private struct DataControlsPane: View {
     @State private var exportDocument: FlowmoJSONDocument?
 
     var body: some View {
-        VStack(spacing: 14) {
-            HStack {
-                QuietButton("Back", action: dismiss)
+        ScrollView {
+            VStack(spacing: 14) {
+                HStack {
+                    QuietButton("Back", action: dismiss)
+                    Spacer()
+                    Text("Data")
+                        .font(.system(.headline, design: .rounded))
+                }
                 Spacer()
-                Text("Data")
-                    .font(.system(.headline, design: .rounded))
-            }
-            Spacer()
-            Text("Exports stay on this device unless you choose where to save them.")
-                .font(.system(.caption, design: .rounded))
-                .foregroundStyle(atmo.mute)
+                Text("Exports stay on this device unless you choose where to save them.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(atmo.mute)
+                    .multilineTextAlignment(.center)
+                InkButton("Export Flowmo Data") {
+                    beginExport(kind: .data)
+                }
+                QuietButton("Export Redacted Diagnostics") {
+                    beginExport(kind: .diagnostics)
+                }
+                QuietButton("Export Focus Guard Counts") {
+                    beginExport(kind: .evidence)
+                }
+                Text(
+                    "Best-effort descriptive counts only—no app identities, learning outcomes, or productivity outcomes."
+                )
+                .font(.system(.caption2, design: .rounded))
+                .foregroundStyle(atmo.faint)
                 .multilineTextAlignment(.center)
-            InkButton("Export Flowmo Data") {
-                beginExport(kind: .data)
+                QuietButton("Delete All Data") {
+                    showingDeleteConfirmation = true
+                }
+                .foregroundStyle(Color.red.opacity(0.85))
+                Divider()
+                QuietButton("How it works", minHeight: 44) {
+                    controller.showIntroduction()
+                }
+                QuietButton("Enable notifications", minHeight: 44) {
+                    controller.requestNotifications()
+                }
+                Text("If alerts were previously declined, enable them in system settings.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(atmo.mute)
+                    .multilineTextAlignment(.center)
+                Spacer()
             }
-            QuietButton("Export Redacted Diagnostics") {
-                beginExport(kind: .diagnostics)
-            }
-            QuietButton("Export Focus Guard Counts") {
-                beginExport(kind: .evidence)
-            }
-            Text(
-                "Best-effort descriptive counts only—no app identities, learning outcomes, or productivity outcomes."
-            )
-            .font(.system(.caption2, design: .rounded))
-            .foregroundStyle(atmo.faint)
-            .multilineTextAlignment(.center)
-            QuietButton("Delete All Data") {
-                showingDeleteConfirmation = true
-            }
-            .foregroundStyle(Color.red.opacity(0.85))
-            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .confirmationDialog(
@@ -793,7 +819,7 @@ private struct DataControlsPane: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This permanently deletes your current local Flowmo data, including Focus Guard counts. This cannot be undone."
+                "This permanently deletes Flowmo data on this Mac, including Focus Guard counts, and removes its synced iCloud copy when one exists. Other synced devices receive that deletion. If you’re offline, iCloud deletion stays pending. This cannot be undone."
             )
         }
         .fileExporter(

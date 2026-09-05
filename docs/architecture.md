@@ -29,7 +29,7 @@ notifications, and process activation do not belong in the domain module.
 |---|---|---|
 | `FlowmoCore` | Loop state, transitions, timestamp-derived clocks, action-first World commits, validation, and the local `World` store | UI, CloudKit transport, app activation |
 | `FlowmoSync` | Reconciliation, synchronized World persistence, sync metadata, record encoding, and the CloudKit adapter | Session rules or an independent copy of `World` |
-| `FlowmoLook` | Shared visual primitives, including the cross-platform Distant Horizon backdrop | Session authority or navigation |
+| `FlowmoLook` | Shared visual primitives, Distant Horizon backdrop, and tutorial page/completion presentation | Session authority or platform routing |
 | `FlowmoWindow` | Mac presentation, lifecycle, Focus Guard adapter, Focus Scene, and Work Handoff | Domain transitions or direct file mutation |
 | `FlowmoPhone` | Phone presentation, including its active-Focus Distant Horizon, lifecycle, attention, and widget reload coordination | A second phone-specific session model |
 | `FlowmoCLI` | Supported terminal commands and versioned JSON projections | Direct JSON editing |
@@ -51,6 +51,7 @@ ticks, determine clocks and timed transitions.
 | Mac process-recovery marker | Mac lifecycle recovery | Recovery adapter in its documented lock-held write-ahead and post-persist order |
 | Focus Guard evidence | Local evidence recorder | Focus Guard evidence adapter only |
 | Display preferences | Platform presentation | Mac or phone presentation code |
+| Tutorial completion version | Device-local app `UserDefaults`, outside `World` and CloudKit | Shared `IntroductionState`; Skip and finish mark completion, replay changes presentation only |
 | Mac Focus Scene and Work Handoff state | Current Mac process | `FlowmoWindow`; never persisted into `World` |
 | Phone Distant Horizon selection | Derived presentation state | `FlowmoPhone` derives it from the current unpaused Focus and blocking recovery/conflict facts; never persisted into `World` |
 
@@ -132,7 +133,9 @@ The seam maintains these invariants:
   plan between those operations.
 - Remote ownership is valid only for the exact Live Session snapshot applied or
   staged from remote work; a same-ID local mutation cannot suppress Recovery
-  Pause after a metadata-write failure.
+  Pause after a metadata-write failure. Phone Retry checks that ownership
+  against the current Session while holding the World transaction lock before
+  deciding whether store recovery should pause it.
 - Success means the resulting `World` is durable.
 - Mac recovery uses a documented mixed order while `world.lock` is held:
   write-ahead observation precedes persistence of a live-session change, while
@@ -191,6 +194,27 @@ seam:
 Do not add a protocol merely to rename an implementation. A useful module has
 depth: its small interface hides validation, ordering, persistence, or platform
 policy that callers would otherwise duplicate.
+
+## Tutorial and attention presentation
+
+`IntroductionState` and `IntroductionView` in `FlowmoLook` own the three tutorial
+pages and a versioned app-local completion preference. Controllers inject the
+preferences, forward presentation changes, and allow the tutorial only at Idle
+without store/lifecycle recovery or a sync conflict. Root views reevaluate that
+eligibility as state changes. Mac window sizing temporarily presents Classic
+without changing the saved Mini preference. Tutorial actions do not cross the
+World mutation seam; the only optional external effect is a user-selected
+notification-permission request through the platform attention adapter.
+
+`PhoneNotificationPlan` is a pure projection over `World` and a timestamp. It
+uses Core catch-up on a temporary Engine to enumerate the remaining known
+timed boundaries: at most Break end and Reflection end. It neither persists
+that projection nor invents a Focus deadline. `PhoneAttention` cancels its
+owned legacy/phase request identifiers and serializes new additions after any
+in-flight work, so a stale addition cannot survive a newer plan's cancellation.
+Controllers reconcile after committed state changes, foreground catch-up, sync,
+and recovery. Notification delivery remains an operating-system effect, not
+evidence that the app kept executing while suspended.
 
 ## Landing a feature
 

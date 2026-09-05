@@ -7,11 +7,8 @@ import Foundation
 enum FlowmoApp {
     static func main() {
         let args = Array(CommandLine.arguments.dropFirst())
-        if args.first == "check" {
-            exit(runFlowmoChecks())
-        }
         if FlowmoCLI.isInvocation(args) {
-            FlowmoCLI.main()
+            FlowmoCLI.main(runChecks: runFlowmoChecks)
         } else {
             FlowmoRuntime.run()
         }

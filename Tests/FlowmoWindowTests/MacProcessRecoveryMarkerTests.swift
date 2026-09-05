@@ -1,5 +1,6 @@
 import Darwin
 import FlowmoCore
+import FlowmoLook
 import FlowmoSync
 import Foundation
 import XCTest
@@ -707,9 +708,14 @@ final class MacProcessRecoveryMarkerTests: XCTestCase {
     func testPostLaunchLifecycleFailureExpandsMiniWindowForRecoveryPane() throws {
         try withStore { store in
             try store.save(.empty)
+            let suite = "flowmo-recovery-presentation-\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            defaults.set(IntroductionState.currentVersion, forKey: IntroductionState.completionKey)
             let controller = FlowmoSessionController(
                 store: store,
-                attention: AttentionAdapter(canNotify: false)
+                attention: AttentionAdapter(canNotify: false),
+                userDefaults: defaults
             )
             controller.beginMacProcessLifetime()
             controller.setDisplayMode(.mini)

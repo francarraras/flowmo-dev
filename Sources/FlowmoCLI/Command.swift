@@ -6,25 +6,26 @@ public enum FlowmoCLI {
     public static let jsonSchemaVersion = 1
 
     public static let verbs: Set<String> = [
-        "help", "-h", "--help",
+        "help", "-h", "--help", "version", "--version",
         "start", "stop", "skip", "continue", "restart", "cancel",
         "capture", "log", "recall", "status", "live", "check",
         "pause", "resume",
     ]
 
     public static func isInvocation(_ args: [String]) -> Bool {
-        guard let command = args.first else { return false }
-        return verbs.contains(command)
+        !args.isEmpty
     }
 
-    public static func main() {
+    public static func main(runChecks: (() -> Int32)? = nil) {
         let args = Array(CommandLine.arguments.dropFirst())
         do {
-            let code = try run(args)
+            let code = try run(args, runChecks: runChecks)
             exit(code)
         } catch {
             if jsonRequested(in: args) {
                 writeJSON(errorEnvelope(for: error))
+            } else if let cliError = error as? CLIError {
+                writeError(cliError.message)
             } else if let engineError = error as? EngineError {
                 writeError(engineError.description)
             } else {
@@ -34,17 +35,36 @@ public enum FlowmoCLI {
         }
     }
 
-    static func run(_ args: [String], store: Store = .default) throws -> Int32 {
-        guard let invocation = Invocation(args: args) else {
+    static func run(
+        _ args: [String], store: Store = .default, runChecks: (() -> Int32)? = nil
+    ) throws -> Int32 {
+        guard let invocation = try Invocation(args: args) else {
             print(help)
+            return 0
+        }
+        if invocation.wantsHelp {
+            let content = commandHelp(invocation.helpCommand)
+            if invocation.json {
+                writeJSON(HelpEnvelope(help: content))
+            } else {
+                print(content)
+            }
             return 0
         }
         let authority = WorldAuthority(store: store)
 
         switch invocation.command {
-        case "help", "-h", "--help":
-            print(help)
+        case "version", "--version":
+            let version = VersionEnvelope()
+            if invocation.json {
+                writeJSON(version)
+            } else {
+                print("flowmo \(version.version) (build \(version.build))")
+            }
             return 0
+        case "check":
+            guard let runChecks else { throw CLIError.invalidArguments("Core proofs are unavailable in this host.") }
+            return runChecks()
         case "start":
             let intention = invocation.operands.joined(separator: " ")
             let world = try authority.apply(.start(intention: intention), at: Date()).world
@@ -87,14 +107,13 @@ public enum FlowmoCLI {
             let text = invocation.operands.joined(separator: " ")
             let world = try authority.apply(.setRecallText(text), at: Date()).world
             return action(
-                command: invocation.command, message: "Recall text saved.", world: world, json: invocation.json)
+                command: invocation.command, message: "Next step saved.", world: world, json: invocation.json)
         case "status":
             return try status(json: invocation.json, store: store)
         case "live":
             return try LiveView.run(store: store)
         default:
-            writeError("Unknown command: \(invocation.command)\n\n\(help)")
-            return 2
+            throw CLIError.unknownCommand
         }
     }
 
@@ -155,10 +174,44 @@ public enum FlowmoCLI {
         status
         status --json
         check                    core proofs
+        --version                version and build
+
+        <command> --help         explain a command without changing the session
+        <command> --json         structured output (except live and check)
+        <command> -- <text>      literal text, including words starting with '-'
         """
 
     static func jsonRequested(in args: [String]) -> Bool {
-        args.dropFirst().contains("--json")
+        args.dropFirst().prefix(while: { $0 != "--" }).contains("--json")
+    }
+
+    static func commandHelp(_ command: String?) -> String {
+        guard let command else { return help }
+        let description: String
+        switch command {
+        case "start": description = "start [intention] — begin Prime; omit text to use the saved intention."
+        case "stop": description = "stop — end Focus and begin the proportional Break."
+        case "skip":
+            description = "skip — advance the current beat; during Focus, end Focus; at Close Beat, finish the session."
+        case "continue": description = "continue — continue the frozen beat after quit or sleep recovery."
+        case "restart": description = "restart — discard the frozen session and begin Prime with the same intention."
+        case "cancel":
+            description = "cancel — discard the current session and its parked thoughts; completed history stays."
+        case "capture", "log": description = "\(command) <text> — park a thought during Focus without ending it."
+        case "recall":
+            description =
+                "recall <text> — save the next step during Reflection; use an empty quoted string to clear it."
+        case "status": description = "status — show the current session; --json includes private session text."
+        case "live":
+            description =
+                "live — watch the session in an interactive terminal. q, Escape, or Ctrl-C leaves immediately."
+        case "check": description = "check — run the core proofs without using your session store."
+        case "version", "--version": description = "--version — show this executable's version and build."
+        case "pause", "resume":
+            description = "Pause and resume are not flow controls. Recovery uses continue or restart."
+        default: return help
+        }
+        return "flowmo \(description)\n\nUse -- before literal text that starts with '-'."
     }
 
     static func errorEnvelope(for error: Error) -> ErrorEnvelope {
@@ -205,28 +258,110 @@ struct Invocation {
     let command: String
     let operands: [String]
     let json: Bool
+    let wantsHelp: Bool
+    let helpCommand: String?
 
-    init?(args: [String]) {
+    init?(args: [String]) throws {
         guard let command = args.first else { return nil }
+        guard FlowmoCLI.verbs.contains(command) else { throw CLIError.unknownCommand }
         self.command = command
-        operands = args.dropFirst().filter { $0 != "--json" }
         json = FlowmoCLI.jsonRequested(in: args)
+        let options = args.dropFirst().prefix(while: { $0 != "--" })
+        let isHelpCommand = ["help", "-h", "--help"].contains(command)
+        wantsHelp = isHelpCommand || options.contains("--help") || options.contains("-h")
+        if wantsHelp {
+            if isHelpCommand {
+                let targets = options.filter { $0 != "--json" && $0 != "--help" && $0 != "-h" }
+                guard targets.count <= 1,
+                    targets.first.map(FlowmoCLI.verbs.contains) ?? true
+                else { throw CLIError.invalidArguments("Use flowmo help [command].") }
+                helpCommand = targets.first
+            } else {
+                helpCommand = command
+            }
+            operands = []
+            return
+        }
+        helpCommand = nil
+        var text: [String] = []
+        var literal = false
+        for token in args.dropFirst() {
+            if !literal, token == "--" {
+                literal = true
+            } else if !literal, token == "--json" {
+                continue
+            } else if !literal, token.hasPrefix("-"), token != "-" {
+                throw CLIError.invalidArguments("Unsupported option. Use flowmo help, or -- before literal text.")
+            } else {
+                text.append(token)
+            }
+        }
+        let acceptsText = ["start", "capture", "log", "recall"].contains(command)
+        guard acceptsText || text.isEmpty else {
+            throw CLIError.invalidArguments("This command does not accept text. Use flowmo help [command].")
+        }
+        if ["capture", "log", "recall"].contains(command), text.isEmpty {
+            throw CLIError.invalidArguments("This command requires text. Use flowmo help [command].")
+        }
+        if json, ["live", "check"].contains(command) {
+            throw CLIError.invalidArguments(
+                "This command does not support --json. Use status --json to read the session.")
+        }
+        operands = text
     }
 }
 
 enum CLIError: Error {
     case unsupportedControl(String)
+    case unknownCommand
+    case invalidArguments(String)
+    case terminalUnavailable
 
     var code: String {
         switch self {
         case .unsupportedControl: return "unsupported_control"
+        case .unknownCommand: return "unknown_command"
+        case .invalidArguments: return "invalid_arguments"
+        case .terminalUnavailable: return "terminal_unavailable"
         }
     }
 
     var message: String {
         switch self {
         case .unsupportedControl(let message): return message
+        case .unknownCommand: return "Unknown command. Run flowmo --help."
+        case .invalidArguments(let message): return message
+        case .terminalUnavailable:
+            return "Live needs an interactive terminal for input and output. Use flowmo status for redirected output."
         }
+    }
+}
+
+struct HelpEnvelope: Encodable {
+    let schemaVersion = FlowmoCLI.jsonSchemaVersion
+    let generatedAt = Date()
+    let help: String
+}
+
+struct VersionEnvelope: Encodable {
+    let schemaVersion = FlowmoCLI.jsonSchemaVersion
+    let generatedAt = Date()
+    let version: String
+    let build: String
+
+    init(bundle: Bundle = .main) {
+        version = Self.metadata(bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString"))
+        build = Self.metadata(bundle.object(forInfoDictionaryKey: "CFBundleVersion"))
+    }
+
+    private static func metadata(_ value: Any?) -> String {
+        guard let text = value as? String, !text.isEmpty, text.utf8.count <= 64,
+            text.utf8.allSatisfy({ byte in
+                (48...57).contains(byte) || (65...90).contains(byte) || (97...122).contains(byte)
+                    || byte == 46 || byte == 45 || byte == 95
+            })
+        else { return "development" }
+        return text
     }
 }
 

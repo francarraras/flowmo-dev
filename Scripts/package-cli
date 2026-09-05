@@ -1,0 +1,204 @@
+#!/bin/bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ./Scripts/package-cli [--allow-dirty] [--output-dir PATH]
+
+Build a local macOS 14+ arm64/x86_64 terminal archive, installer, SHA-256
+checksum, and manifest. A clean committed worktree is required by default.
+--allow-dirty is only for an engineering package marked DO NOT DISTRIBUTE.
+Output defaults to ignored ./dist. Existing artifacts are never overwritten.
+
+This command does not run the complete release gates, reserve a preview build,
+sign with Developer ID, notarize, upload, push, tag, or distribute anything.
+Its ad-hoc signed executable is local-only and carries no CloudKit entitlement.
+EOF
+}
+
+fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
+allow_dirty=0
+output_dir=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --allow-dirty) allow_dirty=1; shift ;;
+    --output-dir)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || fail "--output-dir requires a path"
+      output_dir="$2"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) fail "unknown argument: $1 (see --help)" ;;
+  esac
+done
+
+[ "$(uname -s)" = Darwin ] || fail "packaging requires macOS and Xcode"
+script_dir="$(cd "$(dirname "$0")" && pwd -P)"
+repo_root="$(cd "$script_dir/.." && pwd -P)"
+cd "$repo_root"
+for command_name in swift git lipo codesign shasum ditto tar ruby; do
+  command -v "$command_name" >/dev/null 2>&1 || fail "required command not found: $command_name"
+done
+output_dir="$(ruby -e 'puts File.expand_path(ARGV.fetch(0))' "${output_dir:-$repo_root/dist}")"
+case "$output_dir" in
+  "$repo_root") fail "choose an output directory other than the repository root" ;;
+  "$repo_root"/*)
+    git check-ignore -q -- "${output_dir#"$repo_root"/}" || fail "output inside the repository must be Git-ignored"
+    ;;
+esac
+git diff --check
+git diff --cached --check
+revision="$(git rev-parse HEAD)"
+worktree_state="$(git status --porcelain --untracked-files=normal)"
+[ -z "$worktree_state" ] || [ "$allow_dirty" -eq 1 ] || fail "commit and review the candidate first, or use --allow-dirty for an engineering test"
+if [ -z "$worktree_state" ] && [ "$allow_dirty" -eq 1 ]; then
+  fail "--allow-dirty is only for an uncommitted worktree"
+fi
+
+work_root="$(mktemp -d "${TMPDIR:-/private/tmp}/flowmo-package-cli.XXXXXX")"
+staging=""
+lock=""
+cleanup() {
+  rm -rf -- "$work_root"
+  if [ -n "$staging" ]; then rm -rf -- "$staging"; fi
+  if [ -n "$lock" ]; then rmdir "$lock" 2>/dev/null || true; fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+export CLANG_MODULE_CACHE_PATH="$work_root/module-cache"
+export SWIFTPM_MODULECACHE_OVERRIDE="$work_root/module-cache"
+mkdir -p "$work_root/module-cache" "$work_root/cache" "$work_root/config" "$work_root/security"
+
+source_root="$work_root/source"
+mkdir -p "$source_root"
+snapshot_digest="committed revision"
+if [ -z "$worktree_state" ]; then
+  git archive --format=tar "$revision" -o "$work_root/source.tar"
+else
+  # Snapshot tracked and unignored source files before either architecture builds.
+  # Fingerprint around the copy so concurrent edits cannot silently mix inputs.
+  cat >"$work_root/fingerprint.rb" <<'RUBY'
+require 'digest'
+paths = IO.popen(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'], &:read)
+abort 'could not list source files' unless $?.success?
+paths = paths.split("\0").uniq.sort.select { |path| File.file?(path) || File.symlink?(path) }
+File.binwrite(ARGV.fetch(0), paths.join("\0") + "\0") unless ARGV.empty?
+digest = Digest::SHA256.new
+paths.each do |path|
+  digest << path << "\0" << File.lstat(path).mode.to_s << "\0"
+  digest << (File.symlink?(path) ? File.readlink(path) : File.binread(path)) << "\0"
+end
+puts digest.hexdigest
+RUBY
+  snapshot_digest="$(ruby "$work_root/fingerprint.rb" "$work_root/source-files")"
+  tar --null -T "$work_root/source-files" -cf "$work_root/source.tar"
+  [ "$(ruby "$work_root/fingerprint.rb")" = "$snapshot_digest" ] || fail "source changed while it was copied; retry when edits are settled"
+fi
+tar -xf "$work_root/source.tar" -C "$source_root"
+plist="$source_root/Sources/FlowmoApp/Info.plist"
+version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
+build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
+case "$version" in ''|*[!0-9.]*) fail "invalid version in CLI Info.plist" ;; esac
+case "$build" in ''|*[!0-9]*) fail "invalid build in CLI Info.plist" ;; esac
+project="$source_root/Apps/Flowmo.xcodeproj/project.pbxproj"
+project_version="$(sed -n 's/^[[:space:]]*MARKETING_VERSION = \([^;]*\);/\1/p' "$project" | sort -u)"
+project_build="$(sed -n 's/^[[:space:]]*CURRENT_PROJECT_VERSION = \([^;]*\);/\1/p' "$project" | sort -u)"
+[ "$version" = "$project_version" ] && [ "$build" = "$project_build" ] || fail "CLI and Mac version/build settings must agree"
+
+name="Flowmo-$version-build$build-macOS-universal-cli"
+if [ -n "$worktree_state" ]; then name="$name-DIRTY"; fi
+archive="$name.tar.gz"
+checksum="$archive.sha256"
+manifest="$name.manifest.txt"
+mkdir -p "$output_dir"
+mkdir "$output_dir/.flowmo-package-cli.lock" 2>/dev/null || fail "another packaging run is active, or a stale output lock needs inspection"
+lock="$output_dir/.flowmo-package-cli.lock"
+for artifact in "$archive" "$checksum" "$manifest"; do
+  [ ! -e "$output_dir/$artifact" ] || fail "refusing to overwrite $artifact"
+done
+staging="$(mktemp -d "$output_dir/.flowmo-package-cli.XXXXXX")"
+package_dir="$work_root/$name"
+mkdir -p "$package_dir"
+for architecture in arm64 x86_64; do
+  printf '\nBuilding %s terminal executable…\n' "$architecture"
+  build_args=(--package-path "$source_root" --scratch-path "$work_root/build-$architecture" --cache-path "$work_root/cache" --config-path "$work_root/config" --security-path "$work_root/security" --manifest-cache local --triple "$architecture-apple-macosx14.0" --configuration release --product flowmo -Xswiftc -warnings-as-errors)
+  swift build "${build_args[@]}"
+  bin_dir="$(swift build "${build_args[@]}" --show-bin-path)"
+  ditto "$bin_dir/flowmo" "$work_root/flowmo-$architecture"
+done
+lipo -create "$work_root/flowmo-arm64" "$work_root/flowmo-x86_64" -output "$package_dir/flowmo"
+codesign --force --sign - --options runtime --timestamp=none "$package_dir/flowmo"
+codesign --verify --strict "$package_dir/flowmo"
+lipo "$package_dir/flowmo" -verify_arch arm64 x86_64
+cp "$source_root/Scripts/install-cli" "$package_dir/install.sh"
+chmod 755 "$package_dir/flowmo" "$package_dir/install.sh"
+cp "$source_root/PRIVACY.md" "$package_dir/PRIVACY.md"
+cp "$source_root/LICENSE" "$package_dir/LICENSE"
+cat >"$package_dir/READ ME FIRST.txt" <<EOF
+Flowmo $version (build $build) — macOS 14+ terminal engineering candidate
+
+This archive is ad-hoc signed, not Developer ID signed or notarized. It is not
+a public trusted-download release. Downloaded copies may be blocked by macOS.
+Do not disable Gatekeeper or remove quarantine to install it. Follow the release
+owner's instructions, or build from source if you have permission to do so.
+
+After verifying the archive SHA-256 against the separately supplied checksum,
+run ./install.sh to install into ~/.local/bin. Add that directory to PATH using
+the printed command. Use ./install.sh --replace for an explicit upgrade after
+quitting any running terminal/window instance. The installer verifies the
+executable checksum and preserves download security attributes.
+
+Start with flowmo --help, flowmo --version, flowmo status, or flowmo live.
+With no arguments, flowmo opens a Mac window. Commands use the same local
+session store as the Mac app. This executable does not connect to CloudKit.
+Session data is preserved on upgrades. To uninstall this default installation,
+remove ~/.local/bin/flowmo; use the app's Idle > Data controls if you also want
+to delete session data. Read the included LICENSE and PRIVACY.md before use.
+EOF
+if [ -n "$worktree_state" ]; then
+  printf 'DIRTY ENGINEERING TEST — DO NOT DISTRIBUTE\n' >"$package_dir/DO NOT DISTRIBUTE.txt"
+fi
+(cd "$package_dir" && shasum -a 256 flowmo >SHA256SUMS)
+tar -czf "$staging/$archive" -C "$work_root" "$name"
+mkdir "$work_root/extracted"
+tar -xzf "$staging/$archive" -C "$work_root/extracted"
+extracted="$work_root/extracted/$name"
+(cd "$extracted" && shasum -a 256 -c SHA256SUMS)
+cmp "$package_dir/flowmo" "$extracted/flowmo"
+for document in install.sh 'READ ME FIRST.txt' LICENSE PRIVACY.md SHA256SUMS; do
+  cmp "$package_dir/$document" "$extracted/$document"
+done
+if [ -n "$worktree_state" ]; then
+  cmp "$package_dir/DO NOT DISTRIBUTE.txt" "$extracted/DO NOT DISTRIBUTE.txt"
+fi
+codesign --verify --strict "$extracted/flowmo"
+lipo "$extracted/flowmo" -verify_arch arm64 x86_64
+mkdir "$work_root/smoke-store"
+reported_version="$(FLOWMO_HOME="$work_root/smoke-store" "$extracted/flowmo" --version)"
+[ "$reported_version" = "flowmo $version (build $build)" ] || fail "extracted executable reports unexpected version: $reported_version"
+FLOWMO_HOME="$work_root/smoke-store" "$extracted/flowmo" status --json | ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["schemaVersion"] == 1 && j.dig("status", "running") == false'
+if [ -z "$worktree_state" ]; then
+  [ "$(git rev-parse HEAD)" = "$revision" ] && [ -z "$(git status --porcelain --untracked-files=normal)" ] || fail "candidate changed during packaging"
+fi
+(cd "$staging" && shasum -a 256 "$archive" >"$checksum")
+cat >"$staging/$manifest" <<EOF
+Flowmo terminal packaging manifest
+Version: $version (build $build)
+Source revision: $revision
+Source snapshot identity (SHA-256 for dirty builds): $snapshot_digest
+Uncommitted engineering build: $allow_dirty
+Architectures: arm64 x86_64
+Minimum macOS: 14.0
+Signing: ad-hoc Hardened Runtime; no Developer ID, notarization, or CloudKit
+Verified: both Release builds, universal architectures, exact archive extraction,
+executable checksum/signature, version command, isolated idle JSON status
+Not performed: full release gates, real-user manual smoke, publication or distribution
+Archive: $archive
+Built (UTC): $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+Toolchain: $(swift --version | head -n 1)
+EOF
+for artifact in "$archive" "$checksum" "$manifest"; do
+  ln "$staging/$artifact" "$output_dir/$artifact" || fail "refusing to replace existing artifact"
+done
+printf '\nCreated local terminal candidate: %s\nReview the manifest and release gates before any distribution.\n' "$output_dir/$archive"

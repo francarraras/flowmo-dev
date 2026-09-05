@@ -208,7 +208,7 @@ private struct LunarCore: View {
                     .blur(radius: d * 0.045)
             }
             .frame(width: geo.size.width, height: geo.size.height)
-            .rotationEffect(.degrees(turn))
+            .rotationEffect(.degrees(reduceMotion ? 0 : turn))
         }
         .onAppear {
             guard !reduceMotion else { return }
@@ -402,8 +402,7 @@ public struct CloseFigures: View {
     }
 }
 
-/// The complete first-session promise, kept inside the idle aperture so a new
-/// person can understand Flowmo without an onboarding screen.
+/// A short reminder of the first-session promise after the optional tutorial.
 public struct FirstRunPromise: View {
     @Environment(\.atmosphere) private var atmo
 
@@ -418,10 +417,9 @@ public struct FirstRunPromise: View {
             Text("Your break grows as you focus.")
                 .foregroundStyle(Atmosphere.rest)
         }
-        .font(.system(size: 12, weight: .medium, design: .rounded))
+        .font(.system(.caption, design: .rounded).weight(.medium))
         .multilineTextAlignment(.center)
-        .lineLimit(1)
-        .minimumScaleFactor(0.72)
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             "Focus counts up. Stop when you’re ready. Your break grows as you focus."
@@ -874,6 +872,7 @@ public enum PhaseGrid {
 
 /// Same slots on every phase so the circle does not jump. Chrome is reserved even when empty.
 public struct PhaseColumn<Head: View, Hole: View, Verb: View, Chrome: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var head: Head
     var hole: Hole
     var verb: Verb
@@ -892,6 +891,57 @@ public struct PhaseColumn<Head: View, Hole: View, Verb: View, Chrome: View>: Vie
     }
 
     public var body: some View {
+        #if os(iOS)
+            GeometryReader { geometry in
+                let expanded = dynamicTypeSize.isAccessibilitySize || geometry.size.height < 480
+                let availableHole =
+                    geometry.size.height - PhaseGrid.head - PhaseGrid.verb
+                    - max(PhaseGrid.chrome, 64) - PhaseGrid.gap * 3
+                let compactHole = max(
+                    96,
+                    min(geometry.size.width, dynamicTypeSize.isAccessibilitySize ? 320 : availableHole)
+                )
+                // Keep the field in one hierarchy when the keyboard changes the
+                // available height. Only slot dimensions change; focus survives.
+                ScrollView {
+                    VStack(spacing: 0) {
+                        VStack(spacing: PhaseGrid.gap) {
+                            head
+                                .fixedSize(horizontal: false, vertical: expanded)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    minHeight: PhaseGrid.head,
+                                    maxHeight: expanded ? nil : PhaseGrid.head
+                                )
+                            hole
+                                .frame(
+                                    maxWidth: .infinity,
+                                    minHeight: expanded ? compactHole : 96,
+                                    maxHeight: expanded ? compactHole : .infinity
+                                )
+                            verb
+                                .fixedSize(horizontal: false, vertical: expanded)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    minHeight: PhaseGrid.verb,
+                                    maxHeight: expanded ? nil : PhaseGrid.verb
+                                )
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        chrome
+                            .frame(maxWidth: .infinity, minHeight: PhaseGrid.chrome, alignment: .top)
+                            .padding(.top, expanded ? PhaseGrid.gap : 0)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                }
+                .scrollBounceBehavior(.basedOnSize)
+            }
+        #else
+            fixedColumn
+        #endif
+    }
+
+    private var fixedColumn: some View {
         VStack(spacing: 0) {
             VStack(spacing: PhaseGrid.gap) {
                 head
@@ -965,7 +1015,7 @@ public struct HairlineField: View {
     @FocusState private var focused: Bool
 
     public var body: some View {
-        TextField(placeholder, text: $text)
+        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundColor(atmo.mute))
             .textFieldStyle(.plain)
             .focused($focused)
             .font(.system(.body, design: .rounded).weight(.medium))

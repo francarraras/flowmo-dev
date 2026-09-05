@@ -5,14 +5,67 @@ import XCTest
 @testable import FlowmoCore
 
 final class FlowmoCLITests: XCTestCase {
-    func testJSONFlagIsRemovedFromTextOperandsRegardlessOfPlacement() {
-        let leading = Invocation(args: ["start", "--json", "write", "the", "spec"])
-        let trailing = Invocation(args: ["capture", "park", "this", "--json"])
+    func testJSONFlagIsRemovedFromTextOperandsRegardlessOfPlacement() throws {
+        let leading = try Invocation(args: ["start", "--json", "write", "the", "spec"])
+        let trailing = try Invocation(args: ["capture", "park", "this", "--json"])
 
         XCTAssertEqual(leading?.operands, ["write", "the", "spec"])
         XCTAssertTrue(leading?.json == true)
         XCTAssertEqual(trailing?.operands, ["park", "this"])
         XCTAssertTrue(trailing?.json == true)
+    }
+
+    func testHelpNeverMutatesAnExistingSession() throws {
+        try withStore { store in
+            _ = try FlowmoCLI.run(["start", "synthetic intention"], store: store)
+            let before = try store.load()
+            for command in ["start", "stop", "skip", "continue", "restart", "cancel", "capture", "log", "recall"] {
+                XCTAssertEqual(try FlowmoCLI.run([command, "--help"], store: store), 0)
+                XCTAssertEqual(try store.load(), before)
+            }
+        }
+    }
+
+    func testMalformedArgumentsFailBeforeMutatingTheStore() throws {
+        try withStore { store in
+            _ = try FlowmoCLI.run(["start", "synthetic intention"], store: store)
+            let before = try store.load()
+            for args in [
+                ["cancel", "unexpected"], ["stop", "--typo"], ["skip", "--", "unexpected"],
+                ["capture"], ["recall"], ["status", "extra"], ["live", "--json"], ["check", "--json"],
+                ["typo", "--json"],
+            ] {
+                XCTAssertThrowsError(try FlowmoCLI.run(args, store: store))
+                XCTAssertEqual(try store.load(), before)
+            }
+        }
+    }
+
+    func testLiteralDelimiterPreservesFlagLikeText() throws {
+        let parsed = try XCTUnwrap(Invocation(args: ["capture", "--json", "--", "--help", "--json", "-text"]))
+        XCTAssertEqual(parsed.operands, ["--help", "--json", "-text"])
+        XCTAssertTrue(parsed.json)
+        XCTAssertFalse(parsed.wantsHelp)
+        XCTAssertFalse(FlowmoCLI.jsonRequested(in: ["capture", "--", "--json"]))
+    }
+
+    func testOnlyNoArgumentsLaunchesTheWindow() {
+        XCTAssertFalse(FlowmoCLI.isInvocation([]))
+        XCTAssertTrue(FlowmoCLI.isInvocation(["typo"]))
+        XCTAssertTrue(FlowmoCLI.isInvocation(["--version"]))
+    }
+
+    func testCheckHelpAndInvalidArgumentsDoNotRunProofs() throws {
+        var runs = 0
+        let check = {
+            runs += 1
+            return Int32(0)
+        }
+        XCTAssertEqual(try FlowmoCLI.run(["check", "--help"], runChecks: check), 0)
+        XCTAssertThrowsError(try FlowmoCLI.run(["check", "extra"], runChecks: check))
+        XCTAssertEqual(runs, 0)
+        XCTAssertEqual(try FlowmoCLI.run(["check"], runChecks: check), 0)
+        XCTAssertEqual(runs, 1)
     }
 
     func testStatusEnvelopeCarriesStableVersionAndGenerationMetadata() throws {

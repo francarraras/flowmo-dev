@@ -1,0 +1,80 @@
+#!/bin/bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ./install.sh [--prefix PATH] [--replace]
+       ./Scripts/install-cli --binary PATH [--prefix PATH] [--replace]
+
+Install flowmo into PREFIX/bin (default: ~/.local). No administrator access
+is required for the default location. Existing installations are preserved
+unless --replace is supplied. Session data and shell configuration are untouched.
+
+The packaged installer verifies its adjacent flowmo against SHA256SUMS.
+--binary selects your own locally built executable instead.
+EOF
+}
+
+fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+script_dir="$(cd "$(dirname "$0")" && pwd -P)"
+prefix="${HOME:?HOME must be set}/.local"
+binary=""
+replace=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --binary|--prefix)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || fail "$1 requires a path"
+      case "$2" in
+        -*) fail "$1 requires a path, not an option; use ./ before a path beginning with '-'" ;;
+      esac
+      case "$1" in
+        --binary) binary="$2" ;;
+        --prefix) prefix="$2" ;;
+      esac
+      shift 2
+      ;;
+    --replace) replace=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) fail "unknown argument: $1 (see --help)" ;;
+  esac
+done
+
+[ "$(uname -s)" = Darwin ] || fail "this executable requires macOS 14 or newer"
+if [ -z "$binary" ]; then
+  binary="$script_dir/flowmo"
+  [ -f "$script_dir/SHA256SUMS" ] || fail "package checksum is missing; for a source build use --binary PATH"
+  expected="$(sed -n 's/^\([0-9a-f]\{64\}\)  flowmo$/\1/p' "$script_dir/SHA256SUMS")"
+  [ "${#expected}" -eq 64 ] || fail "package checksum is invalid"
+  [ -f "$binary" ] || fail "packaged executable is missing"
+  actual="$(shasum -a 256 "$binary" | awk '{print $1}')"
+  [ "$actual" = "$expected" ] || fail "executable checksum does not match; installation stopped"
+fi
+[ -f "$binary" ] && [ -x "$binary" ] || fail "select an executable file with --binary PATH"
+case "$prefix" in /*) ;; *) prefix="$PWD/$prefix" ;; esac
+install_dir="$prefix/bin"
+mkdir -p "$install_dir"
+destination="$install_dir/flowmo"
+[ ! -d "$destination" ] && [ ! -L "$destination" ] || fail "destination is a directory or symlink; inspect it before installing"
+if [ -e "$destination" ] && [ "$replace" -ne 1 ]; then
+  fail "flowmo is already installed here; quit it and use --replace to upgrade"
+fi
+
+staged="$(mktemp "$install_dir/.flowmo-install.XXXXXX")"
+cleanup() { rm -f -- "$staged"; }
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# ditto preserves quarantine and other extended attributes on downloaded files.
+ditto "$binary" "$staged"
+cmp "$binary" "$staged" || fail "installed copy differs from the selected executable"
+chmod 755 "$staged"
+if [ "$replace" -eq 1 ]; then
+  mv -f -- "$staged" "$destination"
+else
+  ln "$staged" "$destination" || fail "destination appeared during installation; no file was replaced"
+fi
+printf 'Installed flowmo. Add this directory to PATH if needed:\n  '
+printf 'export PATH=%q:"$PATH"\n' "$install_dir"
+printf 'Then run: flowmo --version\n'

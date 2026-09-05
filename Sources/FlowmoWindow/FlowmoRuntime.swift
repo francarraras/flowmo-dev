@@ -189,16 +189,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     /// this binding beside the computed size prevents recovery-only changes
     /// from leaving the fixed NSWindow at its previous dimensions.
     func observeWindowContentSize() {
-        let contentSize = Publishers.CombineLatest3(
+        let contentSize = Publishers.CombineLatest4(
             controller.$displayMode,
             controller.$storeNeedsRecovery,
-            controller.$lifecycleNeedsRecovery
+            controller.$lifecycleNeedsRecovery,
+            controller.syncStatus.$conflict
         )
-        .map { mode, storeNeedsRecovery, lifecycleNeedsRecovery in
-            FlowmoSessionController.windowContentSize(
+        .combineLatest(controller.introduction.$isPresented)
+        .map { inputs, showingIntroduction in
+            let (mode, storeNeedsRecovery, lifecycleNeedsRecovery, conflict) = inputs
+            return FlowmoSessionController.windowContentSize(
                 displayMode: mode,
                 storeNeedsRecovery: storeNeedsRecovery,
-                lifecycleNeedsRecovery: lifecycleNeedsRecovery
+                lifecycleNeedsRecovery: lifecycleNeedsRecovery,
+                hasSyncConflict: conflict != nil,
+                showingIntroduction: showingIntroduction
             )
         }
 

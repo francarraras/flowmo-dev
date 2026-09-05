@@ -1,8 +1,34 @@
 # Changelog
 
-All notable changes to this private beta are recorded here.
+Notable changes are recorded here.
 
 ## Unreleased
+
+## 1.0 (4) — Readiness candidate
+
+- Added a short, one-time introduction on Mac and iPhone explaining intention,
+  open-ended Focus, proportional rest, and the next step. Skip and completion
+  remain dismissed on that device; **Data > How it works** replays it. The
+  tutorial never starts a session and waits while a session, recovery, or sync
+  conflict needs attention. Notification permission is now an explicit choice.
+- Fixed Mini windows hiding sync-conflict choices. Recovery and tutorial panes
+  temporarily use Classic without overwriting the saved Mini preference.
+- Fixed iPhone Retry treating a remotely owned live session as a local crash.
+  Phone reminders now schedule both the end of Break and the following
+  Reflection boundary, including when the app stays in the background.
+- Improved small-screen and larger-text phone layouts, retained text-field focus
+  while the keyboard opens, enlarged Idle footer targets, and made Data controls
+  scrollable. Improved quiet text and field-placeholder contrast, menu-bar
+  readability, Reduce Motion behavior, and the Delete All explanation.
+- Added a provisional original app icon for Mac and iPhone. The product name is
+  unchanged pending the later branding decision.
+- Made CLI help, version, and invalid arguments safe before accessing session
+  data. Added literal text argument handling and reliable living-terminal exit
+  with Escape, q, Control-C, or process signals, restoring terminal settings.
+- Added universal Mac CLI packaging, checksums, and an installer with explicit
+  upgrade and overwrite protection. Reworked the README and release guidance
+  for GitHub distribution, with MIT prepared for open-source review. No public
+  download, donation, or support destination has been invented or published.
 
 - Made returning to **Focus scene** unmistakable after **Back to window**. An
   explicit named Scene action now sits with the live Focus controls in Classic

@@ -38,7 +38,7 @@ struct FlowField: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TextField(placeholder, text: $text)
+            TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundColor(atmo.mute))
                 .textFieldStyle(.plain)
                 .focused($focused)
                 .font(.system(.body, design: .rounded).weight(.medium))

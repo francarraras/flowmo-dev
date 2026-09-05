@@ -48,6 +48,87 @@ final class PhoneSessionControllerSyncTests: XCTestCase {
         }
     }
 
+    func testRetryAdoptsRepairedRemoteLiveSessionWithoutPausingIt() throws {
+        try withStore { store in
+            try Data("invalid synthetic store".utf8).write(to: store.worldURL)
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+            XCTAssertTrue(controller.storeNeedsRecovery)
+
+            let world = try focusWorld(at: Date().addingTimeInterval(-120))
+            let sessionID = try XCTUnwrap(world.live?.id)
+            let generation = uuid(6)
+            try store.save(world)
+            let persistedWorld = try store.load()
+            let metadataStore = WorldSyncMetadataStore(root: store.root)
+            try metadataStore.save(
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: sessionID,
+                    base: WorldSyncSnapshot(world: world, generation: generation)
+                )
+            )
+
+            controller.retryStore()
+
+            XCTAssertFalse(controller.storeNeedsRecovery)
+            XCTAssertFalse(try XCTUnwrap(controller.world.live).isPaused)
+            XCTAssertEqual(controller.world, persistedWorld)
+            XCTAssertEqual(try store.load(), persistedWorld)
+            XCTAssertEqual(try metadataStore.load().remoteLiveSessionID, sessionID)
+        }
+    }
+
+    func testRetryStillPausesRepairedLocallyOwnedLiveSession() throws {
+        try withStore { store in
+            try Data("invalid synthetic store".utf8).write(to: store.worldURL)
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+            let world = try focusWorld(at: Date().addingTimeInterval(-120))
+            try store.save(world)
+
+            controller.retryStore()
+
+            XCTAssertFalse(controller.storeNeedsRecovery)
+            XCTAssertEqual(controller.world.live?.id, world.live?.id)
+            XCTAssertTrue(try XCTUnwrap(controller.world.live).isPaused)
+            XCTAssertTrue(try XCTUnwrap(store.load().live).isPaused)
+        }
+    }
+
+    func testRetryDoesNotTrustStaleRemoteOwnershipAfterLocalSessionChange() throws {
+        try withStore { store in
+            let remote = try focusWorld(at: Date().addingTimeInterval(-120))
+            let generation = uuid(7)
+            try WorldSyncMetadataStore(root: store.root).save(
+                WorldSyncMetadata(
+                    generation: generation,
+                    remoteLiveSessionID: remote.live?.id,
+                    base: WorldSyncSnapshot(world: remote, generation: generation)
+                )
+            )
+            try Data("invalid synthetic store".utf8).write(to: store.worldURL)
+            let controller = PhoneSessionController(
+                store: store,
+                attention: PhoneAttention(notificationsEnabled: false)
+            )
+            var changed = Engine(world: remote)
+            try changed.apply(.stopFocus, now: Date())
+            try store.save(changed.world)
+
+            controller.retryStore()
+
+            XCTAssertFalse(controller.storeNeedsRecovery)
+            XCTAssertEqual(controller.world.live?.phase, .onBreak)
+            XCTAssertTrue(try XCTUnwrap(controller.world.live).isPaused)
+            XCTAssertTrue(try XCTUnwrap(store.load().live).isPaused)
+        }
+    }
+
     func testRemoteOwnershipChangesOnlyAfterAValidLocalMutationPersists() throws {
         try withStore { store in
             let world = try focusWorld(at: Date().addingTimeInterval(-120))

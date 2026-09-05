@@ -1,12 +1,20 @@
 # Third-party notices
 
-Last reviewed: 2026-08-25
+Last reviewed: 2026-09-05
 
 No third-party code, packages, fonts, images, frameworks, or other redistributable
 assets were found in the Flowmo application at this revision. The app imports
 Apple platform frameworks supplied by the operating system.
 The private sync implementation uses Apple's CloudKit framework and service; it
 does not redistribute a third-party SDK.
+
+The bundled provisional app icon is original AI-generated output created with
+OpenAI's built-in image generation tool on 2026-09-05, then resized locally.
+It is not a downloaded stock image or a redistributed OpenAI logo. Source,
+output-ownership terms, and the exact prompt are recorded in
+[`PROVENANCE.md`](PROVENANCE.md) and
+[`Apps/IconSource/README.md`](Apps/IconSource/README.md). No additional
+third-party asset license or attribution notice was identified for this icon.
 
 The pinned `actions/checkout` GitHub Action is build infrastructure and is not
 distributed in the app binary.

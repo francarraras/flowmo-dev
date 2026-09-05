@@ -1,8 +1,6 @@
 import AppKit
 import Combine
 import FlowmoCore
-import FlowmoLook
-import SwiftUI
 
 /// Menu-bar clock. The window stays the product; this is a glance when it is hidden.
 @MainActor
@@ -34,15 +32,13 @@ final class StatusGlance {
     func refresh() {
         guard let controller else { return }
         let status = controller.status
-        let atmo = Atmosphere.canvas
         let unavailable = controller.storeNeedsRecovery
-        let ink: Color = unavailable || status.isPaused ? atmo.faint : (status.isIdle ? atmo.mute : atmo.ink)
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         item.button?.attributedTitle = NSAttributedString(
             string: unavailable ? "Unavailable" : Format.glance(status),
             attributes: [
                 .font: font,
-                .foregroundColor: NSColor(ink),
+                .foregroundColor: NSColor.labelColor,
             ]
         )
         item.button?.toolTip = unavailable ? "Flowmo data unavailable" : "Flowmo"

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import FlowmoCore
+import FlowmoLook
 import FlowmoSync
 import Foundation
 
@@ -37,6 +38,7 @@ public final class FlowmoSessionController: ObservableObject {
     @Published public private(set) var userNotice: String?
     @Published public private(set) var recentIssues: [FlowmoIssueRecord] = []
     public let syncStatus: WorldSyncStatus
+    public let introduction: IntroductionState
 
     let store: Store
     let attention: AttentionAdapter
@@ -74,7 +76,9 @@ public final class FlowmoSessionController: ObservableObject {
         Self.windowContentSize(
             displayMode: displayMode,
             storeNeedsRecovery: storeNeedsRecovery,
-            lifecycleNeedsRecovery: lifecycleNeedsRecovery
+            lifecycleNeedsRecovery: lifecycleNeedsRecovery,
+            hasSyncConflict: syncStatus.conflict != nil,
+            showingIntroduction: introduction.isPresented
         )
     }
 
@@ -85,9 +89,11 @@ public final class FlowmoSessionController: ObservableObject {
     static func windowContentSize(
         displayMode: DisplayMode,
         storeNeedsRecovery: Bool,
-        lifecycleNeedsRecovery: Bool
+        lifecycleNeedsRecovery: Bool,
+        hasSyncConflict: Bool = false,
+        showingIntroduction: Bool = false
     ) -> CGSize {
-        storeNeedsRecovery || lifecycleNeedsRecovery
+        storeNeedsRecovery || lifecycleNeedsRecovery || hasSyncConflict || showingIntroduction
             ? DisplayMode.classic.windowContentSize
             : displayMode.windowContentSize
     }
@@ -112,6 +118,7 @@ public final class FlowmoSessionController: ObservableObject {
         self.focusGuard = focusGuard
         self.workContextHandoff = workContextHandoff
         self.userDefaults = userDefaults
+        self.introduction = IntroductionState(userDefaults: userDefaults)
         self.evidence = LocalEvidenceRecorder(root: store.root)
         let macRecovery = MacProcessRecoveryMarker(store: store)
         let syncMetadataStore = WorldSyncMetadataStore(root: store.root)
@@ -153,6 +160,11 @@ public final class FlowmoSessionController: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+        introduction.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
         syncStatus.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -173,6 +185,22 @@ public final class FlowmoSessionController: ObservableObject {
         guard mode != displayMode else { return }
         displayMode = mode
         userDefaults.set(mode.rawValue, forKey: "FlowmoDisplayMode")
+    }
+
+    public var canShowIntroduction: Bool {
+        world.live == nil && !storeNeedsRecovery && !lifecycleNeedsRecovery && syncStatus.conflict == nil
+    }
+
+    public func presentIntroductionIfNeeded() {
+        introduction.presentIfNeeded(canPresent: canShowIntroduction)
+    }
+
+    public func showIntroduction() {
+        introduction.replay(canPresent: canShowIntroduction)
+    }
+
+    public func requestNotifications() {
+        attention.requestPermission()
     }
 
     public func togglePin() {

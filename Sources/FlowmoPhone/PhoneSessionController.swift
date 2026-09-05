@@ -1,5 +1,6 @@
 import Combine
 import FlowmoCore
+import FlowmoLook
 import FlowmoSync
 import Foundation
 
@@ -53,6 +54,7 @@ public final class PhoneSessionController: ObservableObject {
     @Published public private(set) var userNotice: String?
     @Published public private(set) var recentIssues: [FlowmoIssueRecord] = []
     public let syncStatus: WorldSyncStatus
+    public let introduction: IntroductionState
 
     let store: Store
     let attention: PhoneAttention
@@ -70,9 +72,14 @@ public final class PhoneSessionController: ObservableObject {
         Engine.sessionStatus(world, now: now)
     }
 
-    public init(store: Store, attention: PhoneAttention = PhoneAttention()) {
+    public init(
+        store: Store,
+        attention: PhoneAttention = PhoneAttention(),
+        userDefaults: UserDefaults = .standard
+    ) {
         self.store = store
         self.attention = attention
+        self.introduction = IntroductionState(userDefaults: userDefaults)
         let syncMetadataStore = WorldSyncMetadataStore(root: store.root)
         self.syncMetadataStore = syncMetadataStore
         self.worldAuthority = WorldAuthority(
@@ -127,8 +134,13 @@ public final class PhoneSessionController: ObservableObject {
         if let startupIssue, startupIssue != .storeUnreadable {
             self.activeIssue = FlowmoPresentedIssue(code: startupIssue)
         }
-        attention.reconcile(status: Engine.sessionStatus(loaded, now: Date()), cuesEnabled: loaded.config.cuesEnabled)
+        attention.reconcile(world: loaded, now: Date())
         syncStatus.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+        introduction.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
@@ -140,7 +152,6 @@ public final class PhoneSessionController: ObservableObject {
 
     public func startRunning() {
         startCloudSync()
-        attention.requestPermission()
         guard timer == nil else {
             becameActive()
             return
@@ -155,10 +166,26 @@ public final class PhoneSessionController: ObservableObject {
         becameActive()
     }
 
+    public var canShowIntroduction: Bool {
+        world.live == nil && !storeNeedsRecovery && syncStatus.conflict == nil
+    }
+
+    public func presentIntroductionIfNeeded() {
+        introduction.presentIfNeeded(canPresent: canShowIntroduction)
+    }
+
+    public func showIntroduction() {
+        introduction.replay(canPresent: canShowIntroduction)
+    }
+
+    public func requestNotifications() {
+        attention.requestPermission()
+    }
+
     /// Background suspends the 0.25s timer. Catch up as soon as we are looking.
     public func becameActive() {
         tick()
-        attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+        attention.reconcile(world: world, now: now)
         cloudSync?.refresh()
     }
 
@@ -310,6 +337,7 @@ public final class PhoneSessionController: ObservableObject {
             var loaded = try store.load()
             if loaded.live?.isPaused == false {
                 loaded = try store.update { engine in
+                    guard !syncMetadataStore.isRemoteLiveSession(engine.world.live) else { return }
                     engine.pauseUnpausedLiveOnProcessStart(now: Date())
                 }.world
             }
@@ -320,7 +348,7 @@ public final class PhoneSessionController: ObservableObject {
             activeIssue = nil
             sessionWasLive = loaded.live != nil
             refreshDraftsAfterChange()
-            attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+            attention.reconcile(world: world, now: now)
             reloadGlance()
             cloudSync?.localWorldDidChange(takesOwnership: false)
         } catch {
@@ -346,7 +374,7 @@ public final class PhoneSessionController: ObservableObject {
             showCapture = false
             showParkedReview = false
             sessionWasLive = false
-            attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+            attention.reconcile(world: world, now: now)
             reloadGlance()
         } catch {
             presentIssue(.preserveAndResetFailed, operation: .preserveAndReset)
@@ -462,7 +490,7 @@ public final class PhoneSessionController: ObservableObject {
             world = engine.world
             now = Date()
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
-            attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+            attention.reconcile(world: world, now: now)
             refreshDraftsAfterChange()
             reloadGlance()
             cloudSync?.localWorldDidChange(takesOwnership: false)
@@ -497,7 +525,7 @@ public final class PhoneSessionController: ObservableObject {
             world = result.world
             now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
-            attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+            attention.reconcile(world: world, now: now)
             refreshDraftsAfterChange()
             reloadGlance()
             guard case .committed(let commit) = result else { return nil }
@@ -522,7 +550,7 @@ public final class PhoneSessionController: ObservableObject {
                     to: world.live?.phase,
                     cuesEnabled: world.config.cuesEnabled
                 )
-                attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+                attention.reconcile(world: world, now: now)
                 refreshDraftsAfterChange()
                 reloadGlance()
             }
@@ -537,7 +565,7 @@ public final class PhoneSessionController: ObservableObject {
             world = try store.load()
             now = Date()
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
-            attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+            attention.reconcile(world: world, now: now)
             refreshDraftsAfterChange()
             reloadGlance()
             cloudSync?.localWorldDidChange(takesOwnership: false)
@@ -564,7 +592,7 @@ public final class PhoneSessionController: ObservableObject {
                     world = syncedWorld
                     now = Date()
                     refreshDraftsAfterChange()
-                    attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+                    attention.reconcile(world: world, now: now)
                     reloadGlance()
                 }
             )
@@ -619,7 +647,7 @@ public final class PhoneSessionController: ObservableObject {
         showCapture = false
         showParkedReview = false
         sessionWasLive = false
-        attention.reconcile(status: status, cuesEnabled: world.config.cuesEnabled)
+        attention.reconcile(world: world, now: now)
         reloadGlance()
     }
 
@@ -638,10 +666,7 @@ public final class PhoneSessionController: ObservableObject {
             storeNeedsRecovery = true
             // Once the store is blocked, the last in-memory phase is untrustworthy.
             // Reconcile against idle so no timed notification survives into recovery.
-            attention.reconcile(
-                status: Engine.sessionStatus(.empty, now: timestamp),
-                cuesEnabled: false
-            )
+            attention.reconcile(world: .empty, now: timestamp)
         }
         guard timestamp.timeIntervalSince(lastIssuePresentedAt[code] ?? .distantPast) >= 60 else { return }
         lastIssuePresentedAt[code] = timestamp

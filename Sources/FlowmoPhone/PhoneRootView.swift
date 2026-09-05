@@ -29,6 +29,7 @@ public struct PhoneRootView: View {
     public var body: some View {
         let status = controller.status
         let atmo = Atmosphere.of(status)
+        let introduction = controller.introduction.isPresented && controller.canShowIntroduction
         let distantHorizon = PhoneFocusPresentation.usesDistantHorizon(
             phase: status.phase,
             isPaused: status.isPaused,
@@ -40,6 +41,11 @@ public struct PhoneRootView: View {
                 StoreRecoveryPane(controller: controller)
             } else if let conflict = controller.syncStatus.conflict {
                 SyncConflictPane(controller: controller, conflict: conflict)
+            } else if introduction {
+                IntroductionView(
+                    state: controller.introduction,
+                    onRequestNotifications: controller.requestNotifications
+                )
             } else if status.isIdle {
                 IdlePane(controller: controller, status: status)
             } else {
@@ -56,8 +62,12 @@ public struct PhoneRootView: View {
         .animation(reduceMotion ? nil : Motion.phase, value: status.isPaused)
         .animation(reduceMotion ? nil : Motion.phase, value: distantHorizon)
         .preferredColorScheme(.dark)
+        .onAppear { controller.presentIntroductionIfNeeded() }
+        .onChange(of: controller.canShowIntroduction) { _, _ in
+            controller.presentIntroductionIfNeeded()
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
-            if !distantHorizon {
+            if !distantHorizon, !introduction {
                 HStack {
                     Spacer()
                     PhoneMuteButton(controller: controller)
@@ -125,6 +135,7 @@ private struct PhoneMuteButton: View {
             controller.setCuesEnabled(!on)
         } label: {
             ChromeGlyph(on ? "speaker.wave.2" : "speaker.slash", lit: on)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(PressStyle())
@@ -261,43 +272,61 @@ private struct IdlePane: View {
                     }
                     .disabled(!canStart)
                 } chrome: {
-                    HStack(spacing: 18) {
-                        Text("Today \(Format.clock(status.todayFocusSeconds))")
-                            .foregroundStyle(atmo.faint)
-                            .monospacedDigit()
-                        Button {
-                            showingHistory = true
-                        } label: {
-                            Text("History")
-                                .underline(false)
-                                .modifier(QuietHoverInk())
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 12) {
+                            today
+                            footerActions
                         }
-                        .buttonStyle(PressStyle())
-                        Button {
-                            showingData = true
-                        } label: {
-                            Text("Data")
-                                .underline(false)
-                                .modifier(QuietHoverInk())
-                        }
-                        .buttonStyle(PressStyle())
-                        if !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Button {
-                                controller.clearIntention()
-                            } label: {
-                                Text("New")
-                                    .underline(false)
-                                    .modifier(QuietHoverInk())
-                            }
-                            .buttonStyle(PressStyle())
+                        VStack(spacing: 4) {
+                            today
+                            footerActions
                         }
                     }
                     .font(.system(.caption, design: .rounded).weight(.medium))
-                    .padding(.top, 18)
+                    .padding(.top, 8)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var today: some View {
+        Text("Today \(Format.clock(status.todayFocusSeconds))")
+            .foregroundStyle(atmo.faint)
+            .monospacedDigit()
+            .fixedSize()
+    }
+
+    private var footerActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                footerButtons
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            VStack(spacing: 4) {
+                footerButtons
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var footerButtons: some View {
+        footerButton("History") { showingHistory = true }
+        footerButton("Data") { showingData = true }
+        if !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            footerButton("New") { controller.clearIntention() }
+        }
+    }
+
+    private func footerButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .fixedSize()
+                .modifier(QuietHoverInk())
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
     }
 
     private var typedIntention: String {
@@ -410,29 +439,42 @@ private struct DataControlsPane: View {
     @State private var exportDocument: FlowmoJSONDocument?
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                QuietButton("Back", minHeight: 44, action: dismiss)
+        ScrollView {
+            VStack(spacing: 16) {
+                HStack {
+                    QuietButton("Back", minHeight: 44, action: dismiss)
+                    Spacer()
+                    Text("Data")
+                        .font(.system(.headline, design: .rounded))
+                }
                 Spacer()
-                Text("Data")
-                    .font(.system(.headline, design: .rounded))
+                Text("Exports stay on this device unless you choose where to save them.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(atmo.mute)
+                    .multilineTextAlignment(.center)
+                InkButton("Export Flowmo Data") {
+                    beginExport(kind: "data")
+                }
+                QuietButton("Export Redacted Diagnostics", minHeight: 44) {
+                    beginExport(kind: "diagnostics")
+                }
+                QuietButton("Delete All Data", minHeight: 44) {
+                    showingDeleteConfirmation = true
+                }
+                .foregroundStyle(Color.red.opacity(0.85))
+                Divider()
+                QuietButton("How it works", minHeight: 44) {
+                    controller.showIntroduction()
+                }
+                QuietButton("Enable notifications", minHeight: 44) {
+                    controller.requestNotifications()
+                }
+                Text("If alerts were previously declined, enable them in system settings.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(atmo.mute)
+                    .multilineTextAlignment(.center)
+                Spacer()
             }
-            Spacer()
-            Text("Exports stay on this device unless you choose where to save them.")
-                .font(.system(.caption, design: .rounded))
-                .foregroundStyle(atmo.mute)
-                .multilineTextAlignment(.center)
-            InkButton("Export Flowmo Data") {
-                beginExport(kind: "data")
-            }
-            QuietButton("Export Redacted Diagnostics", minHeight: 44) {
-                beginExport(kind: "diagnostics")
-            }
-            QuietButton("Delete All Data", minHeight: 44) {
-                showingDeleteConfirmation = true
-            }
-            .foregroundStyle(Color.red.opacity(0.85))
-            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .confirmationDialog(
@@ -445,7 +487,9 @@ private struct DataControlsPane: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently deletes your current local Flowmo data. This cannot be undone.")
+            Text(
+                "This permanently deletes Flowmo data on this iPhone and removes its synced iCloud copy when one exists. Other synced devices receive that deletion. If you’re offline, iCloud deletion stays pending. This cannot be undone."
+            )
         }
         .fileExporter(
             isPresented: $exporting,
@@ -706,7 +750,7 @@ private struct PhoneDistantHorizonFocusPane: View {
             }
         } else {
             VStack(alignment: .leading, spacing: spacing) {
-                sceneKicker("Focus scene", size: kickerSize)
+                sceneKicker("Focus", size: kickerSize)
 
                 VStack(alignment: .leading, spacing: spacing) {
                     Text(status.intention)

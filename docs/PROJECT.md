@@ -4,7 +4,7 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-08-29
+Last updated: 2026-09-05
 Owner: Fran Carrara  
 Status: 1.0 close-beta candidate; external Apple distribution remains gated.
 
@@ -22,7 +22,7 @@ You work until **you** stop (count up). You rest in proportion to how long you a
 **Working copy:** Stop counting down. Start flowing up. The product name and
 tagline are placeholders; branding is not a roadmap dependency.
 
-**One-line test:** if it feels like another 25/5 timer, it failed. If you need a setup wizard or a command list to start focusing, it also failed.
+**One-line test:** if it feels like another 25/5 timer, it failed. If you need mandatory setup or a command list to start focusing, it also failed. The short first-use tutorial is skippable.
 
 ---
 
@@ -204,6 +204,27 @@ The Mac **window is the product**.
 - **Always on top.** Off by default. One control to pin over your work.
 - **Look.** The shipped compact pass is defined in [`visual.md`](visual.md). It is a current product treatment, not a final brand or theme system.
 
+### First-use tutorial
+
+Mac and iPhone show a short three-page **How it works** tutorial before the
+first available Idle on that device. It explains one intention and optional
+Prime, count-up Focus and parked thoughts, then proportional rest and an
+optional next step, including the default 50-minute Focus / 10-minute Break
+example. **Skip** is available on every page. **Set intention** on the last
+page returns to Idle; tutorial **Continue** changes pages only. No tutorial
+action types an intention, starts or resumes a Session, or changes History.
+
+Skipping or finishing remembers the current tutorial version in a device-local
+preference. **Data → How it works** replays it. A live Session, recovery, or
+sync conflict takes precedence; an unfinished tutorial waits until safe Idle
+and begins again from its first page. Mac temporarily uses Classic for the
+tutorial and restores a saved Mini preference afterward. This is guidance in
+the same product frame, not a Home, configuration wizard, or new Loop Beat.
+
+The last page offers optional **Enable notifications** with an explanation;
+the same action remains in Data. Launching, skipping, and finishing the
+tutorial do not request notification permission automatically.
+
 ### States
 
 | State | On screen | Actions |
@@ -346,8 +367,10 @@ Pause exists only as **recovery**:
 ### Sound and attention
 
 - Soft cues **on by default** at phase changes (Prime ended, you stopped, Break ended, Reflection ended).
-- If the window is in the background: **sound + a system notification**. Clicking the banner brings the window forward.
+- Notification permission is requested only after **Enable notifications** in the tutorial or Data. Declining alerts never blocks the loop; previously declined alerts can be changed in system settings.
+- If the Mac window is in the background: **sound + a system notification**, when system permission permits. Clicking the banner brings the window forward without resuming recovery.
 - Mute is a compact-window control. Default is audible. Mute silences the phase sound; background banners still post.
+- iPhone schedules known timed endings from the persisted Session timestamps before suspension. Starting Break schedules both its end and the following Reflection end; early transitions and recovery replace or cancel obsolete requests. Focus has no scheduled end. See [`iphone.md`](iphone.md).
 
 ---
 
@@ -394,13 +417,18 @@ contains app/build/OS metadata, phase and counts, and stable issue codes with
 operation categories and timestamps—never Intention, capture, Reflection text,
 selected-app identifiers, or store paths.
 
+Data also offers **How it works** and **Enable notifications**. Tutorial
+completion is a local presentation preference, outside session exports and
+CloudKit; deleting session data does not make the tutorial run again.
+
 On Mac, a separate explicit Focus Guard counts export contains only the
 versioned aggregate instrumentation report described above. It does not
 silently join the full-data or diagnostic export, and no export uploads itself.
 
 Invalid stores are never silently discarded. The recovery action preserves the
 original bytes before resetting. **Delete All Data** requires explicit
-confirmation, refuses a live session, and removes the canonical data and exact
+confirmation that names both local data and any synced iCloud copy, refuses a
+live session, and removes the canonical data and exact
 Flowmo-owned recovery artifacts without recursively deleting a planted
 directory. On Mac it also removes the separate evidence store and its exact
 owned recovery artifacts. Any incomplete cleanup remains visible to the user;
@@ -580,6 +608,8 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Data controls | Idle-only full export, redacted diagnostics, confirmed Delete All |
 | Mini | Aperture + verb. Mute and pin on the left, presentation control on the right. Typing expands to Classic. |
 | Guide | Process names the beat: Prepare / Focus / Break / Reflection. |
+| First-use explanation | Three skippable pages once per device preference; replay from Data; defer during live/recovery/conflict; return to editable Idle without starting. |
+| Notification permission | Explicit Enable notifications in the tutorial or Data, never an automatic launch prompt. |
 
 ---
 
