@@ -9,15 +9,15 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 | Later item | This slice |
 |---|---|
 | **iPhone** | Yes. Same loop, one native frame; active Focus expands into its Distant Horizon canvas. |
-| Widgets | After the app exists. A widget is a glance, not a session. |
+| Widgets | Read-only glance in the entitled target; absent from Flowmo Local. |
 | History | Plain local completed-session list from Idle. |
 | Theme packs | Charcoal, ink, and earned-rest gold from [`visual.md`](visual.md). Not a pack. |
-| iCloud | Private CloudKit sync with the Mac app. |
+| iCloud | Private CloudKit sync in the entitled target; absent from Flowmo Local. |
 | Watch | Later. |
 
 ## Outcome
 
-One iPhone app that runs:
+Both iPhone variants run:
 
 Idle → type once → Prime (2:00) → Focus (count up, you stop) → earned Break → Reflection (3:00) → Close Beat → Idle.
 
@@ -30,10 +30,37 @@ Kill the app → paused with **Continue** and **Restart**. Opening the app does 
 
 Copy does not claim productivity, well-being, or flow.
 
+## Build variants
+
+**Flowmo Local** is the chosen path for free Personal Team testing on the
+owner's iPhone. This separate, Unreleased `FlowmoPhoneLocal` target and scheme
+in `Apps/FlowmoPhone.xcodeproj` produces `FlowmoLocal.app`, displays **Flowmo
+Local**, and uses bundle `app.flowmo.phone.local`. It stores
+`Application Support/flowmo/world.json` inside its own app sandbox. It has no
+App Group, CloudKit, push capability, background remote-notification mode, or
+embedded widget. Local notification reminders remain available after opt-in.
+The shared controller uses the local World authority without reading or
+writing sync metadata, starting cloud transport, or refreshing widget timelines.
+
+**FlowmoPhone** remains the entitled App Group/CloudKit/widget target. Its
+existing store, private sync, and legacy migration behavior are unchanged.
+Installing Flowmo Local does not read, import, migrate, or delete that target's
+data. The two apps have separate History and tutorial preferences. A full
+export is available for safekeeping; changing schemes is not a migration or
+sync mechanism. Reinstalling the same app to refresh a provisioning profile
+should preserve its container; deleting the app removes it, so export first.
+
+Personal Team use requires the owner to select their team and run on a trusted
+iPhone in Xcode. It is not public iPhone distribution. Signing, profile renewal,
+and real-device notification delivery still need device verification; a
+simulator build cannot prove them. See [`release.md`](release.md#free-personal-testing)
+for installation constraints. Existing build 4 artifacts do not include this
+new local variant.
+
 ## In
 
 - New iOS app in **this** repo. Rules and JSON from **FlowmoCore**. New SwiftUI frame. **Not** AppKit `FlowmoWindow`. **Not** `~/Flowmo`.
-- Same `world.json` schema. File lives in the phone/widget App Group container (not `~/.flowmo`). Same bounded validation, lock, and atomic write. The phone app synchronizes the loop through the user's private CloudKit database; the widget only reads the App Group copy.
+- Same `world.json` schema, bounded validation, lock, and atomic write. Flowmo Local uses its own Application Support directory. The entitled target uses the phone/widget App Group container and synchronizes through the user's private CloudKit database; its widget only reads that App Group copy. Neither phone store is the Mac's `~/.flowmo`.
 - Same controls as Mac: Start, Use next / Use last, restore a chosen Completed Session from History, Park thought, review parked thoughts into the Next Step, End focus, Reflect, Skip / Done, Restart, mute, and Idle-only Data controls. Close Beat Done carries that exact Session’s explicit Next Step into editable Idle without starting. **No pin.** **No Focus Guard.** **No menu bar.** **No `flowmo live`.**
 - Same look rules: black field, ink on Start, determinate timed rings, and clock-in-ring on Prime/Break/Reflection. Gold is reserved for Break and earned rest. Active unpaused Focus uses a phone-native Distant Horizon with a count-up and earned-rest mark. No Focus progress ring. No Home. No tabs.
 - Cues on by default (`cuesEnabled`). Mute silences sound. Optional local notifications announce timed endings while you are not looking. Only **Enable notifications** in the tutorial or Data requests permission; launch does not. Tap opens the app; it does not Continue.
@@ -60,8 +87,9 @@ recovery, and later state changes replace the plan and cancel obsolete requests;
 Continue uses the shifted persisted deadlines. Focus has no scheduled ending.
 Muted requests omit sound. System permission and delivery policy still apply.
 The UI/Core timer does not run continuously in the background. iOS may grant
-`CKSyncEngine` bounded background execution for remote database notifications;
-persisted timestamps remain the clock authority when the interface returns.
+`CKSyncEngine` bounded background execution for remote database notifications
+in the entitled target only. Persisted timestamps remain the clock authority
+when the interface returns.
 
 ## Checkable lines
 
@@ -99,17 +127,17 @@ THE SYSTEM SHALL fill the phone frame with the Distant Horizon, count up from ti
 WHEN the user backgrounds the app during a live session
 THE SYSTEM SHALL not pause. On return the same phase is still moving (or already advanced if a timed beat ran out).
 
-WHEN a session arrives from the Mac through private CloudKit
+WHEN a session arrives from the Mac through private CloudKit in the entitled target
 THE SYSTEM SHALL display the same timestamped session and SHALL NOT pause it as
 an iPhone process-recovery event. Retry after store repair SHALL preserve exact
 remote ownership too; stale ownership after a local change SHALL still recover
 paused.
 
-WHEN both devices start or ambiguously change a session while offline
+WHEN entitled devices start or ambiguously change a session while offline
 THE SYSTEM SHALL block loop controls and require **Keep this iPhone** or **Use
 iCloud version**. It SHALL NOT silently merge two live sessions.
 
-WHEN CloudKit is signed out or unavailable
+WHEN CloudKit is signed out or unavailable in the entitled target
 THE SYSTEM SHALL remain usable against its local store and queue later sync.
 Changing iCloud accounts SHALL require an explicit data choice before upload.
 A missing iCloud account or entitlement SHALL NOT occupy the session interface;
@@ -135,18 +163,24 @@ reminder, Data, and tutorial SHALL remain readable without adding navigation.
 WHEN `world.json` is a Mac-shaped document
 THE SYSTEM SHALL load it. Guard fields have no iPhone UI.
 
-WHEN the App Group container is unavailable
+WHEN the entitled target's App Group container is unavailable
 THE SYSTEM SHALL show a calm unavailable state with Retry and SHALL NOT crash or
 fall back to a different store.
 
-WHEN the shared store is invalid
+WHEN Flowmo Local's Application Support directory is unavailable
+THE SYSTEM SHALL show a calm unavailable state with Retry and SHALL NOT resolve
+the App Group or fall back to another store.
+
+WHEN either variant's selected store is invalid
 THE SYSTEM SHALL offer Retry, redacted diagnostics, or Preserve & Reset. The
 original bytes SHALL be preserved before reset.
 
 WHEN the user opens Data from Idle
 THE SYSTEM SHALL offer full export, redacted diagnostic export, and explicitly
-confirmed Delete All whose confirmation names the local and synced iCloud
-scope. Data SHALL also offer How it works and Enable notifications. Delete All
-SHALL remove Flowmo-owned recovery copies and reload the widget timeline. It SHALL remove local private sync replicas
-immediately and SHALL report incomplete deletion until queued CloudKit deletion
-is confirmed.
+confirmed Delete All whose confirmation names that variant's deletion scope.
+Data SHALL also offer How it works and Enable notifications. Delete All SHALL
+remove the selected store's Flowmo-owned recovery copies. In Flowmo Local it
+SHALL affect only that app's local data, without iCloud deletion or widget
+refresh. In the entitled target it SHALL name local and synced iCloud data,
+reload the widget timeline, remove local private sync replicas immediately,
+and report incomplete deletion until queued CloudKit deletion is confirmed.

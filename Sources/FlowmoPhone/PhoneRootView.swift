@@ -90,7 +90,7 @@ public struct PhoneRootView: View {
                         .contentShape(Rectangle())
                         .onTapGesture { controller.clearNotice() }
                 }
-                if let notice = worldSyncNotice(controller.syncStatus) {
+                if !controller.isLocalOnly, let notice = worldSyncNotice(controller.syncStatus) {
                     Text(notice)
                 }
             }
@@ -209,8 +209,10 @@ private struct SyncConflictPane: View {
 
 public struct PhoneStoreUnavailableView: View {
     private let retry: () -> Void
+    private let isLocalOnly: Bool
 
-    public init(retry: @escaping () -> Void) {
+    public init(isLocalOnly: Bool = false, retry: @escaping () -> Void) {
+        self.isLocalOnly = isLocalOnly
         self.retry = retry
     }
 
@@ -219,10 +221,14 @@ public struct PhoneStoreUnavailableView: View {
             Spacer()
             Text("Flowmo unavailable")
                 .font(.system(.title2, design: .rounded).weight(.semibold))
-            Text("Flowmo can’t access its shared local data right now.")
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(Look.mute)
-                .multilineTextAlignment(.center)
+            Text(
+                isLocalOnly
+                    ? "Flowmo can’t access its local data right now."
+                    : "Flowmo can’t access its shared local data right now."
+            )
+            .font(.system(.body, design: .rounded))
+            .foregroundStyle(Look.mute)
+            .multilineTextAlignment(.center)
             Text(FlowmoIssueCode.storeUnavailable.rawValue)
                 .font(.system(.caption2, design: .monospaced))
                 .foregroundStyle(Look.faint)
@@ -448,10 +454,14 @@ private struct DataControlsPane: View {
                         .font(.system(.headline, design: .rounded))
                 }
                 Spacer()
-                Text("Exports stay on this device unless you choose where to save them.")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(atmo.mute)
-                    .multilineTextAlignment(.center)
+                Text(
+                    controller.isLocalOnly
+                        ? "Sessions stay in this app on this iPhone. Exports go only where you choose to save them."
+                        : "Exports stay on this device unless you choose where to save them."
+                )
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
                 InkButton("Export Flowmo Data") {
                     beginExport(kind: "data")
                 }
@@ -488,7 +498,9 @@ private struct DataControlsPane: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This permanently deletes Flowmo data on this iPhone and removes its synced iCloud copy when one exists. Other synced devices receive that deletion. If you’re offline, iCloud deletion stays pending. This cannot be undone."
+                controller.isLocalOnly
+                    ? "This permanently deletes Flowmo data in this app on this iPhone. This cannot be undone."
+                    : "This permanently deletes Flowmo data on this iPhone and removes its synced iCloud copy when one exists. Other synced devices receive that deletion. If you’re offline, iCloud deletion stays pending. This cannot be undone."
             )
         }
         .fileExporter(

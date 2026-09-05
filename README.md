@@ -16,6 +16,11 @@ notarized. The working name is Flowmo. This candidate proposes the
 [MIT license](LICENSE) for open-source distribution; it has not been publicly
 released.
 
+The owner has chosen a **no-paid-membership** release path: GitHub source and
+local-only Mac/terminal downloads, plus an iPhone build for free personal
+testing. Apple-trusted downloads, TestFlight, and iCloud/widget delivery are
+outside this release scope.
+
 ## The loop
 
 1. **Intention:** write what you want to work on, then Start.
@@ -55,11 +60,20 @@ xcodebuild -project Apps/Flowmo.xcodeproj -scheme Flowmo -configuration Release 
 open .build/mac/Build/Products/Release/Flowmo.app
 ```
 
-To use iPhone, open `Apps/FlowmoPhone.xcodeproj` in Xcode, select the FlowmoPhone
-scheme and an iPhone simulator, then Run. The app requires **iOS 17 or newer**.
-Physical-device builds need a development team and provisioning for the App
-Group, CloudKit, and push capabilities. A simulator build is not an installable
-iPhone download. See [distribution options](docs/release.md#github-first-distribution).
+To use iPhone without a paid membership, open `Apps/FlowmoPhone.xcodeproj` in
+Xcode and select **FlowmoPhoneLocal**. Select your iPhone, sign into your Apple
+Account in Xcode, choose its Personal Team for that target, and Run. It also
+runs in the simulator. The app requires **iOS 17 or newer**.
+
+This separate local app keeps the focus loop, recovery, exports, and local
+reminders. Its data stays in its own app container; it has no iCloud sync or
+widget and does not import the entitled app's data. Apple's free provisioning
+expires after **seven days**, requiring rebuilding/reinstalling over the app.
+See [personal testing and installation](docs/release.md#free-personal-testing).
+
+The existing **FlowmoPhone** scheme retains the App Group, CloudKit, push, and
+widget capabilities for eligible teams. Neither a simulator build nor a plain
+GitHub IPA is a public iPhone installation route.
 
 ## Install the terminal command
 

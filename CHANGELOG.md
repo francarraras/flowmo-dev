@@ -4,6 +4,14 @@ Notable changes are recorded here.
 
 ## Unreleased
 
+- Added a separate **FlowmoPhoneLocal** build for free Personal Team testing on
+  an iPhone. It keeps the session loop and local reminders in its own app
+  container without iCloud, App Group, push, or an embedded widget. The existing
+  entitled phone app keeps its store and recovery rules. Documented the chosen
+  no-paid-membership distribution path and Apple's periodic reinstall limit.
+- Stacked iPhone recovery controls at accessibility text sizes so Continue
+  stays readable without splitting its label.
+
 ## 1.0 (4) — Readiness candidate
 
 - Added a short, one-time introduction on Mac and iPhone explaining intention,

@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-09-05
 Owner: Fran Carrara  
-Status: 1.0 close-beta candidate; external Apple distribution remains gated.
+Status: 1.0 local preview candidate; the separate local iPhone variant is Unreleased.
 
 ---
 
@@ -17,7 +17,7 @@ principles, research on habit and attention, and the owner’s experience. It
 provides an open-ended focus ritual; it does not claim that one timer pattern is
 universally optimal for learning or productivity.
 
-You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before Focus you still; after the Break you briefly reflect. On Mac, choosing **Focus now** can hand control back to the already-running app you came from without persisting or logging its identity or contents. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same privately synced loop on iPhone. Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
+You work until **you** stop (count up). You rest in proportion to how long you actually focused. Before Focus you still; after the Break you briefly reflect. On Mac, choosing **Focus now** can hand control back to the already-running app you came from without persisting or logging its identity or contents. While you work you can park a thought without leaving. The tool stays light and fast. The public face is a compact native window on Mac and the same loop in a native iPhone frame. The local iPhone variant keeps an independent session; eligible entitled builds can sync privately. Power users and scripts can inspect and fire supported verbs through the versioned CLI contract; they do not replace the app or write the store directly.
 
 **Working copy:** Stop counting down. Start flowing up. The product name and
 tagline are placeholders; branding is not a roadmap dependency.
@@ -382,8 +382,27 @@ Pause exists only as **recovery**:
 | **Menu bar** | Glance only (clock; click shows the window) | Still not the product |
 | **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
 | **CLI / JSON** | Scripts and integrations | Same verbs, same store as the window |
-| **iPhone** | Shipped ([`iphone.md`](iphone.md)) | Same loop and private CloudKit session |
-| **Widgets** | Shipped ([`widget.md`](widget.md)) | Glance; not the product |
+| **iPhone** | Native loop implemented; separate local variant Unreleased ([`iphone.md`](iphone.md)) | Local personal use; private sync remains available in the entitled target |
+| **Widgets** | Implemented for the entitled iPhone target ([`widget.md`](widget.md)); excluded from the local variant | Glance; not the product |
+
+### Current delivery scope
+
+The owner chose GitHub source, local-only Mac/terminal downloads, and free
+Personal Team iPhone testing without paid Apple Developer membership. The
+separate **Flowmo Local** app uses the `FlowmoPhoneLocal` scheme and bundle
+`app.flowmo.phone.local`. Its `Application Support/flowmo/world.json` belongs
+only to that app's sandbox. It neither reads nor migrates the entitled phone's
+App Group store, and it never starts CloudKit, queues sync, or updates a widget.
+It has the same Loop, tutorial, local reminders, recovery, History, and exports.
+This is personal-device testing, not general iPhone download distribution; see
+[`release.md`](release.md#free-personal-testing).
+
+The existing `FlowmoPhone` target retains private sync and its read-only widget
+for contributors with the necessary signing capabilities. Missing App Group
+access remains an unavailable-store error, never an automatic switch to local
+storage. The local variant likewise reports unavailable storage instead of
+switching stores. Switching app variants does not transfer sessions or History.
+The local variant is new Unreleased work, outside the existing build 4 artifacts.
 
 ### CLI and scripts
 
@@ -427,14 +446,23 @@ silently join the full-data or diagnostic export, and no export uploads itself.
 
 Invalid stores are never silently discarded. The recovery action preserves the
 original bytes before resetting. **Delete All Data** requires explicit
-confirmation that names both local data and any synced iCloud copy, refuses a
-live session, and removes the canonical data and exact
+confirmation that names the active variant's local data and any synced iCloud
+copy, refuses a live session, and removes the canonical data and exact
 Flowmo-owned recovery artifacts without recursively deleting a planted
 directory. On Mac it also removes the separate evidence store and its exact
 owned recovery artifacts. Any incomplete cleanup remains visible to the user;
 the app must not claim all data was deleted if either cleanup is incomplete.
 
+In Flowmo Local, export and Delete All cover only that app's own store and
+owned recovery copies. Deletion does not contact iCloud or change another
+Flowmo app's data. Deleting the app itself removes its sandbox; export first
+if the history must be kept. A full export is not an automatic migration path.
+
 ### Private cross-device sync
+
+This behavior belongs to eligible entitled builds and is outside the chosen
+no-membership delivery scope. Flowmo Local does not enable it, even if the
+phone is signed in to iCloud.
 
 The entitled Mac and iPhone apps synchronize the loop through the user's
 private `iCloud.app.flowmo` CloudKit database. The shared state is the live
@@ -528,7 +556,8 @@ GitHub: `https://github.com/francarraras/Flowmo` (private)
 
 `/Users/facspro/dev/flowmo` is the current close-beta implementation: the
 deterministic Core, native Mac window, Focus Guard, supporting glances and CLI,
-iPhone app, private CloudKit sync, widget, recovery paths, and privacy controls.
+iPhone app, a separate Unreleased local iPhone host, optional entitled private
+CloudKit sync and widget, recovery paths, and privacy controls.
 The Mac window is the product; the CLI remains a side door.
 
 macOS on this machine is case-insensitive: `~/flowmo` and `~/Flowmo` are the **same path**. New work must stay under `~/dev/flowmo` (or another name that is not `Flowmo`).
@@ -541,11 +570,11 @@ Core proofs use `swift run flowmo check` (`import XCTest` / `import Testing` may
 
 The current implementation follows this shape:
 
-1. **One logical session**, persisted as timestamped local replicas plus a private CloudKit replica. Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The optional Mac work-app handoff exists only in window-process memory and is never session authority. The separate Mac evidence file contains aggregates only and is never session authority.
+1. **One logical session per store**, persisted with timestamps. Entitled sync connects local replicas to a private CloudKit replica; Flowmo Local's store is independent. Elapsed time is `now - startedAt`. Break remaining is `endsAt - now`. Any UI is a view. The optional Mac work-app handoff exists only in window-process memory and is never session authority. The separate Mac evidence file contains aggregates only and is never session authority.
 2. **One live session per local store**, with a file lock shared by the Mac window and CLI. Cross-device ambiguity becomes an explicit conflict; it never becomes two silently merged Focus sessions.
 3. **Native session frames** on Mac and iPhone. Menu bar, terminal, CLI, and widget remain supporting views.
 4. Do **not** start by opening a new Xcode clone of `~/Flowmo`.
-5. Persistence: a small local JSON store plus durable private-sync metadata. SwiftData is not required.
+5. Persistence: a small local JSON store, with durable private-sync metadata in sync-capable builds. Flowmo Local uses the local authority without sync metadata. SwiftData is not required.
 6. Notifications and sound are adapters around phase transitions, not the engine.
 
 The shipped Loop remains **Idle → Prime → Focus → Break → Reflection → Close Beat → Idle**, with Recovery Pause, supporting glances, and local History.

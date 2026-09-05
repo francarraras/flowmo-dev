@@ -41,11 +41,11 @@ For every release, the owner should retain a private ledger recording:
 - every external snippet, package, asset, font, generator, and its license;
 - the release revision, dependency inventory, test evidence, and approval.
 
-Reachable Git history currently contains the author names `Fran Carrara` and
-`Francisco Antonio Carrara Strina`. Before external distribution, the owner must
-record whether these are the same legal owner and use the correct copyright and
-contracting name. Obtain written IP assignments before accepting work from any
-other contributor or contractor.
+On 2026-09-05, the owner confirmed that the Git author names `Fran Carrara` and
+`Francisco Antonio Carrara Strina` both identify them. The copyright notice uses
+Fran Carrara; the longer name identifies the same owner in the existing history.
+Obtain written IP assignments before accepting work from any other contributor
+or contractor.
 
 Future contributors must attest that their contribution is theirs to license,
 that required third-party notices are recorded, and that private user session

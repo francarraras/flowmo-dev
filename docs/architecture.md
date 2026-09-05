@@ -15,9 +15,9 @@ Mac host ----> FlowmoWindow ----+----> FlowmoCore
                                                   \
                                                    +-> CloudKit
 
-Phone host --> FlowmoPhone -----+----> FlowmoCore
+Phone hosts -> FlowmoPhone -----+----> FlowmoCore
                                 +----> FlowmoLook
-                                +----> FlowmoSync
+                                +----> FlowmoSync (entitled mode only at runtime)
 
 FlowmoCLI / checks / gate ------------> FlowmoCore
 ```
@@ -31,13 +31,39 @@ notifications, and process activation do not belong in the domain module.
 | `FlowmoSync` | Reconciliation, synchronized World persistence, sync metadata, record encoding, and the CloudKit adapter | Session rules or an independent copy of `World` |
 | `FlowmoLook` | Shared visual primitives, Distant Horizon backdrop, and tutorial page/completion presentation | Session authority or platform routing |
 | `FlowmoWindow` | Mac presentation, lifecycle, Focus Guard adapter, Focus Scene, and Work Handoff | Domain transitions or direct file mutation |
-| `FlowmoPhone` | Phone presentation, including its active-Focus Distant Horizon, lifecycle, attention, and widget reload coordination | A second phone-specific session model |
+| `FlowmoPhone` | Phone presentation, including its active-Focus Distant Horizon, lifecycle, attention, explicit store-mode selection, and entitled-mode widget coordination | A second phone-specific session model |
 | `FlowmoCLI` | Supported terminal commands and versioned JSON projections | Direct JSON editing |
 | App hosts | Bundle configuration, entitlements, and platform packaging | Product rules |
 
 `FlowmoWindow` and `FlowmoPhone` currently contain broad orchestration
 controllers. Treat those as migration surfaces, not as permission to add new
 domain policy there.
+
+### iPhone host configuration
+
+Two explicit hosts reuse `FlowmoPhone` and the same Core rules. The existing
+[`FlowmoPhone.swift`](../Apps/FlowmoPhone.swift) selects the default
+`PhoneStoreMode.sharedWithWidget`: its App Group store, synchronized authority,
+CloudKit lifecycle, and widget reloads remain unchanged. A missing App Group
+fails closed. Its validated legacy Application Support migration remains a
+dedicated Store maintenance path within that app's container.
+
+The separate, Unreleased [`FlowmoPhoneLocal.swift`](../Apps/FlowmoPhoneLocal.swift)
+selects `.localOnly` through `PhoneStoreBootstrap`. The `FlowmoPhoneLocal`
+target/scheme uses bundle `app.flowmo.phone.local`, product `FlowmoLocal.app`,
+and its own sandbox's `Application Support/flowmo/world.json`. Store selection
+returns this path before resolving an App Group or invoking migration. Missing
+Application Support fails closed; invalid data remains in that selected store
+for the ordinary repair flow. There is no fallback or transfer between variants.
+
+Local mode uses `WorldAuthority(store:)`, never starts CloudKit or reads/writes
+sync metadata, and skips widget reloads and cloud deletion. The shared module
+still imports `FlowmoSync`; linking it does not enable transport. The local
+host declares no App Group, iCloud, push, or remote-notification background
+capability and embeds no widget. Its own privacy manifest declares no collected
+data or tracking. Tutorial preferences belong to its bundle; local reminders,
+exports, recovery, and History reuse the same implementations. See
+[`iphone.md`](iphone.md#build-variants) and [`PRIVACY.md`](../PRIVACY.md).
 
 ## State ownership
 
@@ -47,7 +73,7 @@ ticks, determine clocks and timed transitions.
 | State | Rule and persistence ownership | Writers |
 |---|---|---|
 | `world.json` | `Engine` for Loop rules, `FlowmoSync` for reconciliation, and `Store` for validation and maintenance | The local World mutation seam or a dedicated locked `Store` maintenance operation |
-| `sync/state.json` and sync assets | `FlowmoSync` | Sync metadata store and CloudKit adapter |
+| `sync/state.json` and sync assets | `FlowmoSync`; not used by Flowmo Local | Sync metadata store and CloudKit adapter |
 | Mac process-recovery marker | Mac lifecycle recovery | Recovery adapter in its documented lock-held write-ahead and post-persist order |
 | Focus Guard evidence | Local evidence recorder | Focus Guard evidence adapter only |
 | Display preferences | Platform presentation | Mac or phone presentation code |
@@ -70,8 +96,9 @@ adapter's implementation mechanism and an explicitly documented route for
 selected non-action transactions; it is not an ordinary action interface. Every
 ordinary production `Engine` `Event` mutation crosses the authority seam.
 Invalid-data quarantine, Idle-only reset, privacy deletion, and validated
-one-time phone-store migration remain dedicated locked `Store` maintenance
-operations.
+one-time entitled phone-store migration remain dedicated locked `Store`
+maintenance operations. Flowmo Local has no migration path from the entitled
+app's store.
 
 The implemented action interface has one overload for a caller that targets
 the locked current World and one for a visual adapter that targets the exact
@@ -98,9 +125,10 @@ warning when related persistence failed after World became durable. Callers
 adopt the returned World before running presentation effects or surfacing that
 warning.
 
-The phone's exact Continue, Restart, and Close Beat actions now cross the
+The entitled phone's exact Continue, Restart, and Close Beat actions cross the
 synchronized authority adapter, which retains `sync.lock` inside `world.lock`
-when it can update local ownership. The concrete `@MainActor`
+when it can update local ownership. Flowmo Local routes the same actions through
+the local Store authority, without the sync lock or metadata. The concrete `@MainActor`
 `MacWorldAuthority` now defines the Mac action shape for exact observed actions,
 current-World actions, and exact Prime-to-Focus Work Handoff. It returns typed
 stale, durable, sync-warning, post-persist recovery-block, and pre-persist
@@ -133,7 +161,7 @@ The seam maintains these invariants:
   plan between those operations.
 - Remote ownership is valid only for the exact Live Session snapshot applied or
   staged from remote work; a same-ID local mutation cannot suppress Recovery
-  Pause after a metadata-write failure. Phone Retry checks that ownership
+  Pause after a metadata-write failure. Entitled phone Retry checks that ownership
   against the current Session while holding the World transaction lock before
   deciding whether store recovery should pause it.
 - Success means the resulting `World` is durable.
@@ -163,9 +191,11 @@ divergence. It is not an atomic two-file commit.
 
 Privacy deletion is a deliberate staged maintenance exception, not a
 reconciliation commit. It deletes or resets the local World under its own lock,
-then coordinates recovery-marker cleanup, sync deletion intent, and CloudKit
-deletion in separate bounded steps. Partial completion stays visible as an
-incomplete-deletion state; no remote call holds `world.lock`.
+then coordinates recovery-marker cleanup and, in sync-capable builds, sync
+deletion intent and CloudKit deletion in separate bounded steps. Flowmo Local
+finishes after its own local cleanup without queuing cloud deletion. Partial
+completion stays visible as an incomplete-deletion state; no remote call holds
+`world.lock`.
 
 The accepted decision and its tradeoffs are recorded in
 [`adr/0001-single-world-mutation-authority.md`](adr/0001-single-world-mutation-authority.md).

@@ -13,15 +13,27 @@ or part of this candidate. No public download, donation address, or iPhone beta
 link is configured yet; do not add invented destinations or describe a local
 candidate as published.
 
-- **Mac:** direct downloads can use Developer ID signing, Hardened Runtime,
-  secure timestamping, notarization, and stapling without a Mac App Store
-  listing. An iCloud-enabled build additionally needs the correct Developer ID
-  provisioning profile. Current scripts produce ad-hoc local-only candidates,
-  not this trusted-download artifact. See [Apple Developer ID support](https://developer.apple.com/support/developer-id/).
+On 2026-09-05 the owner ruled out paying for Apple Developer Program membership.
+The chosen path is open source plus local-only Mac/terminal downloads, with
+explicit ad-hoc signing and installation limitations, and a free Personal Team
+iPhone build for personal use. Developer ID, notarization, TestFlight, and
+entitled iCloud/widget delivery are outside this release scope. Membership is
+not a pending purchase or a prerequisite for publishing the source. Manual
+quality checks and owner review still apply to every distributed build.
+
+- **Mac:** the current scripts produce ad-hoc local-only candidates. Source
+  builds and clearly labeled non-notarized archives are the chosen GitHub path;
+  first opening a downloaded archive may require Apple's per-app Open Anyway
+  flow. Never describe these as Apple-verified or require global security
+  changes. Developer ID signing/notarization remains an optional future route
+  if the owner changes the membership decision. See [Apple's opening guidance](https://support.apple.com/102445).
 - **Terminal:** distribute a separate universal executable and installer, with
   a checksum, matching app version/build, and installation, upgrade, and removal
   instructions. The Xcode Mac app host does not serve CLI commands.
-- **iPhone:** a GitHub IPA is not a general installation route. Registered-device
+- **iPhone:** use the `FlowmoPhoneLocal` scheme for free personal-device builds;
+  see [Free personal testing](#free-personal-testing). A GitHub IPA is not a
+  general installation route. The remaining routes here are reference only,
+  outside the chosen no-membership scope: registered-device
   Ad Hoc testing needs a paid team and device registration (up to 100 iPhones
   per membership year). TestFlight is an optional beta channel without a public
   App Store listing, but still uses Apple infrastructure, first external-build
@@ -63,8 +75,9 @@ DISTRIBUTE**; use it only to test packaging before the candidate is committed.
 Both modes build an isolated source snapshot; dirty mode fingerprints the
 source around the copy and stops if concurrent edits change it. `--output-dir
 PATH` changes the output location. Neither mode applies Developer
-ID signing or notarization. Broader distribution requires a separately reviewed
-signed/notarized packaging route that includes the CLI executable.
+ID signing or notarization. GitHub downloads must disclose these limitations.
+An Apple-trusted download would require a separately reviewed signed/notarized
+packaging route that includes the CLI executable; it is outside the chosen scope.
 
 Verify a supplied archive with `shasum -a 256 -c ARCHIVE.tar.gz.sha256` using the
 actual checksum filename, then extract it. From the extracted folder, run
@@ -78,22 +91,38 @@ The README also documents installation directly from a permitted source build.
 
 ## Free personal testing
 
-An Apple Account with Xcode's Personal Team is enough for the owner to run local
-Mac builds and ordinary personal-device apps that use only supported free-team
-capabilities. Apple limits this path to personal use; device registrations and
-provisioning profiles expire after seven days. It does not provide TestFlight,
-Developer ID, notarization, or friend distribution. Flowmo's iPhone target
-requires App Group, CloudKit, and push capabilities, and the Mac sync build
-requires CloudKit and push capabilities, so real sync testing needs an eligible
-team, registered identifiers/container, and provisioning profiles. Unsigned
-Mac and simulator builds still cover local behavior.
+An Apple Account with Xcode's Personal Team supports personal-device testing
+with supported capabilities. Provisioning profiles expire after seven days;
+the app must be rebuilt and reinstalled afterward. Apple also limits a Personal
+Team to three devices and three installed apps per device. This is personal
+testing, not a public iPhone distribution channel. See [Apple's current limits](https://developer.apple.com/help/account/basics/about-your-developer-account).
 
-Do not describe an ad-hoc Mac build as signed, notarized, Apple-reviewed, or a
-general release.
+Use the separate `FlowmoPhoneLocal` scheme in `Apps/FlowmoPhone.xcodeproj`:
+
+1. Connect and unlock the iPhone, and trust this Mac when prompted.
+2. Sign into the owner's Apple Account in Xcode, then select its Personal Team
+   under the **FlowmoPhoneLocal** target's Signing & Capabilities. Account login,
+   agreements, and device trust remain actions for the owner.
+3. Select that connected iPhone as the run destination and Run. If necessary,
+   follow Xcode's on-device Developer Mode and provisioning instructions.
+
+The local target uses its own bundle identifier and app-container store. It
+does not request App Group, iCloud, or push entitlements and does not embed the
+widget. The focus loop, recovery, exports, and local notification reminders
+remain available. It does not read, migrate, or sync the entitled phone store.
+Reinstall over the existing local app to refresh provisioning; deleting the app
+also deletes its app-container data, so export first if preserving data matters.
+
+The existing `FlowmoPhone` scheme remains the entitled App Group/CloudKit/widget
+build for eligible contributors. A missing App Group in that build remains an
+unavailable state, never a silent switch into the local store.
+
+Do not describe an ad-hoc Mac build as Developer ID signed, notarized, or
+Apple-reviewed, or describe free personal provisioning as public iPhone delivery.
 
 ## Informal Mac friends-and-family preview
 
-Until Developer Program enrollment works, the owner may share a narrowly scoped
+Under the chosen no-membership path, the owner may share a narrowly scoped
 Mac engineering preview with people who know and trust the sender. This path is
 not available for the iPhone app or widget.
 
@@ -253,12 +282,15 @@ Developer ID signing or notarization.
 
 ## Before TestFlight or Apple-trusted external distribution
 
+This section is reference for a future change of scope. These routes are
+excluded by the owner's current no-paid-membership decision.
+
 These are blocking for TestFlight, a Developer ID Mac beta, or any broader
 release described as Apple-trusted. They do not block the explicitly scoped,
 ad-hoc friends-and-family Mac preview above:
 
 - Enroll the legal owner in the paid Apple Developer Program. Apple currently
-  lists it as US$99/year. A local-only Mac release needs Developer ID signing
+  lists it as US$99/year. An Apple-trusted local-only Mac release needs Developer ID signing
   and notarization; it does not require App Group, CloudKit, or push setup.
 - **For iPhone and entitled sync builds:** create the app identifiers, App
   Group, certificates, push capability, `iCloud.app.flowmo` CloudKit container,

@@ -89,3 +89,36 @@ jobs:
           plutil -lint "$phone_app/PrivacyInfo.xcprivacy" "$widget/PrivacyInfo.xcprivacy"
 
           xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhone -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze
+
+      - name: Build and analyze free personal iPhone app
+        shell: bash
+        run: |
+          flowmo_local_build="$RUNNER_TEMP/flowmo-phone-local"
+          xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhoneLocal -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$flowmo_local_build" CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+
+          flowmo_local_app="$flowmo_local_build/Build/Products/Release-iphonesimulator/FlowmoLocal.app"
+          test -d "$flowmo_local_app"
+          test ! -d "$flowmo_local_app/PlugIns"
+          plutil -lint "$flowmo_local_app/PrivacyInfo.xcprivacy"
+          python3 - "$flowmo_local_app" "$flowmo_local_build" <<'PY'
+          import pathlib, plistlib, sys
+          app = pathlib.Path(sys.argv[1])
+          info = plistlib.loads((app / 'Info.plist').read_bytes())
+          privacy = plistlib.loads((app / 'PrivacyInfo.xcprivacy').read_bytes())
+          assert info['CFBundleIdentifier'] == 'app.flowmo.phone.local'
+          assert not info.get('UIBackgroundModes')
+          assert not privacy.get('NSPrivacyCollectedDataTypes')
+          assert privacy.get('NSPrivacyTracking') is False
+          generated = pathlib.Path(sys.argv[2]).glob('Build/Intermediates.noindex/FlowmoPhone.build/Release-iphonesimulator/FlowmoPhoneLocal.build/*.xcent')
+          entitlements = list(generated)
+          assert entitlements, 'Expected generated simulator entitlement evidence'
+          for path in entitlements:
+              keys = plistlib.loads(path.read_bytes()).keys()
+              assert not any(key.startswith('com.apple.developer.icloud') or key in ('com.apple.security.application-groups', 'aps-environment') for key in keys)
+          PY
+          flowmo_local_entitlements="$(codesign -d --entitlements - "$flowmo_local_app" 2>&1)"
+          if grep -Eq 'com.apple.developer.icloud|com.apple.security.application-groups|aps-environment' <<<"$flowmo_local_entitlements"; then
+            echo 'Personal iPhone target unexpectedly requests a restricted capability.' >&2
+            exit 1
+          fi
+          xcodebuild -project Apps/FlowmoPhone.xcodeproj -scheme FlowmoPhoneLocal -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$flowmo_local_build" CODE_SIGN_IDENTITY=- AD_HOC_CODE_SIGNING_ALLOWED=YES SWIFT_SUPPRESS_WARNINGS=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES analyze

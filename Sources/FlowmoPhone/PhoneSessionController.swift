@@ -8,11 +8,22 @@ import Foundation
     import WidgetKit
 #endif
 
+public enum PhoneStoreMode: Sendable {
+    case sharedWithWidget
+    case localOnly
+}
+
 public enum PhoneStoreConfigurationError: LocalizedError {
     case missingSharedAppGroup
+    case missingApplicationSupport
 
     public var errorDescription: String? {
-        "Flowmo configuration failure: App Group \"\(Store.phoneAppGroupID)\" is unavailable."
+        switch self {
+        case .missingSharedAppGroup:
+            "Flowmo configuration failure: App Group \"\(Store.phoneAppGroupID)\" is unavailable."
+        case .missingApplicationSupport:
+            "Flowmo configuration failure: local application storage is unavailable."
+        }
     }
 }
 
@@ -20,20 +31,42 @@ public enum PhoneStoreConfigurationError: LocalizedError {
 public final class PhoneStoreBootstrap: ObservableObject {
     @Published public private(set) var controller: PhoneSessionController?
     private var lastUnavailableEmissionAt: Date?
+    private let mode: PhoneStoreMode
+    private let storeProvider: () throws -> Store
+    private let attention: PhoneAttention
+    private let userDefaults: UserDefaults
 
-    public init() {
+    public convenience init(mode: PhoneStoreMode = .sharedWithWidget) {
+        self.init(mode: mode, storeProvider: { try PhoneSessionController.containerStore(mode: mode) })
+    }
+
+    init(
+        mode: PhoneStoreMode,
+        storeProvider: @escaping () throws -> Store,
+        attention: PhoneAttention = PhoneAttention(),
+        userDefaults: UserDefaults = .standard
+    ) {
+        self.mode = mode
+        self.storeProvider = storeProvider
+        self.attention = attention
+        self.userDefaults = userDefaults
         retry()
     }
 
     public func retry() {
         do {
-            controller = PhoneSessionController(store: try PhoneSessionController.containerStore())
+            controller = PhoneSessionController(
+                store: try storeProvider(),
+                mode: mode,
+                attention: attention,
+                userDefaults: userDefaults
+            )
         } catch {
             controller = nil
             let timestamp = Date()
             if timestamp.timeIntervalSince(lastUnavailableEmissionAt ?? .distantPast) >= 60 {
                 lastUnavailableEmissionAt = timestamp
-                FlowmoDiagnosticLog.emit(.storeUnavailable, operation: .appGroup)
+                FlowmoDiagnosticLog.emit(.storeUnavailable, operation: mode == .localOnly ? .load : .appGroup)
             }
         }
     }
@@ -58,6 +91,7 @@ public final class PhoneSessionController: ObservableObject {
 
     let store: Store
     let attention: PhoneAttention
+    private let storeMode: PhoneStoreMode
     private let syncMetadataStore: WorldSyncMetadataStore
     private let worldAuthority: WorldAuthority
     private var cloudSync: CloudWorldSync?
@@ -72,20 +106,24 @@ public final class PhoneSessionController: ObservableObject {
         Engine.sessionStatus(world, now: now)
     }
 
+    public var isLocalOnly: Bool { storeMode == .localOnly }
+
     public init(
         store: Store,
+        mode: PhoneStoreMode = .sharedWithWidget,
         attention: PhoneAttention = PhoneAttention(),
         userDefaults: UserDefaults = .standard
     ) {
         self.store = store
+        self.storeMode = mode
         self.attention = attention
         self.introduction = IntroductionState(userDefaults: userDefaults)
         let syncMetadataStore = WorldSyncMetadataStore(root: store.root)
         self.syncMetadataStore = syncMetadataStore
-        self.worldAuthority = WorldAuthority(
-            store: store,
-            syncMetadataStore: syncMetadataStore
-        )
+        self.worldAuthority =
+            mode == .localOnly
+            ? WorldAuthority(store: store)
+            : WorldAuthority(store: store, syncMetadataStore: syncMetadataStore)
         self.syncStatus = WorldSyncStatus()
         var loaded: World
         var startupIssue: FlowmoIssueCode?
@@ -106,7 +144,7 @@ public final class PhoneSessionController: ObservableObject {
         var didRecover = false
         if startupIssue == nil,
             loaded.live?.isPaused == false,
-            !syncMetadataStore.isRemoteLiveSession(loaded.live)
+            mode == .localOnly || !syncMetadataStore.isRemoteLiveSession(loaded.live)
         {
             do {
                 loaded = try store.update { engine in
@@ -337,7 +375,7 @@ public final class PhoneSessionController: ObservableObject {
             var loaded = try store.load()
             if loaded.live?.isPaused == false {
                 loaded = try store.update { engine in
-                    guard !syncMetadataStore.isRemoteLiveSession(engine.world.live) else { return }
+                    guard isLocalOnly || !syncMetadataStore.isRemoteLiveSession(engine.world.live) else { return }
                     engine.pauseUnpausedLiveOnProcessStart(now: Date())
                 }.world
             }
@@ -421,6 +459,10 @@ public final class PhoneSessionController: ObservableObject {
     }
 
     private func finishCloudDataDeletion() {
+        guard !isLocalOnly else {
+            userNotice = "All local Flowmo data was deleted."
+            return
+        }
         let metadata = try? syncMetadataStore.load()
         guard metadata?.containsPrivateCloudData != false else {
             try? syncMetadataStore.deleteOwnedData()
@@ -582,7 +624,7 @@ public final class PhoneSessionController: ObservableObject {
     }
 
     private func startCloudSync() {
-        guard cloudSync == nil else { return }
+        guard !isLocalOnly, cloudSync == nil else { return }
         guard
             let sync = CloudWorldSync.makeDefault(
                 store: store,
@@ -635,6 +677,7 @@ public final class PhoneSessionController: ObservableObject {
     }
 
     private func reloadGlance() {
+        guard !isLocalOnly else { return }
         Self.reloadGlanceTimeline()
     }
 
@@ -684,12 +727,33 @@ public final class PhoneSessionController: ObservableObject {
         #endif
     }
 
-    public static func containerStore() throws -> Store {
-        guard let group = Store.phoneSharedRoot() else {
+    public static func containerStore(mode: PhoneStoreMode = .sharedWithWidget) throws -> Store {
+        try containerStore(
+            mode: mode,
+            sharedRoot: Store.phoneSharedRoot,
+            applicationSupport: {
+                FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            }
+        )
+    }
+
+    static func containerStore(
+        mode: PhoneStoreMode,
+        sharedRoot: () -> URL?,
+        applicationSupport: () -> URL?
+    ) throws -> Store {
+        if mode == .localOnly {
+            guard let support = applicationSupport() else {
+                throw PhoneStoreConfigurationError.missingApplicationSupport
+            }
+            return Store(root: support.appendingPathComponent("flowmo", isDirectory: true))
+        }
+
+        guard let group = sharedRoot() else {
             throw PhoneStoreConfigurationError.missingSharedAppGroup
         }
 
-        if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        if let support = applicationSupport() {
             let legacyRoot = support.appendingPathComponent("flowmo", isDirectory: true)
             do {
                 let didMigrate = try Store.migrateWorld(from: legacyRoot, to: group)

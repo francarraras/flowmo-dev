@@ -837,6 +837,7 @@ public struct QuietButton: View {
 
 /// Recovery only. Restart drops the frozen session. Continue resumes it.
 public struct RecoveryVerbs: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var compact: Bool
     var onRestart: () -> Void
     var onContinue: () -> Void
@@ -848,11 +849,30 @@ public struct RecoveryVerbs: View {
     }
 
     public var body: some View {
+        #if os(iOS)
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 10) {
+                    buttons
+                }
+            } else {
+                horizontalButtons
+            }
+        #else
+            horizontalButtons
+        #endif
+    }
+
+    private var horizontalButtons: some View {
         HStack(spacing: compact ? 8 : 10) {
-            QuietButton("Restart", minHeight: compact ? 26 : PhaseGrid.verb, action: onRestart)
-            InkButton("Continue", compact: compact, action: onContinue)
-                .keyboardShortcut(.defaultAction)
+            buttons
         }
+    }
+
+    @ViewBuilder
+    private var buttons: some View {
+        QuietButton("Restart", minHeight: compact ? 26 : PhaseGrid.verb, action: onRestart)
+        InkButton("Continue", compact: compact, action: onContinue)
+            .keyboardShortcut(.defaultAction)
     }
 }
 
