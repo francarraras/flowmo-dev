@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-09-05
 Owner: Fran Carrara  
-Status: 1.0 local preview candidate; the separate local iPhone variant is Unreleased.
+Status: 1.0 local preview candidate; the separate local iPhone variant and current visual polish are Unreleased, outside the prepared build 4 artifacts.
 
 ---
 
@@ -202,7 +202,7 @@ The Mac **window is the product**.
 - **One surface.** Same compact frame. The insides change. No Home, no tabs, no setup-then-another-app.
 - **Size.** Two persisted fixed modes, not a free-resize document. **Classic** is 320×460 and holds the full instrument. **Mini** is 168×176 — aperture plus the current verb. Focus Scene is a transient large, movable, resizable presentation of the same window, never a third saved mode.
 - **Always on top.** Off by default. One control to pin over your work.
-- **Look.** The shipped compact pass is defined in [`visual.md`](visual.md). It is a current product treatment, not a final brand or theme system.
+- **Look.** The current treatment is defined in [`visual.md`](visual.md): graphite, ivory, restrained champagne rest accents, standard SF type, static instrument geometry, and crisp controls. Original Horizon Study artwork is bundled for the native Focus canvases and illustrated tutorial. The aperture-and-incision icon direction keeps Flowmo as the working name; this is not a theme system or final naming decision.
 
 ### First-use tutorial
 
@@ -213,6 +213,12 @@ optional next step, including the default 50-minute Focus / 10-minute Break
 example. **Skip** is available on every page. **Set intention** on the last
 page returns to Idle; tutorial **Continue** changes pages only. No tutorial
 action types an intention, starts or resumes a Session, or changes History.
+
+The illustrated pages are **Make room for one thing.**, **Stay with the work.**,
+and **Leave space to return.** A three-part progress indicator names the current
+step for accessibility. Decorative examples remain separate from live session
+data. The content scrolls at larger text sizes, and optional page motion respects
+Reduce Motion.
 
 Skipping or finishing remembers the current tutorial version in a device-local
 preference. **Data → How it works** replays it. A live Session, recovery, or
@@ -231,8 +237,8 @@ tutorial do not request notification permission automatically.
 |---|---|---|
 | **Idle** | Editable **Intention** field. It is prefilled only when this surface just completed a session with an explicit next step; otherwise it is empty. The first empty store explains count-up focus and earned break inside the aperture. **Start**, or **Use next** / **Use last** when prior work exists. Today, **History**, **Data**, **New**. | Edit and explicitly Start a carried step; reveal and confirm the newest session’s explicit next step (without falling back to a stale older one) or the last intention; choose any Completed Session in History and return its next step—or its original intention—to Idle for confirmation, asking before replacing a typed draft; export/delete data; or New (clears only the typed draft). |
 | **Prime (up to 2:00)** | Intention + **Prepare**. Countdown + **determinate** ring. | Settle or choose **Focus now**. On Mac, Focus now cooperatively returns to the prior work app and **Focus scene** instead stays in Flowmo and opens the Distant Horizon canvas. On iPhone, either Prime exit opens the phone Distant Horizon. |
-| **Focus** | Intention + **Focus**. **Big count-up clock**. Gold strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. iPhone places these facts and controls on its Distant Horizon canvas. The Mac Focus controls include a named **Focus scene** action; the sun-and-horizon presentation control opens the same Scene, and its adjacent menu repeats Scene and changes Classic/Mini. | Work. Park a thought. Enter or re-enter Focus Scene on Mac. Change presentation where offered. Stop. |
-| **Break** | Neutral **Break** caption and **Take what you need.** Recommended countdown + determinate gold ring, with the earned rest and source Focus duration stated plainly. | Rest, or Reflect whenever ready. |
+| **Focus** | Intention + **Focus**. **Big ivory count-up clock**. Champagne strip + “Xm earned”. **Park thought** opens capture; **Park** / **Discard** replace Park thought / Stop. After a capture, the action includes the parked count. iPhone places these facts and controls on its Distant Horizon canvas. The Mac Focus controls include a named **Focus scene** action; the sun-and-horizon presentation control opens the same Scene, and its adjacent menu repeats Scene and changes Classic/Mini. | Work. Park a thought. Enter or re-enter Focus Scene on Mac. Change presentation where offered. Stop. |
+| **Break** | Neutral **Break** caption and **Take what you need.** Recommended countdown + continuous determinate champagne ring, with the earned rest and source Focus duration stated plainly. | Rest, or Reflect whenever ready. |
 | **Reflection (3:00)** | **Where will you pick up next?** Optional text. Countdown + ring. When the session has parked thoughts and the field is empty, **Review N parked** opens a newest-first chooser inside the same frame. | Write and Done, use a parked thought as an editable next step, sit, or Skip. |
 | **Close beat** | Intention. **Focused** and **Break earned**, plus the optional next step and parked-thought count. No score, no share. | Done records this session exactly once, then returns to Idle. Its explicit next step is staged there for editing; blank Reflection leaves Idle empty. |
 
@@ -241,9 +247,13 @@ tutorial do not request notification permission automatically.
 Count-up has no finish line. A 0–100% “progress” ring during focus is a **lie** (that is Pomodoro). Do not add one.
 
 - Timed phases (Prime, Break, Reflection) → real ring/bar that has an end.
-- Focus → big clock + **earned-break strip** (information: rest you are accruing).
+- Focus → steady ivory clock + **earned-break strip** in champagne (information: rest you are accruing).
 
-This is the “on steroids” visual that is still honest.
+The graphite aperture remains still. Timed phases use a continuous 2pt track;
+Focus never gains a determinate ring. Clock digits can transition, but the
+clock does not grow at milestones or pulse during the final seconds of a Break.
+Controls keep a stable shape and use tone rather than halos or scaling for
+feedback. Reduce Motion removes optional motion.
 
 ### Capture
 
@@ -293,7 +303,9 @@ surveillance, or browser-history inspection.
 ### Focus Scene
 
 **Focus scene** is the Distant Horizon presentation of the same honest,
-open-ended Focus. Its calm native horizon is ambient geometry, never progress.
+open-ended Focus. Its bundled original Horizon Study artwork is ambient, never progress.
+A subtle luminance change eases over 14 seconds in each direction only while
+the scene is active and Reduce Motion is off. It does not drive a clock.
 It has no ring, percentage, deadline, new phase, setup, or claim that work is
 locked down.
 
@@ -325,15 +337,18 @@ change. Normal **Focus now**, automatic Prime expiry, sync, and merely showing
 the window never activate a Scene.
 
 On iPhone, every active unpaused Focus uses an edge-to-edge, phone-native
-Distant Horizon inside the one app frame. It shows **Focus scene**, the
-intention, the timestamp-derived count-up, earned rest, **Park thought**, and
+Distant Horizon inside the one portrait app frame. The current phone targets
+support portrait only. It shows **Focus**, the intention, the ivory
+timestamp-derived count-up, champagne earned rest, **Park thought**, and
 **End focus**. Capture stays on that canvas and replaces the actions with
 **Discard** and **Park**. Prime expiry and **Focus now** both arrive there;
 there is no separate window choice because iPhone cannot hand off or morph a
 movable desktop window. Recovery Pause returns to the compact frozen aperture
 with Continue and Restart, while store recovery and sync conflicts replace the
 canvas. Background and foreground do not reset the clock or create another
-presentation state.
+presentation state. Phone Focus actions have at least 48pt touch height;
+large-text action layouts stack, capture has room to grow, and constrained
+content scrolls above the keyboard. No new flow or session state is introduced.
 
 Focus Scene does not persist or sync, enable Focus Guard, hide or kill another
 app, change macOS Focus, use Accessibility or AppleScript, add a helper, or
@@ -603,7 +618,7 @@ The shipped Loop remains **Idle → Prime → Focus → Break → Reflection →
 
 ## 12. Later (explicitly not v1)
 
-- Visual identity / themes beyond the shipped compact pass
+- Theme packs or alternate themes beyond the current visual treatment
 - Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
 - Watch and Live Activities beyond Flowmo Local's scoped Focus reminder
 - Flashcards, SM-2, consolidation protocols, or long-form reflection
@@ -641,7 +656,7 @@ Made with the owner in conversation, 2026-08-17 → 2026-08-18.
 | Automatic adjustment in v1 | None. Preserve an existing valid profile ratio; new/reset profiles use 5. |
 | Window size | Two fixed modes: Classic 320×460, Mini 168×176. No free resize. |
 | Pin default | Off |
-| Look | Compact pass in [`visual.md`](visual.md) (black + cyan reference). Not a theme pack. |
+| Look | Graphite, ivory, restrained champagne, standard SF, and static instrument geometry in [`visual.md`](visual.md). Original shared Horizon Study artwork; working name unchanged. Not a theme pack. |
 | Idle | Editable Intention + Start; an exact just-completed next step may already be staged; first-run promise; Use next before Use last; today + History + Data + New (clears only the draft) |
 | Sound | Soft cues **on** by default |
 | Background phase end | Sound + system notification |

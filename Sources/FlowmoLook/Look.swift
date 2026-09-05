@@ -16,27 +16,27 @@ public struct Atmosphere: Equatable, Sendable {
     /// Warm metal. The only chromatic object besides ink.
     public static let rest = Color(
         .sRGB,
-        red: 232 / 255,
-        green: 186 / 255,
-        blue: 92 / 255,
+        red: 214 / 255,
+        green: 184 / 255,
+        blue: 137 / 255,
         opacity: 1
     )
 
     public static let restDeep = Color(
         .sRGB,
-        red: 168 / 255,
-        green: 118 / 255,
-        blue: 42 / 255,
+        red: 132 / 255,
+        green: 110 / 255,
+        blue: 78 / 255,
         opacity: 1
     )
 
     public static let canvas = Atmosphere(
         field: hex(0x090A0C),
         ink: hex(0xF3F1EA),
-        mute: hex(0x9A958A),
-        faint: hex(0x817D73),
-        line: hex(0x1C1B18),
-        track: hex(0x32302C),
+        mute: hex(0xAAA9A4),
+        faint: hex(0x898A87),
+        line: hex(0x1C1E21),
+        track: hex(0x34373A),
         chrome: 1
     )
 
@@ -64,30 +64,12 @@ public struct Atmosphere: Equatable, Sendable {
 }
 
 public enum Motion {
-    /// Captions and verbs ease in the same slot. The circle does not travel.
-    public static let phase: Animation = .easeOut(duration: 0.28)
-    /// Pieces click together. Inverse of a blast.
-    public static let assemble: Animation = .spring(response: 0.48, dampingFraction: 0.82)
-    /// Ring or hole leaving. Fade in place.
-    public static let dissolve: Animation = .easeOut(duration: 0.20)
-    /// Clock digits and ring trim while live.
-    public static let tick: Animation = .easeInOut(duration: 0.28)
-    /// Accrual growth.
-    public static let rest: Animation = .spring(response: 0.7, dampingFraction: 0.9)
-    /// Press.
-    public static let press: Animation = .easeOut(duration: 0.12)
-    /// Quiet text / chrome lifts on hover.
+    /// A quiet transition between states; the instrument stays in place.
+    public static let phase: Animation = .easeInOut(duration: 0.24)
+    /// Press feedback changes tone, never size.
+    public static let press: Animation = .easeOut(duration: 0.10)
+    /// Hover and keyboard focus share one restrained response.
     public static let hover: Animation = .easeOut(duration: 0.16)
-    /// Idle ring breathe.
-    public static let breathe: Animation = .easeInOut(duration: 3.6).repeatForever(autoreverses: true)
-    /// Focus mark grow (5 / 10 / 15 / 30 / 45 / 60).
-    public static let mark: Animation = .spring(response: 0.28, dampingFraction: 0.55)
-    /// Settle after a grow.
-    public static let markSettle: Animation = .spring(response: 0.42, dampingFraction: 0.78)
-    /// Break last-10s race pulse.
-    public static let race: Animation = .spring(response: 0.22, dampingFraction: 0.62)
-    /// Lunar face inside the aperture. Light stays put; the surface turns.
-    public static let moon: Animation = .linear(duration: 96).repeatForever(autoreverses: false)
 }
 
 private struct AtmosphereKey: EnvironmentKey {
@@ -114,5 +96,5 @@ public enum Look {
     public static let action = accent
     public static let time = Atmosphere.canvas.mute
     public static let ringTrack = Atmosphere.canvas.track
-    public static let corner: CGFloat = 8
+    public static let corner: CGFloat = 14
 }

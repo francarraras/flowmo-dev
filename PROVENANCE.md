@@ -24,23 +24,36 @@ Personal Team signing. None of its implementation or assets were incorporated.
 Maintenance follows Apple's platform API and extension requirements; the
 metadata shared with the system display is documented in [`PRIVACY.md`](PRIVACY.md).
 
-The provisional crescent-and-horizon app icon was generated with Codex's
-built-in OpenAI image generation tool on 2026-09-05 from an original text
-prompt, without reference images or third-party brand material. The unchanged
-master, exact prompt, SHA-256, and technical conversion details are recorded in
-[`Apps/IconSource/README.md`](Apps/IconSource/README.md). The bundled PNGs are
-local size conversions, not an added SDK or runtime service.
+The current Unreleased visual treatment uses two original assets generated on
+2026-09-05 with Codex's built-in OpenAI image generation tool from text-only
+design prompts, without reference images, third-party brand material, or
+private session/tester data:
 
-OpenAI's [Terms of Use](https://openai.com/policies/row-terms-of-use/#content)
-assign its rights, if any, in generated output to the user to the extent allowed
-by law; output is not guaranteed unique. This records the source terms, not a
-claim of exclusive copyright or trademark clearance. The asset follows this
-repository's current license. No stock-image license or additional attribution
-obligation was identified. The generation prompt contained design requirements
-only, with no session intentions, exports, tester data, or reference files.
-Packaging the resulting static icon adds no data collection, network behavior,
-or privacy-manifest requirement. Maintenance is limited to the checked-in PNGs
-and Apple's asset-catalog format; final branding remains provisional.
+- The aperture-and-incision icon supplies the shared Mac/iPhone asset catalog.
+  Its unchanged master and exact prompt are recorded in
+  [`Apps/IconSource/flowmo-horizon-v2-receipt.md`](Apps/IconSource/flowmo-horizon-v2-receipt.md).
+  Fourteen local size conversions fill the existing 19 icon slots. The earlier
+  crescent-and-horizon master remains checked in as the historical build 4
+  source; it no longer supplies the current catalog. See the
+  [icon inventory](Apps/IconSource/README.md).
+- Horizon Study is the unchanged generated PNG bundled by the `FlowmoLook`
+  SwiftPM resource target for the native Focus canvases and tutorial. Its exact
+  prompt, dimensions, SHA-256, source path, and rendering details are recorded in
+  [`Apps/ArtworkSource/README.md`](Apps/ArtworkSource/README.md).
+
+OpenAI's [Terms of Use](https://openai.com/policies/row-terms-of-use/#content),
+checked on 2026-09-05, assign its output rights, if any, to the user to the extent
+permitted by law; output need not be unique. This is not a claim of exclusive
+copyright or trademark clearance. These assets follow the repository's
+[MIT license](LICENSE). No additional stock-image license or attribution
+obligation was identified.
+
+Only static PNGs are shipped. No runtime AI, external SDK, font, network call,
+new privacy API, analytics, or user-data processing was added. The image prompts
+contained design requirements only. Existing privacy declarations remain
+unchanged by this asset work. Maintenance is limited to the checked-in images,
+SwiftPM resource packaging, and Apple's asset-catalog format. The product name
+remains provisional, and this work does not replace build 4 preview artifacts.
 
 AI assistance does not replace human review or establish ownership by itself.
 For every release, the owner should retain a private ledger recording:

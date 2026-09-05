@@ -28,7 +28,6 @@ public struct Aperture<Content: View>: View {
 
     @Environment(\.atmosphere) private var atmo
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var idlePulse = false
 
     public var body: some View {
         GeometryReader { geo in
@@ -37,303 +36,104 @@ public struct Aperture<Content: View>: View {
             ZStack {
                 well
                 ringView
-                AssembleIn {
-                    content.padding(contentPadding)
-                }
+                content.padding(contentPadding)
+                    .modifier(ApertureSettle())
             }
             .frame(width: diameter, height: diameter)
-            .shadow(color: glowColor, radius: glowRadius, x: 0, y: 8)
-            .scaleEffect(idleScale)
-            .animation(
-                ringEqualsIdle && !reduceMotion ? Motion.breathe : nil,
-                value: idlePulse
-            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .layoutPriority(1)
-        .onAppear {
-            guard !reduceMotion, ring == .idle else { return }
-            idlePulse = true
-        }
-        .onChange(of: ringEqualsIdle) { _, isIdle in
+        .transaction { transaction in
             if reduceMotion {
-                idlePulse = false
-            } else {
-                idlePulse = isIdle
+                transaction.animation = nil
+                transaction.disablesAnimations = true
             }
-        }
-    }
-
-    private var ringEqualsIdle: Bool {
-        if case .idle = ring { return true }
-        return false
-    }
-
-    private var idleScale: CGFloat {
-        if reduceMotion { return 1 }
-        if case .idle = ring { return idlePulse ? 1.018 : 1 }
-        return 1
-    }
-
-    private var glowColor: Color {
-        switch ring {
-        case .timed(_, true, true):
-            return Atmosphere.rest.opacity(0.48)
-        case .timed(_, true, false):
-            return Atmosphere.rest.opacity(0.28)
-        case .none:
-            return Color.black.opacity(0.35)
-        default:
-            return Color.black.opacity(0.45)
-        }
-    }
-
-    private var glowRadius: CGFloat {
-        switch ring {
-        case .timed(_, true, true): return 26
-        case .timed(_, true, false): return 18
-        case .none: return 10
-        default: return 14
         }
     }
 
     private var well: some View {
         Circle()
-            .fill(
-                RadialGradient(
-                    colors: [
-                        Color(red: 24 / 255, green: 22 / 255, blue: 17 / 255),
-                        Color(red: 11 / 255, green: 11 / 255, blue: 12 / 255),
-                        Color.black.opacity(0.62),
-                    ],
-                    center: UnitPoint(x: 0.42, y: 0.36),
-                    startRadius: 2,
-                    endRadius: 130
-                )
-            )
-            .overlay { LunarCore() }
+            .fill(atmo.field)
             .overlay {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [
-                                Color.white.opacity(0.075),
-                                Color.white.opacity(0.02),
-                                Color.clear,
-                            ],
-                            center: UnitPoint(x: 0.34, y: 0.28),
-                            startRadius: 2,
-                            endRadius: 88
+                            colors: [atmo.ink.opacity(0.025), .clear],
+                            center: UnitPoint(x: 0.5, y: 0.24),
+                            startRadius: 0,
+                            endRadius: 160
                         )
                     )
-                    .allowsHitTesting(false)
             }
-            .overlay(
+            .overlay {
                 Circle()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.16),
-                                Color.white.opacity(0.03),
-                                Color.clear,
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .clipShape(Circle())
+                    .strokeBorder(atmo.ink.opacity(0.055), lineWidth: 0.5)
+            }
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
     private var ringView: some View {
-        let line: CGFloat = 5
         switch ring {
         case .none:
             EmptyView()
         case .idle:
-            PuzzleRing(line: line, color: atmo.track.opacity(0.9), rest: false, race: false, progress: nil) {
-                Circle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                    .padding(line / 2)
-            }
-        case .timed(let progress, let rest, let race):
-            PuzzleRing(
-                line: line,
-                color: atmo.track,
-                rest: rest,
-                race: race,
-                progress: progress
-            ) {
-                EmptyView()
-            }
+            ApertureTrack(progress: nil, rest: false)
+        case .timed(let progress, let rest, _):
+            ApertureTrack(progress: progress, rest: rest)
         }
     }
 }
 
-/// Surface turns. Sunlight does not. The circle stays put.
-private struct LunarCore: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var turn = 0.0
-
-    /// Plains, not holes: floors at warm charcoal so the rim side of the turn
-    /// still reads as ground instead of sinking into the vignette.
-    private static let mare = Color(red: 12 / 255, green: 11 / 255, blue: 9 / 255)
-
-    var body: some View {
-        GeometryReader { geo in
-            let d = min(geo.size.width, geo.size.height)
-            ZStack {
-                Ellipse()
-                    .fill(Self.mare.opacity(0.72))
-                    .frame(width: d * 0.46, height: d * 0.36)
-                    .offset(x: -d * 0.14, y: d * 0.04)
-                    .blur(radius: d * 0.038)
-                Ellipse()
-                    .fill(Self.mare.opacity(0.60))
-                    .frame(width: d * 0.30, height: d * 0.24)
-                    .offset(x: d * 0.18, y: -d * 0.16)
-                    .blur(radius: d * 0.032)
-                Ellipse()
-                    .fill(Self.mare.opacity(0.52))
-                    .frame(width: d * 0.20, height: d * 0.17)
-                    .offset(x: d * 0.02, y: d * 0.22)
-                    .blur(radius: d * 0.028)
-                Ellipse()
-                    .fill(Atmosphere.canvas.ink.opacity(0.05))
-                    .frame(width: d * 0.22, height: d * 0.18)
-                    .offset(x: d * 0.16, y: d * 0.10)
-                    .blur(radius: d * 0.045)
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .rotationEffect(.degrees(reduceMotion ? 0 : turn))
-        }
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(Motion.moon) {
-                turn = 360
-            }
-        }
-    }
-}
-
-/// Four arcs start apart and click into one track. Inverse of a blast.
-private struct PuzzleRing<Highlight: View>: View {
-    var line: CGFloat
-    var color: Color
-    var rest: Bool
-    var race: Bool
-    var progress: Double?
-    var highlight: Highlight
+/// One continuous track. The face and its contents never change size.
+private struct ApertureTrack: View {
+    let progress: Double?
+    let rest: Bool
 
     @Environment(\.atmosphere) private var atmo
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var assembled = false
-
-    init(
-        line: CGFloat,
-        color: Color,
-        rest: Bool,
-        race: Bool,
-        progress: Double?,
-        @ViewBuilder highlight: () -> Highlight
-    ) {
-        self.line = line
-        self.color = color
-        self.rest = rest
-        self.race = race
-        self.progress = progress
-        self.highlight = highlight()
-    }
 
     var body: some View {
         ZStack {
-            ForEach(0..<4, id: \.self) { i in
-                piece(i)
-            }
-            if assembled, let progress {
+            Circle()
+                .strokeBorder(atmo.track, lineWidth: 2)
+            if let progress {
                 Circle()
+                    .inset(by: 1)
                     .trim(from: 0, to: min(1, max(0, progress)))
                     .stroke(
-                        rest
-                            ? AngularGradient(
-                                colors: [Atmosphere.restDeep, Atmosphere.rest, Atmosphere.restDeep],
-                                center: .center
-                            )
-                            : AngularGradient(
-                                colors: [atmo.mute, atmo.ink.opacity(0.85), atmo.mute],
-                                center: .center
-                            ),
-                        style: StrokeStyle(lineWidth: line, lineCap: .round)
+                        rest ? Atmosphere.rest : atmo.ink,
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
-                    .shadow(
-                        color: rest ? Atmosphere.rest.opacity(race ? 0.85 : 0.55) : Color.clear,
-                        radius: race ? 14 : 8
-                    )
-                    .animation(reduceMotion ? nil : Motion.tick, value: progress)
-                    .animation(reduceMotion ? nil : Motion.race, value: race)
-            }
-            if assembled {
-                highlight
+                    .animation(reduceMotion ? nil : .linear(duration: 0.2), value: progress)
             }
         }
-        .onAppear { settle() }
-    }
-
-    private func piece(_ i: Int) -> some View {
-        let bearing = Double(i) * 90 + 45
-        let throwOut: CGFloat = assembled ? 0 : 11
-        let twist: Double = assembled ? 0 : (i % 2 == 0 ? -16 : 16)
-        let span: CGFloat = assembled ? 0.25 : 0.13
-        let start = CGFloat(i) * 0.25 + (assembled ? 0 : 0.06)
-        return Circle()
-            .trim(from: start, to: start + span)
-            .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: assembled ? .butt : .round))
-            .rotationEffect(.degrees(-90 + twist))
-            .offset(
-                x: throwOut * sin(bearing * .pi / 180),
-                y: throwOut * -cos(bearing * .pi / 180)
-            )
-            .opacity(assembled ? 1 : 0.7)
-    }
-
-    private func settle() {
-        if reduceMotion {
-            assembled = true
-            return
-        }
-        assembled = false
-        withAnimation(Motion.assemble) {
-            assembled = true
-        }
+        .modifier(ApertureSettle())
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 }
 
-/// Hole contents implode into place. They do not fly off.
-private struct AssembleIn<Content: View>: View {
-    var content: Content
-
+private struct ApertureSettle: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var assembled = false
+    @State private var settled = false
 
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
+    func body(content: Content) -> some View {
         content
-            .scaleEffect(assembled ? 1 : 1.16)
-            .opacity(assembled ? 1 : 0)
+            .opacity(reduceMotion || settled ? 1 : 0)
             .onAppear {
-                if reduceMotion {
-                    assembled = true
-                } else {
-                    withAnimation(Motion.assemble) {
-                        assembled = true
-                    }
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
+                    settled = true
+                }
+            }
+            .onChange(of: reduceMotion) { _, reduced in
+                if reduced {
+                    var transaction = Transaction(animation: nil)
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { settled = true }
                 }
             }
     }
@@ -349,6 +149,7 @@ public struct InstrumentClock: View {
     var text: String
     var size: CGFloat
     var weight: Font.Weight
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(_ text: String, size: CGFloat = 36, weight: Font.Weight = .medium) {
         self.text = text
@@ -358,12 +159,13 @@ public struct InstrumentClock: View {
 
     public var body: some View {
         Text(text)
-            .font(.system(size: size, weight: weight, design: .rounded))
+            .font(.system(size: size, weight: weight))
             .monospacedDigit()
-            .tracking(size >= 28 ? -1.4 : 0.2)
+            .tracking(size >= 28 ? -0.5 : 0)
             .minimumScaleFactor(0.5)
             .lineLimit(1)
-            .contentTransition(.numericText())
+            .contentTransition(reduceMotion ? .identity : .numericText())
+            .modifier(ReducedMotionTransaction())
     }
 }
 
@@ -395,7 +197,7 @@ public struct CloseFigures: View {
             InstrumentClock(clock, size: size)
                 .foregroundStyle(tone)
             Text(name)
-                .font(.system(size: compact ? 9 : 11, weight: .medium, design: .rounded))
+                .font(.system(size: compact ? 9 : 11, weight: .medium))
                 .tracking(0.6)
                 .foregroundStyle(nameTone)
         }
@@ -417,7 +219,7 @@ public struct FirstRunPromise: View {
             Text("Your break grows as you focus.")
                 .foregroundStyle(Atmosphere.rest)
         }
-        .font(.system(.caption, design: .rounded).weight(.medium))
+        .font(.system(.caption).weight(.medium))
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .ignore)
@@ -443,7 +245,7 @@ public struct ClosePayoff: View {
             VStack(spacing: 5) {
                 if !trimmedNextStep.isEmpty {
                     Text("Next: \(trimmedNextStep)")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Atmosphere.rest)
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
@@ -451,7 +253,7 @@ public struct ClosePayoff: View {
                 }
                 if safeParkedCount > 0 {
                     Text(parkedConfirmation)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(atmo.faint)
                         .lineLimit(1)
                 }
@@ -523,7 +325,7 @@ public struct ParkedThoughtReview: View {
                     )
 
                     Text("Parked \(safePosition) of \(safeCount)")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 10, weight: .medium))
                         .monospacedDigit()
                         .foregroundStyle(atmo.faint)
                         .lineLimit(1)
@@ -569,7 +371,7 @@ public struct ParkedThoughtReview: View {
 
     private var thoughtText: some View {
         Text(text)
-            .font(.system(.body, design: .rounded).weight(.medium))
+            .font(.system(.body).weight(.medium))
             .foregroundStyle(atmo.ink)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -617,10 +419,8 @@ public struct Accrual: View {
                         )
                     )
                     .frame(width: min(96, 8 + CGFloat(seconds / 60) * 18), height: 3)
-                    .shadow(color: Atmosphere.rest.opacity(0.7), radius: 6, y: 0)
-                    .animation(Motion.rest, value: seconds)
                 Text(label)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold))
                     .monospacedDigit()
                     .tracking(0.2)
                     .foregroundStyle(Atmosphere.rest)
@@ -642,7 +442,7 @@ public struct EarnedRestContext: View {
 
     public var body: some View {
         Text("\(Format.minutes(rest)) earned from \(Format.minutes(focus)) focus")
-            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .font(.system(size: 12, weight: .semibold))
             .monospacedDigit()
             .tracking(0.2)
             .foregroundStyle(Atmosphere.rest)
@@ -695,17 +495,19 @@ public struct FieldCanvas: View {
 }
 
 public struct PressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(Motion.press, value: configuration.isPressed)
+            .animation(reduceMotion ? nil : Motion.press, value: configuration.isPressed)
+            .modifier(ReducedMotionTransaction())
     }
 }
 
-/// Start / Continue: the chip lights, it does not grow.
+/// Start / Continue keep a stable shape and respond with a small tonal change.
 public struct InkPressStyle: ButtonStyle {
     public init() {}
 
@@ -717,21 +519,18 @@ public struct InkPressStyle: ButtonStyle {
 
 private struct InkHover: ViewModifier {
     var pressed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
     @State private var hovering = false
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(pressed ? 0.97 : 1)
             .opacity(pressed ? 0.88 : 1)
-            .brightness(hovering && !pressed ? 0.08 : 0)
-            .shadow(
-                color: Atmosphere.canvas.ink.opacity(hovering && !pressed ? 0.42 : 0.28),
-                radius: hovering && !pressed ? 16 : 10,
-                y: hovering && !pressed ? 6 : 4
-            )
-            .animation(Motion.press, value: pressed)
-            .animation(Motion.hover, value: hovering)
-            .onHover { hovering = $0 }
+            .brightness(hovering && isEnabled && !pressed ? 0.035 : 0)
+            .animation(reduceMotion ? nil : Motion.press, value: pressed)
+            .animation(reduceMotion ? nil : Motion.hover, value: hovering)
+            .onHover { hovering = isEnabled && $0 }
+            .modifier(ReducedMotionTransaction())
     }
 }
 
@@ -742,6 +541,8 @@ public struct QuietHoverInk: ViewModifier {
     var reach: CGSize
 
     @Environment(\.atmosphere) private var atmo
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
     @State private var hovering = false
 
     public init(reach: CGSize = CGSize(width: 8, height: 4)) {
@@ -752,19 +553,54 @@ public struct QuietHoverInk: ViewModifier {
         content
             .underline(false)
             .fontWeight(.medium)
-            .foregroundStyle(hovering ? atmo.ink : atmo.mute)
+            .foregroundStyle(hovering && isEnabled ? atmo.ink : atmo.mute)
             .background {
-                Capsule()
-                    .fill(atmo.ink.opacity(hovering ? 0.16 : 0))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(atmo.ink.opacity(hovering && isEnabled ? 0.08 : restingWellOpacity))
                     .overlay {
-                        Capsule()
-                            .strokeBorder(atmo.ink.opacity(hovering ? 0.28 : 0), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(
+                                atmo.ink.opacity(hovering && isEnabled ? 0.16 : restingWellOpacity),
+                                lineWidth: 0.5
+                            )
                     }
                     .padding(.horizontal, -reach.width)
                     .padding(.vertical, -reach.height)
             }
-            .animation(Motion.hover, value: hovering)
-            .onHover { hovering = $0 }
+            .animation(reduceMotion ? nil : Motion.hover, value: hovering)
+            .onHover { hovering = isEnabled && $0 }
+            .modifier(ReducedMotionTransaction())
+    }
+
+    private var restingWellOpacity: Double {
+        #if os(iOS)
+            0.035
+        #else
+            0
+        #endif
+    }
+}
+
+private struct ReducedMotionTransaction: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.transaction { transaction in
+            if reduceMotion {
+                transaction.animation = nil
+                transaction.disablesAnimations = true
+            }
+        }
+    }
+}
+
+private enum InstrumentControlMetrics {
+    static func minimumHeight(compact: Bool) -> CGFloat {
+        #if os(iOS)
+            44
+        #else
+            compact ? 28 : 36
+        #endif
     }
 }
 
@@ -784,17 +620,21 @@ public struct InkButton: View {
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(compact ? .footnote : .body, design: .rounded).weight(.semibold))
+                .font(.system(compact ? .footnote : .body).weight(.semibold))
                 .frame(minWidth: compact ? 52 : 76)
                 .padding(.horizontal, compact ? 10 : 18)
                 .padding(.vertical, compact ? 4 : 8)
+                .frame(minHeight: InstrumentControlMetrics.minimumHeight(compact: compact))
                 .background(
-                    Capsule()
+                    RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous)
                         .fill(atmo.ink)
-                        .shadow(color: atmo.ink.opacity(0.28), radius: compact ? 6 : 10, y: compact ? 2 : 4)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous)
+                                .strokeBorder(atmo.field.opacity(0.12), lineWidth: 0.5)
+                        }
                 )
                 .foregroundStyle(atmo.field)
-                .contentShape(Capsule())
+                .contentShape(RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous))
                 .opacity(isEnabled ? 1 : 0.35)
         }
         .buttonStyle(InkPressStyle())
@@ -823,12 +663,12 @@ public struct QuietButton: View {
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(compact ? .footnote : .body, design: .rounded).weight(.medium))
+                .font(.system(compact ? .footnote : .body).weight(.medium))
                 .underline(false)
                 .lineLimit(compact ? 1 : nil)
                 .padding(.horizontal, compact ? 8 : 12)
-                .frame(minHeight: minHeight)
-                .contentShape(Capsule())
+                .frame(minHeight: max(minHeight, InstrumentControlMetrics.minimumHeight(compact: compact)))
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .modifier(QuietHoverInk(reach: .zero))
         }
         .buttonStyle(PressStyle())
@@ -870,7 +710,7 @@ public struct RecoveryVerbs: View {
 
     @ViewBuilder
     private var buttons: some View {
-        QuietButton("Restart", minHeight: compact ? 26 : PhaseGrid.verb, action: onRestart)
+        QuietButton("Restart", minHeight: compact ? 28 : PhaseGrid.verb, compact: compact, action: onRestart)
         InkButton("Continue", compact: compact, action: onContinue)
             .keyboardShortcut(.defaultAction)
     }
@@ -940,11 +780,10 @@ public struct PhaseColumn<Head: View, Hole: View, Verb: View, Chrome: View>: Vie
                                     maxHeight: expanded ? compactHole : .infinity
                                 )
                             verb
-                                .fixedSize(horizontal: false, vertical: expanded)
+                                .fixedSize(horizontal: false, vertical: true)
                                 .frame(
                                     maxWidth: .infinity,
-                                    minHeight: PhaseGrid.verb,
-                                    maxHeight: expanded ? nil : PhaseGrid.verb
+                                    minHeight: PhaseGrid.verb
                                 )
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1011,7 +850,7 @@ public struct PhaseCaption: View {
 
     public var body: some View {
         Text(text)
-            .font(.system(.body, design: .rounded).weight(.medium))
+            .font(.system(.body).weight(.medium))
             .multilineTextAlignment(.center)
             .lineLimit(2)
             .minimumScaleFactor(0.75)
@@ -1022,6 +861,7 @@ public struct PhaseCaption: View {
 
 public struct HairlineField: View {
     @Environment(\.atmosphere) private var atmo
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var placeholder: String
     @Binding var text: String
     var centered: Bool
@@ -1038,7 +878,7 @@ public struct HairlineField: View {
         TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundColor(atmo.mute))
             .textFieldStyle(.plain)
             .focused($focused)
-            .font(.system(.body, design: .rounded).weight(.medium))
+            .font(.system(.body).weight(.medium))
             .multilineTextAlignment(centered ? .center : .leading)
             .lineLimit(2)
             .minimumScaleFactor(0.8)
@@ -1047,23 +887,11 @@ public struct HairlineField: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .center : .leading)
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(
-                        focused
-                            ? LinearGradient(
-                                colors: [atmo.mute, atmo.ink.opacity(0.9), atmo.mute],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            : LinearGradient(
-                                colors: [atmo.faint.opacity(0.6), atmo.mute.opacity(0.55), atmo.faint.opacity(0.6)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                    )
+                    .fill(atmo.ink.opacity(focused ? 0.42 : 0.13))
                     .frame(height: 1)
                     .padding(.horizontal, 8)
-                    .shadow(color: atmo.ink.opacity(focused ? 0.6 : 0), radius: 4, y: 2)
-                    .animation(Motion.tick, value: focused)
+                    .animation(reduceMotion ? nil : Motion.hover, value: focused)
             }
+            .modifier(ReducedMotionTransaction())
     }
 }

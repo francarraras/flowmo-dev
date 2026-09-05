@@ -12,17 +12,25 @@ public struct PhaseLead: View {
         self.tone = tone
     }
 
+    private var lineLimit: Int {
+        #if os(iOS)
+            3
+        #else
+            1
+        #endif
+    }
+
     public var body: some View {
         VStack(spacing: 4) {
             Text(line)
-                .font(.system(.body, design: .rounded).weight(.medium))
+                .font(.system(.body, design: .default).weight(.medium))
                 .multilineTextAlignment(.center)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .lineLimit(lineLimit)
+                .minimumScaleFactor(0.85)
                 .foregroundStyle(tone)
             Text(cue)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .tracking(0.6)
+                .font(.system(.caption).weight(.medium))
+                .tracking(0.2)
                 .foregroundStyle(Look.mute)
                 .frame(minHeight: 14)
         }
@@ -47,7 +55,7 @@ public struct ChromeGlyph: View {
 
     public var body: some View {
         Image(systemName: systemName)
-            .font(.system(compact ? .footnote : .body, design: .rounded).weight(.medium))
+            .font(.system(compact ? .footnote : .body, design: .default).weight(.medium))
             .foregroundStyle((hovering || lit) ? atmo.ink : atmo.mute)
             .frame(width: compact ? 22 : 36, height: compact ? 22 : 28)
             .background {

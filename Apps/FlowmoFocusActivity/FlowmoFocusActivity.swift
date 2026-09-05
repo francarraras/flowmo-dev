@@ -11,7 +11,7 @@ private enum FocusInk {
 private struct FocusMark: View {
     var body: some View {
         Image(systemName: "sun.horizon")
-            .font(.system(.body, design: .rounded).weight(.medium))
+            .font(.system(.body, design: .default).weight(.medium))
             .foregroundStyle(FocusInk.primary)
             .accessibilityHidden(true)
     }
@@ -43,13 +43,13 @@ private struct FocusLockScreen: View {
                 HStack(spacing: 8) {
                     FocusMark()
                     Text("Focus")
-                        .font(.system(.headline, design: .rounded))
+                        .font(.system(.headline, design: .default))
                         .foregroundStyle(FocusInk.primary)
                 }
             }
             Spacer(minLength: 12)
             FocusClock(startedAt: startedAt)
-                .font(.system(size: 34, weight: .medium, design: .rounded))
+                .font(.system(size: 34, weight: .medium, design: .default))
                 .multilineTextAlignment(.trailing)
         }
         .padding(18)
@@ -69,14 +69,14 @@ struct FlowmoFocusActivity: Widget {
                     HStack(spacing: 8) {
                         FocusMark()
                         Text("Focus")
-                            .font(.system(.headline, design: .rounded))
+                            .font(.system(.headline, design: .default))
                             .foregroundStyle(FocusInk.primary)
                     }
                     .padding(.top, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     FocusClock(startedAt: context.state.startedAt)
-                        .font(.system(.title2, design: .rounded).weight(.medium))
+                        .font(.system(.title2, design: .default).weight(.medium))
                         .multilineTextAlignment(.trailing)
                         .padding(.top, 6)
                 }
@@ -92,7 +92,7 @@ struct FlowmoFocusActivity: Widget {
                     .padding(.leading, 3)
             } compactTrailing: {
                 FocusClock(startedAt: context.state.startedAt)
-                    .font(.system(.caption, design: .rounded).weight(.medium))
+                    .font(.system(.caption, design: .default).weight(.medium))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 58)
             } minimal: {

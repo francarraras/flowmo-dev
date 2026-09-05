@@ -243,9 +243,9 @@ private struct SyncConflictPane: View {
         VStack(spacing: 18) {
             Spacer()
             Text("Choose what to keep")
-                .font(.system(.title2, design: .rounded).weight(.semibold))
+                .font(.system(.title2, design: .default).weight(.semibold))
             Text(message)
-                .font(.system(.body, design: .rounded))
+                .font(.system(.body, design: .default))
                 .foregroundStyle(atmo.mute)
                 .multilineTextAlignment(.center)
             VStack(spacing: 10) {
@@ -368,11 +368,11 @@ private struct IdlePane: View {
                                 .buttonStyle(PressStyle())
                             }
                         }
-                        .font(.system(.caption, design: .rounded).weight(.medium))
+                        .font(.system(.caption, design: .default).weight(.medium))
                         GuardConfig(controller: controller)
                         if let notice = controller.userNotice {
                             Text(notice)
-                                .font(.system(.caption2, design: .rounded).weight(.medium))
+                                .font(.system(.caption2, design: .default).weight(.medium))
                                 .foregroundStyle(atmo.mute)
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity)
@@ -381,7 +381,7 @@ private struct IdlePane: View {
                         }
                         if let notice = worldSyncNotice(controller.syncStatus) {
                             Text(notice)
-                                .font(.system(.caption2, design: .rounded).weight(.medium))
+                                .font(.system(.caption2, design: .default).weight(.medium))
                                 .foregroundStyle(atmo.mute)
                                 .multilineTextAlignment(.center)
                                 .frame(maxWidth: .infinity)
@@ -477,11 +477,11 @@ private struct HistoryPane: View {
                 QuietButton("Back", action: dismiss)
                 Spacer()
                 Text("History")
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.headline, design: .default))
             }
             if sessions.isEmpty {
                 Text("No completed sessions yet.")
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body, design: .default))
                     .foregroundStyle(atmo.mute)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -613,7 +613,6 @@ private struct FocusPane: View {
             Aperture(ring: .none) {
                 VStack(spacing: 10) {
                     InstrumentClock(Format.clock(status.elapsed), size: 52)
-                        .milestoneGrow(elapsed: status.elapsed, paused: status.isPaused)
                     Accrual(seconds: status.earnedBreakSeconds, label: Format.earned(status.earnedBreakSeconds))
                 }
             }
@@ -666,9 +665,9 @@ private struct StoreRecoveryPane: View {
         VStack(spacing: 18) {
             Spacer()
             Text("Data needs attention")
-                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .font(.system(.title3, design: .default).weight(.semibold))
             Text("Flowmo couldn’t read its local data. Retry, or preserve the original and reset.")
-                .font(.system(.body, design: .rounded))
+                .font(.system(.body, design: .default))
                 .foregroundStyle(atmo.mute)
                 .multilineTextAlignment(.center)
             Text(FlowmoIssueCode.storeUnreadable.rawValue)
@@ -715,9 +714,9 @@ private struct LifecycleRecoveryPane: View {
         VStack(spacing: 18) {
             Spacer()
             Text("Recovery needs attention")
-                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .font(.system(.title3, design: .default).weight(.semibold))
             Text("Flowmo couldn’t safely protect quit or sleep recovery. Retry before continuing.")
-                .font(.system(.body, design: .rounded))
+                .font(.system(.body, design: .default))
                 .foregroundStyle(atmo.mute)
                 .multilineTextAlignment(.center)
             Text(FlowmoIssueCode.recoveryUnavailable.rawValue)
@@ -767,11 +766,11 @@ private struct DataControlsPane: View {
                     QuietButton("Back", action: dismiss)
                     Spacer()
                     Text("Data")
-                        .font(.system(.headline, design: .rounded))
+                        .font(.system(.headline, design: .default))
                 }
                 Spacer()
                 Text("Exports stay on this device unless you choose where to save them.")
-                    .font(.system(.caption, design: .rounded))
+                    .font(.system(.caption, design: .default))
                     .foregroundStyle(atmo.mute)
                     .multilineTextAlignment(.center)
                 InkButton("Export Flowmo Data") {
@@ -786,7 +785,7 @@ private struct DataControlsPane: View {
                 Text(
                     "Best-effort descriptive counts only—no app identities, learning outcomes, or productivity outcomes."
                 )
-                .font(.system(.caption2, design: .rounded))
+                .font(.system(.caption2, design: .default))
                 .foregroundStyle(atmo.faint)
                 .multilineTextAlignment(.center)
                 QuietButton("Delete All Data") {
@@ -801,7 +800,7 @@ private struct DataControlsPane: View {
                     controller.requestNotifications()
                 }
                 Text("If alerts were previously declined, enable them in system settings.")
-                    .font(.system(.caption, design: .rounded))
+                    .font(.system(.caption, design: .default))
                     .foregroundStyle(atmo.mute)
                     .multilineTextAlignment(.center)
                 Spacer()
@@ -874,11 +873,6 @@ private struct BreakPane: View {
             ) {
                 VStack(spacing: 9) {
                     InstrumentClock(Format.remainingClock(status.remaining ?? 0))
-                        .breakRace(
-                            remaining: status.remaining ?? 0,
-                            elapsed: status.elapsed,
-                            paused: status.isPaused
-                        )
                     EarnedRestContext(
                         focus: status.focusSeconds,
                         rest: status.breakSeconds ?? 0
@@ -1055,7 +1049,7 @@ private struct GuardConfig: View {
                     controller.showGuardConfig.toggle()
                 } label: {
                     Text(guardLabel(config))
-                        .font(.system(.caption, design: .rounded).weight(.medium))
+                        .font(.system(.caption, design: .default).weight(.medium))
                         .underline(false)
                         .modifier(QuietHoverInk())
                 }
@@ -1078,14 +1072,14 @@ private struct GuardConfig: View {
                         ForEach(config.bundleIdentifiers, id: \.self) { id in
                             HStack {
                                 Text(displayName(id))
-                                    .font(.system(.caption, design: .rounded))
+                                    .font(.system(.caption, design: .default))
                                     .lineLimit(1)
                                 Spacer()
                                 Button {
                                     controller.removeGuardedApp(bundleIdentifier: id)
                                 } label: {
                                     Text("Remove")
-                                        .font(.system(.caption, design: .rounded).weight(.medium))
+                                        .font(.system(.caption, design: .default).weight(.medium))
                                         .underline(false)
                                         .modifier(QuietHoverInk())
                                 }

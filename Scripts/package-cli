@@ -18,6 +18,26 @@ EOF
 }
 
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+bundle_name="flowmo_FlowmoLook.bundle"
+bundle_manifest() {
+  ruby -rdigest -rfind - "$1" <<'RUBY'
+bundle = ARGV.fetch(0)
+abort 'error: generated artwork bundle is missing or is a symlink' unless File.directory?(bundle) && !File.symlink?(bundle)
+files = {}
+Find.find(bundle) do |path|
+  info = File.lstat(path)
+  abort 'error: artwork bundle contains a symlink or special file' unless info.directory? || info.file?
+  next if info.directory?
+  relative = path.delete_prefix(bundle + '/')
+  abort 'error: unsupported artwork filename' unless relative.split('/').all? { |part| part.match?(/\A[A-Za-z0-9_.-]+\z/) && !['.', '..'].include?(part) }
+  files['flowmo_FlowmoLook.bundle/' + relative] = path
+end
+abort 'error: required HorizonStudy.png artwork is missing' unless files.keys.any? { |name| name.end_with?('/HorizonStudy.png') }
+files.sort.each { |name, path| puts "#{Digest::SHA256.file(path).hexdigest}  #{name}" }
+RUBY
+}
+
 allow_dirty=0
 output_dir=""
 while [ "$#" -gt 0 ]; do
@@ -126,8 +146,18 @@ for architecture in arm64 x86_64; do
   swift build "${build_args[@]}"
   bin_dir="$(swift build "${build_args[@]}" --show-bin-path)"
   ditto "$bin_dir/flowmo" "$work_root/flowmo-$architecture"
+  ruby - "$bin_dir" "$bundle_name" <<'RUBY'
+directory, expected = ARGV
+bundles = Dir.glob(File.join(directory, '*.bundle')).map { |path| File.basename(path) }
+abort 'error: unexpected SwiftPM resource bundles; update CLI packaging' unless bundles == [expected]
+RUBY
+  bundle_manifest "$bin_dir/$bundle_name" >"$work_root/resources-$architecture.SHA256SUMS"
+  mkdir "$work_root/resources-$architecture"
+  ditto "$bin_dir/$bundle_name" "$work_root/resources-$architecture/$bundle_name"
 done
+cmp "$work_root/resources-arm64.SHA256SUMS" "$work_root/resources-x86_64.SHA256SUMS" || fail "architecture builds produced different artwork resources"
 lipo -create "$work_root/flowmo-arm64" "$work_root/flowmo-x86_64" -output "$package_dir/flowmo"
+ditto "$work_root/resources-arm64/$bundle_name" "$package_dir/$bundle_name"
 codesign --force --sign - --options runtime --timestamp=none "$package_dir/flowmo"
 codesign --verify --strict "$package_dir/flowmo"
 lipo "$package_dir/flowmo" -verify_arch arm64 x86_64
@@ -135,6 +165,8 @@ cp "$source_root/Scripts/install-cli" "$package_dir/install.sh"
 chmod 755 "$package_dir/flowmo" "$package_dir/install.sh"
 cp "$source_root/PRIVACY.md" "$package_dir/PRIVACY.md"
 cp "$source_root/LICENSE" "$package_dir/LICENSE"
+cp "$source_root/PROVENANCE.md" "$package_dir/PROVENANCE.md"
+cp "$source_root/THIRD_PARTY_NOTICES.md" "$package_dir/THIRD_PARTY_NOTICES.md"
 cat >"$package_dir/READ ME FIRST.txt" <<EOF
 Flowmo $version (build $build) — macOS 14+ terminal engineering candidate
 
@@ -147,26 +179,35 @@ After verifying the archive SHA-256 against the separately supplied checksum,
 run ./install.sh to install into ~/.local/bin. Add that directory to PATH using
 the printed command. Use ./install.sh --replace for an explicit upgrade after
 quitting any running terminal/window instance. The installer verifies the
-executable checksum and preserves download security attributes.
+complete executable/artwork checksum and preserves download security attributes.
+Keep flowmo_FlowmoLook.bundle beside the executable in this archive. The
+installer places a complete payload under ~/.local/libexec/flowmo and atomically
+points the ~/.local/bin/flowmo launcher at it. Old payloads remain on upgrades.
 
 Start with flowmo --help, flowmo --version, flowmo status, or flowmo live.
 With no arguments, flowmo opens a Mac window. Commands use the same local
 session store as the Mac app. This executable does not connect to CloudKit.
 Session data is preserved on upgrades. To uninstall this default installation,
-remove ~/.local/bin/flowmo; use the app's Idle > Data controls if you also want
-to delete session data. Read the included LICENSE and PRIVACY.md before use.
+remove ~/.local/bin/flowmo. You may then remove the installer-owned
+~/.local/libexec/flowmo directory to reclaim old binaries and artwork; this is
+separate from session data. Use the app's Idle > Data controls to delete session
+data. Read the included LICENSE, PRIVACY.md, PROVENANCE.md, and
+THIRD_PARTY_NOTICES.md before use.
 EOF
 if [ -n "$worktree_state" ]; then
   printf 'DIRTY ENGINEERING TEST — DO NOT DISTRIBUTE\n' >"$package_dir/DO NOT DISTRIBUTE.txt"
 fi
 (cd "$package_dir" && shasum -a 256 flowmo >SHA256SUMS)
+bundle_manifest "$package_dir/$bundle_name" >>"$package_dir/SHA256SUMS"
 tar -czf "$staging/$archive" -C "$work_root" "$name"
 mkdir "$work_root/extracted"
 tar -xzf "$staging/$archive" -C "$work_root/extracted"
 extracted="$work_root/extracted/$name"
 (cd "$extracted" && shasum -a 256 -c SHA256SUMS)
 cmp "$package_dir/flowmo" "$extracted/flowmo"
-for document in install.sh 'READ ME FIRST.txt' LICENSE PRIVACY.md SHA256SUMS; do
+bundle_manifest "$extracted/$bundle_name" >"$work_root/extracted-resources.SHA256SUMS"
+cmp "$work_root/resources-arm64.SHA256SUMS" "$work_root/extracted-resources.SHA256SUMS"
+for document in install.sh 'READ ME FIRST.txt' LICENSE PRIVACY.md PROVENANCE.md THIRD_PARTY_NOTICES.md SHA256SUMS; do
   cmp "$package_dir/$document" "$extracted/$document"
 done
 if [ -n "$worktree_state" ]; then
@@ -178,6 +219,9 @@ mkdir "$work_root/smoke-store"
 reported_version="$(FLOWMO_HOME="$work_root/smoke-store" "$extracted/flowmo" --version)"
 [ "$reported_version" = "flowmo $version (build $build)" ] || fail "extracted executable reports unexpected version: $reported_version"
 FLOWMO_HOME="$work_root/smoke-store" "$extracted/flowmo" status --json | ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["schemaVersion"] == 1 && j.dig("status", "running") == false'
+"$extracted/install.sh" --prefix "$work_root/installed"
+[ "$(FLOWMO_HOME="$work_root/smoke-store" "$work_root/installed/bin/flowmo" --version)" = "$reported_version" ] || fail "installed command reports unexpected version"
+FLOWMO_HOME="$work_root/smoke-store" "$work_root/installed/bin/flowmo" status --json | ruby -rjson -e 'j = JSON.parse(STDIN.read); abort unless j["schemaVersion"] == 1 && j.dig("status", "running") == false'
 if [ -z "$worktree_state" ]; then
   [ "$(git rev-parse HEAD)" = "$revision" ] && [ -z "$(git status --porcelain --untracked-files=normal)" ] || fail "candidate changed during packaging"
 fi
@@ -191,9 +235,11 @@ Uncommitted engineering build: $allow_dirty
 Architectures: arm64 x86_64
 Minimum macOS: 14.0
 Signing: ad-hoc Hardened Runtime; no Developer ID, notarization, or CloudKit
-Verified: both Release builds, universal architectures, exact archive extraction,
-executable checksum/signature, version command, isolated idle JSON status
-Not performed: full release gates, real-user manual smoke, publication or distribution
+Verified: both Release builds, identical architecture resource inventories,
+universal architectures, exact archive extraction, executable/artwork checksums,
+signature, version command, isolated idle JSON status, complete payload installation
+Resources: $bundle_name (required beside the actual executable)
+Not performed: full release gates, installed GUI artwork smoke, publication or distribution
 Archive: $archive
 Built (UTC): $(date -u '+%Y-%m-%dT%H:%M:%SZ')
 Toolchain: $(swift --version | head -n 1)

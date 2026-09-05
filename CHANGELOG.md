@@ -4,6 +4,29 @@ Notable changes are recorded here.
 
 ## Unreleased
 
+- Refined Mac and iPhone around a quieter graphite-and-ivory instrument:
+  standard SF typography, clearer supporting text, restrained champagne for
+  earned rest, and crisp rounded-rectangle controls with stable touch targets.
+  Focus keeps a steady ivory count-up; the working name remains Flowmo.
+- Replaced the faux lunar face, segmented ring assembly, button halos, clock
+  milestone growth, and final-seconds pulse with a static graphite well,
+  continuous 2pt timed rings, and restrained fades. Focus still has no progress
+  ring or deadline, and recovery still waits for Continue or Restart.
+- Added original bundled Horizon Study artwork to the native Focus canvases
+  and refreshed the same three-page tutorial with illustrations, a step
+  indicator, and clearer copy. Its Skip, replay, notification choice, and
+  never-auto-start behavior remain intact. Ambient light changes pause when
+  the scene is inactive or Reduce Motion is enabled. Integrated the original
+  aperture-and-incision icon into the Mac and iPhone catalogs, retaining the
+  earlier crescent master as build 4 provenance.
+- Improved phone Focus hierarchy, gave its actions persistent subtle surfaces
+  and at least 48pt touch height, removed the capture field's fixed height
+  ceiling, and made Reflection actions and error/recovery content adapt to
+  available space. Current phone targets remain portrait-only. This polish
+  is Unreleased and does not replace the prepared build 4 preview artifacts.
+- Kept the terminal executable and bundled artwork together during installation
+  and upgrades. Complete payload checksums reject missing or altered resources;
+  an interrupted upgrade preserves a usable installed command.
 - Added a separate **FlowmoPhoneLocal** build for free Personal Team testing on
   an iPhone. It keeps the session loop and local reminders in its own app
   container without iCloud, App Group, push, or a Home Screen widget. The existing

@@ -95,8 +95,11 @@ flowmo --version
 ```
 
 Add the PATH line to your shell configuration to keep it in new terminals.
-The installer does not change your shell configuration or session data, and
-does not replace an existing executable without `--replace`.
+The source-build command above selects the executable from SwiftPM's output
+directory, where its `flowmo_FlowmoLook.bundle` artwork must remain beside it.
+The installer copies both into `~/.local/libexec/flowmo` and creates the
+`~/.local/bin/flowmo` launcher. It does not change your shell configuration or
+session data, or replace an existing installation without `--replace`.
 
 For a locally generated CLI archive, verify its separately supplied SHA-256
 checksum before extracting it. From the extracted folder, run `./install.sh`.
@@ -139,21 +142,26 @@ and unsupported options fail without opening a window or performing an action.
 
 ## Updates and removal
 
-Quit running Flowmo terminal/window instances before replacing the executable.
+Quit running Flowmo terminal/window instances before upgrading.
 Rebuild with the source-install instructions above and add `--replace` to the
 installer command. For a packaged CLI upgrade, use `./install.sh --replace`.
+`--upgrade` is an equivalent option. Upgrades accept an older regular executable
+or a launcher made by this installer, install a complete new binary/artwork
+payload, then switch the launcher atomically. Previous payloads are retained.
 For a Mac app upgrade, replace Flowmo.app in Applications after quitting it.
 Updates preserve session data; there is no automatic updater yet.
 
-To uninstall the default terminal installation, remove only its executable:
+To uninstall the default terminal command, remove its launcher:
 
 ```bash
 rm "$HOME/.local/bin/flowmo"
 ```
 
-For a custom `--prefix`, remove `bin/flowmo` beneath that prefix instead. Move
-Flowmo.app to Trash to remove the Dock app. To remove session data as well, use
-**Data → Delete All Data** while Idle before uninstalling. Entitled sync builds
+You may then remove the installer-owned `~/.local/libexec/flowmo` directory to
+reclaim its binaries and artwork. For a custom `--prefix`, use `bin/flowmo` and
+`libexec/flowmo` beneath that prefix instead. These locations contain no session
+data. Move Flowmo.app to Trash to remove the Dock app. To remove session data as
+well, use **Data → Delete All Data** while Idle before uninstalling. Entitled sync builds
 also request deletion from private iCloud; offline deletion remains incomplete
 until the cloud confirms it. Review the confirmation before proceeding.
 

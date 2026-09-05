@@ -34,13 +34,13 @@ public struct HistorySessionCard: View {
                     labeled("Parked") {
                         if session.captures.isEmpty {
                             Text("\(parkedCount) parked")
-                                .font(.system(.caption, design: .rounded))
+                                .font(.system(.caption, design: .default))
                                 .foregroundStyle(atmo.mute)
                         } else {
                             VStack(alignment: .leading, spacing: 3) {
                                 ForEach(Array(session.captures.enumerated()), id: \.offset) { _, item in
                                     Text(item.text)
-                                        .font(.system(.caption, design: .rounded))
+                                        .font(.system(.caption, design: .default))
                                         .foregroundStyle(atmo.mute)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
@@ -51,7 +51,7 @@ public struct HistorySessionCard: View {
                 if let recall = session.recallText, !recall.isEmpty {
                     labeled("Next step") {
                         Text(recall)
-                            .font(.system(.caption, design: .rounded))
+                            .font(.system(.caption, design: .default))
                             .foregroundStyle(atmo.mute)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -74,23 +74,23 @@ public struct HistorySessionCard: View {
             VStack(alignment: .leading, spacing: expanded ? 8 : 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(session.intention.isEmpty ? "No intention" : session.intention)
-                        .font(.system(.body, design: .rounded).weight(.medium))
+                        .font(.system(.body, design: .default).weight(.medium))
                         .lineLimit(expanded ? nil : 1)
                         .fixedSize(horizontal: false, vertical: expanded)
                     Spacer(minLength: 8)
                     if !expanded {
                         Text(Format.clock(session.focusSeconds))
-                            .font(.system(.body, design: .rounded).weight(.medium).monospacedDigit())
+                            .font(.system(.body, design: .default).weight(.medium).monospacedDigit())
                             .foregroundStyle(atmo.mute)
                     }
                 }
                 Text(session.endedAt, format: .dateTime.month(.abbreviated).day().year())
-                    .font(.system(.caption2, design: .rounded))
+                    .font(.system(.caption2, design: .default))
                     .foregroundStyle(atmo.mute)
 
                 if !expanded, hasWriting {
                     Text(collapsedMark)
-                        .font(.system(.caption, design: .rounded))
+                        .font(.system(.caption, design: .default))
                         .foregroundStyle(atmo.mute)
                 }
             }
@@ -140,11 +140,11 @@ public struct HistorySessionCard: View {
     private func namedClock(_ name: String, seconds: TimeInterval, tone: Color) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(name)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium, design: .default))
                 .tracking(0.6)
                 .foregroundStyle(atmo.mute)
             Text(Format.clock(seconds))
-                .font(.system(.body, design: .rounded).weight(.medium).monospacedDigit())
+                .font(.system(.body, design: .default).weight(.medium).monospacedDigit())
                 .foregroundStyle(tone)
         }
     }
@@ -152,7 +152,7 @@ public struct HistorySessionCard: View {
     private func labeled<Content: View>(_ name: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(name)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11, weight: .medium, design: .default))
                 .tracking(0.6)
                 .foregroundStyle(atmo.mute)
             content()

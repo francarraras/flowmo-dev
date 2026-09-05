@@ -1,37 +1,52 @@
-# Provisional app icon
+# App icon sources
 
-Generated on 2026-09-05 with Codex's built-in OpenAI image generation tool.
-No reference image, third-party asset, font, or brand was supplied. This is a
-temporary visual identity; it does not settle the future app name.
+The current shared Mac/iPhone icon catalog uses the original
+**aperture-and-incision** mark generated on 2026-09-05 with Codex's built-in
+OpenAI image generation tool. No reference image, third-party asset, font,
+brand, or private user data was supplied. The working name remains Flowmo.
 
-`flowmo-provisional-master.png` is the unchanged 1254 × 1254 opaque RGB output.
+## Current Unreleased catalog
+
+`flowmo-horizon-v2-master.png` is the unchanged **1254 × 1254 opaque RGB** output.
 Its SHA-256 is
-`f07ff1acef23dfeb2edd967e1a9f9e909eba757cecceacb14b3178623e5ed0ab`.
-The prompt requested 1024 × 1024; technical derivatives supply the exact sizes.
+`54bf78847e82aa4efe4a65a692e301adb04f8f05f17f836f2b1fccd3b5903e9f`.
+The exact prompt and original tool output path are in the
+[generation receipt](flowmo-horizon-v2-receipt.md).
 
-The shared `../Assets.xcassets/AppIcon.appiconset` contains 14 opaque PNGs for
-19 icon slots: Mac 16, 32, 128, 256, and 512 points at 1×/2×; iPhone 20, 29, 40,
-and 60 points at 2×/3×; and the 1024-pixel iOS icon. macOS `sips` resampled the
-master directly for each pixel size and embedded the system sRGB profile. No
-artwork was repainted, cropped, pre-masked, or given an external drop shadow.
-This preserves the full-bleed master and leaves platform masking to the system.
-The source master is not an application resource.
+The shared `../Assets.xcassets/AppIcon.appiconset` contains 14 opaque RGB PNGs
+for 19 icon slots: Mac 16, 32, 128, 256, and 512 points at 1×/2×; iPhone 20, 29,
+40, and 60 points at 2×/3×; and the 1024-pixel iOS icon. Native `sips` size
+conversions from the v2 master now supply every slot. Catalog dimensions and
+opacity were verified after replacement. No artwork was creatively repainted,
+cropped, pre-masked, or given an outer tile shadow. The master itself is not an
+application resource. Earlier build 4 preview artifacts remain unchanged.
 
 Apple's [asset-catalog configuration guide](https://developer.apple.com/documentation/xcode/configuring-your-app-icon)
 and [App Icon format reference](https://developer.apple.com/library/archive/documentation/Xcode/Reference/xcode_ref-Asset_Catalog_Format/AppIconType.html)
-define the icon slots. Current [app-icon design guidance](https://developer.apple.com/design/human-interface-guidelines/app-icons/)
+define the icon slots. Its [app-icon design guidance](https://developer.apple.com/design/human-interface-guidelines/app-icons/)
 calls for square, unmasked artwork and lists sRGB as a supported color space.
-These references were checked on 2026-09-05. This conventional PNG catalog
-preserves the existing macOS 14 and iOS 17 deployment targets; it does not add
-Icon Composer or a new minimum OS requirement. Dock and Home Screen appearance
-still belong to native release smoke checks.
+These references were checked on 2026-09-05. The conventional PNG catalog
+preserves the existing macOS 14 and iOS 17 deployment targets; it adds no Icon
+Composer dependency or minimum OS requirement.
 
-OpenAI's [Terms of Use](https://openai.com/policies/row-terms-of-use/#content)
-assign its rights, if any, in output to the user to the extent permitted by law,
-and explain that output may not be unique. See the repository's
-[`PROVENANCE.md`](../../PROVENANCE.md) and current [`LICENSE`](../../LICENSE).
-The static icon introduces no runtime network calls, analytics, or user-data
-processing. No session content or private tester data was used in generation.
+OpenAI's [Terms of Use](https://openai.com/policies/row-terms-of-use/#content),
+checked on 2026-09-05, assign its output rights, if any, to the user where law
+permits; output may not be unique. The assets follow the repository's
+[MIT license](../../LICENSE). See [project provenance](../../PROVENANCE.md).
+Static icon packaging adds no runtime AI, network behavior, analytics, privacy
+API, or user-data processing. Maintenance is limited to the checked-in PNGs
+and the native catalog format.
+
+## Historical build 4 source
+
+`flowmo-provisional-master.png` is the earlier crescent-and-horizon icon,
+generated on 2026-09-05 with the same built-in tool. It remains unchanged at
+**1254 × 1254 opaque RGB** pixels, with SHA-256
+`f07ff1acef23dfeb2edd967e1a9f9e909eba757cecceacb14b3178623e5ed0ab`.
+It supplied the build 4 icon derivatives; it is retained for provenance and
+no longer supplies the current asset catalog. The original prompt requested
+1024 × 1024, and local `sips` derivatives supplied each required size with the
+system sRGB profile. The source master is not an application resource.
 
 Exact generation prompt:
 

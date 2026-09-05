@@ -96,16 +96,16 @@ struct DistantHorizonScene: View {
         if let interception = controller.focusGuard.runtime.interception {
             VStack(alignment: .leading, spacing: spacing) {
                 Text("Focus Guard")
-                    .font(.system(size: kickerSize, weight: .medium, design: .rounded))
+                    .font(.system(size: kickerSize, weight: .medium, design: .default))
                     .tracking(0.3)
                     .foregroundStyle(Atmosphere.canvas.mute)
                 Text("\(interception.displayName) is guarded.")
-                    .font(.system(size: intentionSize, weight: .regular, design: .rounded))
+                    .font(.system(size: intentionSize, weight: .regular, design: .default))
                     .foregroundStyle(Atmosphere.canvas.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
                 InstrumentClock(Format.clock(status.elapsed), size: clockSize)
-                    .foregroundStyle(Atmosphere.rest)
+                    .foregroundStyle(Atmosphere.canvas.ink)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
@@ -113,17 +113,17 @@ struct DistantHorizonScene: View {
             )
         } else {
             VStack(alignment: .leading, spacing: spacing) {
-                Text("Focus scene")
-                    .font(.system(size: kickerSize, weight: .medium, design: .rounded))
+                Text("Focus")
+                    .font(.system(size: kickerSize, weight: .medium, design: .default))
                     .tracking(0.3)
                     .foregroundStyle(Atmosphere.canvas.mute)
                 Text(status.intention)
-                    .font(.system(size: intentionSize, weight: .regular, design: .rounded))
+                    .font(.system(size: intentionSize, weight: .regular, design: .default))
                     .foregroundStyle(Atmosphere.canvas.ink)
                     .lineLimit(2)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
                 InstrumentClock(Format.clock(status.elapsed), size: clockSize)
-                    .foregroundStyle(Atmosphere.rest)
+                    .foregroundStyle(Atmosphere.canvas.ink)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
@@ -178,6 +178,7 @@ private struct DistantHorizonAction: View {
     let action: () -> Void
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focused: Bool
     @State private var hovering = false
 
@@ -191,32 +192,28 @@ private struct DistantHorizonAction: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: fontSize, weight: .medium, design: .rounded))
+                .font(.system(size: fontSize, weight: .medium, design: .default))
                 .foregroundStyle(hovering || focused ? Atmosphere.canvas.ink : tone)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 20)
                 .frame(minHeight: 44)
-                .contentShape(Capsule())
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .background {
-                    Capsule()
-                        .fill(Atmosphere.canvas.ink.opacity(hovering ? 0.16 : 0))
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Atmosphere.canvas.ink.opacity(hovering ? 0.10 : 0.04))
                         .overlay {
-                            Capsule()
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .strokeBorder(
-                                    Atmosphere.canvas.ink.opacity(focused ? 0.52 : (hovering ? 0.28 : 0)),
+                                    Atmosphere.canvas.ink.opacity(focused ? 0.6 : (hovering ? 0.30 : 0.16)),
                                     lineWidth: 1
                                 )
                         }
-                        .shadow(
-                            color: Atmosphere.canvas.ink.opacity(focused ? 0.22 : 0),
-                            radius: focused ? 3 : 0
-                        )
                 }
                 .opacity(isEnabled ? 1 : 0.35)
         }
         .buttonStyle(PressStyle())
         .focused($focused)
         .onHover { hovering = isEnabled && $0 }
-        .animation(Motion.hover, value: hovering)
-        .animation(Motion.hover, value: focused)
+        .animation(reduceMotion ? nil : Motion.hover, value: hovering)
+        .animation(reduceMotion ? nil : Motion.hover, value: focused)
     }
 }

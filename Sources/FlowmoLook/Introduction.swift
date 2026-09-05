@@ -58,6 +58,7 @@ public struct IntroductionView: View {
     @ObservedObject private var state: IntroductionState
     @Environment(\.atmosphere) private var atmo
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var requestedNotifications = false
     private let onRequestNotifications: () -> Void
 
@@ -67,64 +68,68 @@ public struct IntroductionView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("How it works · \(state.page + 1) of 3")
-                    .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(atmo.mute)
-                Spacer(minLength: 8)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Flowmo")
+                        .font(.system(.headline).weight(.medium))
+                        .tracking(-0.4)
+                        .foregroundStyle(atmo.ink)
+                        .accessibilityLabel("Flowmo. How it works")
+                    HStack(spacing: 5) {
+                        ForEach(0..<3) { index in
+                            Capsule()
+                                .fill(index <= state.page ? atmo.ink : atmo.track)
+                                .frame(width: index == state.page ? 24 : 8, height: 3)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Step \(state.page + 1) of 3")
+                }
+                Spacer(minLength: 12)
                 QuietButton("Skip", minHeight: 44) { state.finish() }
             }
 
             GeometryReader { geometry in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Spacer(minLength: 0)
-                        Image(systemName: symbol)
-                            .font(.system(size: 36, weight: .light))
-                            .foregroundStyle(Atmosphere.rest)
-                            .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 22) {
+                        illustration
+                            .frame(height: artworkHeight(available: geometry.size.height))
                         VStack(alignment: .leading, spacing: 12) {
                             Text(title)
-                                .font(.system(.title2, design: .rounded).weight(.semibold))
+                                .font(headlineFont)
+                                .tracking(-0.65)
                                 .foregroundStyle(atmo.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                                 .accessibilityAddTraits(.isHeader)
                             Text(explanation)
-                                .font(.system(.body, design: .rounded))
+                                .font(.system(.body))
+                                .lineSpacing(3)
                                 .foregroundStyle(atmo.mute)
                                 .fixedSize(horizontal: false, vertical: true)
                             Text(detail)
-                                .font(.system(.callout, design: .rounded).weight(.medium))
-                                .foregroundStyle(Atmosphere.rest)
+                                .font(.system(.callout).weight(.medium))
+                                .foregroundStyle(state.page == 2 ? Atmosphere.rest : atmo.ink)
                                 .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 2)
                         }
                         .id(state.page)
                         .transition(.opacity)
-                        Spacer(minLength: 0)
                         if state.page == 2 {
                             notificationChoice
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .leading)
+                    .padding(.bottom, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                .scrollIndicators(.hidden)
+                .id(state.page)
             }
 
-            HStack(spacing: 12) {
-                if state.page > 0 {
-                    QuietButton("Back", minHeight: 44) { state.back() }
-                }
-                Spacer(minLength: 0)
-                InkButton(state.page == 2 ? "Set intention" : "Continue") {
-                    if state.page == 2 {
-                        state.finish()
-                    } else {
-                        state.next()
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-            }
-            .fixedSize(horizontal: false, vertical: true)
+            footer
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
         }
         .padding(.vertical, 8)
         .frame(maxWidth: 480)
@@ -132,8 +137,117 @@ public struct IntroductionView: View {
         .animation(reduceMotion ? nil : Motion.phase, value: state.page)
     }
 
+    @ViewBuilder
+    private var footer: some View {
+        #if os(iOS)
+            if dynamicTypeSize.isAccessibilitySize {
+                verticalFooter
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    horizontalFooter
+                    verticalFooter
+                }
+            }
+        #else
+            horizontalFooter
+        #endif
+    }
+
+    private var horizontalFooter: some View {
+        HStack(spacing: 12) {
+            if state.page > 0 {
+                QuietButton("Back", minHeight: 44) { state.back() }
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            Spacer(minLength: 0)
+            primaryAction
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private var verticalFooter: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            if state.page > 0 {
+                QuietButton("Back", minHeight: 44) { state.back() }
+            }
+            primaryAction
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private var primaryAction: some View {
+        InkButton(state.page == 2 ? "Set intention" : "Continue") {
+            if state.page == 2 {
+                state.finish()
+            } else {
+                state.next()
+            }
+        }
+        .keyboardShortcut(.defaultAction)
+    }
+
+    private var headlineFont: Font {
+        #if os(iOS)
+            .system(.title).weight(.medium)
+        #else
+            .system(.title2).weight(.medium)
+        #endif
+    }
+
+    private func artworkHeight(available: CGFloat) -> CGFloat {
+        let ideal = min(210, max(92, available * 0.34))
+        return dynamicTypeSize.isAccessibilitySize ? min(112, ideal) : ideal
+    }
+
+    private var illustration: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .topLeading) {
+                HorizonArtwork.image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                    .overlay(atmo.field.opacity(0.12))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(illustrationLabel)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(atmo.mute)
+                    Text(illustrationValue)
+                        .font(.system(size: 24, weight: .regular))
+                        .monospacedDigit()
+                        .tracking(-0.8)
+                        .foregroundStyle(state.page == 2 ? Atmosphere.rest : atmo.ink)
+                }
+                .padding(16)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(atmo.ink.opacity(0.09), lineWidth: 1)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var illustrationLabel: String {
+        switch state.page {
+        case 0: "Make a little space"
+        case 1: "Focus counts up"
+        default: "Rest follows your effort"
+        }
+    }
+
+    private var illustrationValue: String {
+        switch state.page {
+        case 0: "One intention."
+        case 1: "12:48"
+        default: "50m / 10m"
+        }
+    }
+
     private var notificationChoice: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             if !requestedNotifications {
                 QuietButton("Enable notifications", minHeight: 44) {
                     requestedNotifications = true
@@ -143,46 +257,39 @@ public struct IntroductionView: View {
             Text(
                 requestedNotifications
                     ? "You can change alerts later in system settings."
-                    : "Optional alerts tell you when preparation or a break ends."
+                    : "Optional alerts for the moments between Focus and rest."
             )
-            .font(.system(.caption, design: .rounded))
+            .font(.system(.caption))
             .foregroundStyle(atmo.mute)
             .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private var symbol: String {
-        switch state.page {
-        case 0: "pencil.line"
-        case 1: "arrow.up.right"
-        default: "sun.horizon"
-        }
+        .padding(.top, 4)
     }
 
     private var title: String {
         switch state.page {
-        case 0: "One intention. A little space."
-        case 1: "Your pace sets the clock."
-        default: "Rest, then leave a next step."
+        case 0: "Make room for one thing."
+        case 1: "Stay with the work."
+        default: "Leave space to return."
         }
     }
 
     private var explanation: String {
         switch state.page {
         case 0:
-            "Write what you want to work on. Take up to two minutes to settle, or choose Focus now whenever you’re ready."
+            "Name what you’re here to do. Take up to two minutes to settle, or choose Focus now whenever you’re ready."
         case 1:
-            "Focus counts up. Work until you choose to stop. Park a passing thought without leaving your session."
+            "Your clock counts up for as long as you need. Park passing thoughts and keep going. You decide when Focus ends."
         default:
-            "Your break grows with your Focus. After resting, an optional reflection helps you choose where to pick up next."
+            "Take the break you’ve earned, then leave an optional next step. It will be waiting when you begin again."
         }
     }
 
     private var detail: String {
         switch state.page {
-        case 0: "You only type your intention once."
-        case 1: "No deadline. No race to finish."
-        default: "By default, 50 minutes of Focus earns 10 minutes of rest."
+        case 0: "One intention, typed once."
+        case 1: "No deadline. No finish line."
+        default: "By default, 50 minutes focused earns 10 minutes of rest."
         }
     }
 }

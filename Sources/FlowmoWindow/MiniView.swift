@@ -29,18 +29,12 @@ struct MiniView: View {
         case .focus:
             VStack(spacing: 5) {
                 InstrumentClock(Format.clock(status.elapsed), size: 34)
-                    .milestoneGrow(elapsed: status.elapsed, paused: status.isPaused)
                 Accrual(seconds: status.earnedBreakSeconds, label: Format.earned(status.earnedBreakSeconds))
             }
         case .closeBeat:
             MiniCloseSummary(status: status)
         case .onBreak:
             InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 30)
-                .breakRace(
-                    remaining: status.remaining ?? 0,
-                    elapsed: status.elapsed,
-                    paused: status.isPaused
-                )
         case nil:
             EmptyView()
         default:
@@ -69,7 +63,7 @@ struct MiniView: View {
     private var verbRow: some View {
         if controller.focusGuard.runtime.interception != nil, !status.isPaused {
             HStack(spacing: 6) {
-                QuietButton("Stay focused", minHeight: 26) { controller.stayFocused() }
+                QuietButton("Stay focused", minHeight: 26, compact: true) { controller.stayFocused() }
                 InkButton("Open once", compact: true) { controller.openOnce() }
             }
         } else if status.isPaused {
@@ -91,7 +85,7 @@ struct MiniView: View {
                     ) {
                         controller.startFocusScene()
                     }
-                    QuietButton("Focus now", minHeight: 26) { controller.focusNow() }
+                    QuietButton("Focus now", minHeight: 26, compact: true) { controller.focusNow() }
                         .help(
                             "Starts Focus and returns to your previous work app when available and not guarded"
                         )
@@ -106,13 +100,13 @@ struct MiniView: View {
                             controller.beginParkedReview()
                             controller.setDisplayMode(.classic)
                         }
-                        QuietButton(recallActionTitle, minHeight: 26) { controller.skip() }
+                        QuietButton(recallActionTitle, minHeight: 26, compact: true) { controller.skip() }
                     }
                 } else {
-                    QuietButton(recallActionTitle, minHeight: 26) { controller.skip() }
+                    QuietButton(recallActionTitle, minHeight: 26, compact: true) { controller.skip() }
                 }
             case .onBreak:
-                QuietButton("Reflect", minHeight: 26) { controller.skip() }
+                QuietButton("Reflect", minHeight: 26, compact: true) { controller.skip() }
             case .focus:
                 HStack(spacing: 6) {
                     miniIcon("plus", help: "Park a thought — opens Classic") {
@@ -128,7 +122,7 @@ struct MiniView: View {
                     QuietButton("Stop", minHeight: 26, compact: true) { controller.stopFocus() }
                 }
             case .closeBeat:
-                QuietButton("Done", minHeight: 26) {
+                QuietButton("Done", minHeight: 26, compact: true) {
                     controller.dismissCloseBeat()
                     if controller.world.live == nil,
                         !controller.intentionDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -191,7 +185,7 @@ struct MiniView: View {
     private func miniIcon(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(.footnote, design: .rounded).weight(.medium))
+                .font(.system(.footnote, design: .default).weight(.medium))
                 .foregroundStyle(atmo.mute)
                 .frame(width: 26, height: 26)
                 .contentShape(Rectangle())
@@ -223,7 +217,7 @@ private struct MiniCloseSummary: View {
                     .foregroundStyle(atmo.faint)
             }
         }
-        .font(.system(size: 8, weight: .medium, design: .rounded))
+        .font(.system(size: 8, weight: .medium, design: .default))
         .lineLimit(1)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)

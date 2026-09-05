@@ -7,74 +7,154 @@ usage() {
 Usage: ./install.sh [--prefix PATH] [--replace]
        ./Scripts/install-cli --binary PATH [--prefix PATH] [--replace]
 
-Install flowmo into PREFIX/bin (default: ~/.local). No administrator access
-is required for the default location. Existing installations are preserved
-unless --replace is supplied. Session data and shell configuration are untouched.
+Install the flowmo command into PREFIX/bin (default: ~/.local). The executable
+and its adjacent artwork bundle stay together under PREFIX/libexec/flowmo.
+No administrator access is required for the default location. --replace
+(also --upgrade) explicitly upgrades an existing regular binary or managed
+installation. Old payloads, session data, and shell configuration are preserved.
 
-The packaged installer verifies its adjacent flowmo against SHA256SUMS.
---binary selects your own locally built executable instead.
+The packaged installer verifies the complete payload against SHA256SUMS.
+--binary selects a local build; keep flowmo_FlowmoLook.bundle beside that binary.
 EOF
 }
 
 fail() { printf 'error: %s\n' "$*" >&2; exit 1; }
 
+# Generate a canonical inventory instead of trusting paths from a supplied
+# checksum file. Never follow a resource symlink or traversal.
+payload_manifest() {
+  ruby -rdigest -rfind - "$1" "$2" <<'RUBY'
+binary, bundle = ARGV
+abort 'error: select a regular executable file' unless File.file?(binary) && File.executable?(binary) && !File.symlink?(binary)
+abort 'error: adjacent artwork bundle is missing or is a symlink' unless File.directory?(bundle) && !File.symlink?(bundle)
+files = {'flowmo' => binary}
+Find.find(bundle) do |path|
+  info = File.lstat(path)
+  abort 'error: artwork bundle contains a symlink or special file' unless info.directory? || info.file?
+  next if info.directory?
+  relative = path.delete_prefix(bundle + '/')
+  parts = relative.split('/')
+  abort 'error: unsupported artwork filename' unless parts.all? { |part| part.match?(/\A[A-Za-z0-9_.-]+\z/) && !['.', '..'].include?(part) }
+  files['flowmo_FlowmoLook.bundle/' + relative] = path
+end
+abort 'error: required HorizonStudy.png artwork is missing' unless files.keys.any? { |path| path.end_with?('/HorizonStudy.png') }
+files.sort.each { |name, path| puts "#{Digest::SHA256.file(path).hexdigest}  #{name}" }
+RUBY
+}
+
 script_dir="$(cd "$(dirname "$0")" && pwd -P)"
 prefix="${HOME:?HOME must be set}/.local"
 binary=""
 replace=0
+packaged=1
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --binary|--prefix)
       [ "$#" -ge 2 ] && [ -n "$2" ] || fail "$1 requires a path"
       case "$2" in
         -*) fail "$1 requires a path, not an option; use ./ before a path beginning with '-'" ;;
+        *$'\n'*|*$'\r'*) fail "paths must not contain line breaks" ;;
       esac
       case "$1" in
-        --binary) binary="$2" ;;
+        --binary) binary="$2"; packaged=0 ;;
         --prefix) prefix="$2" ;;
       esac
       shift 2
       ;;
-    --replace) replace=1; shift ;;
+    --replace|--upgrade) replace=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) fail "unknown argument: $1 (see --help)" ;;
   esac
 done
 
 [ "$(uname -s)" = Darwin ] || fail "this executable requires macOS 14 or newer"
-if [ -z "$binary" ]; then
-  binary="$script_dir/flowmo"
-  [ -f "$script_dir/SHA256SUMS" ] || fail "package checksum is missing; for a source build use --binary PATH"
-  expected="$(sed -n 's/^\([0-9a-f]\{64\}\)  flowmo$/\1/p' "$script_dir/SHA256SUMS")"
-  [ "${#expected}" -eq 64 ] || fail "package checksum is invalid"
-  [ -f "$binary" ] || fail "packaged executable is missing"
-  actual="$(shasum -a 256 "$binary" | awk '{print $1}')"
-  [ "$actual" = "$expected" ] || fail "executable checksum does not match; installation stopped"
-fi
-[ -f "$binary" ] && [ -x "$binary" ] || fail "select an executable file with --binary PATH"
-case "$prefix" in /*) ;; *) prefix="$PWD/$prefix" ;; esac
-install_dir="$prefix/bin"
-mkdir -p "$install_dir"
-destination="$install_dir/flowmo"
-[ ! -d "$destination" ] && [ ! -L "$destination" ] || fail "destination is a directory or symlink; inspect it before installing"
-if [ -e "$destination" ] && [ "$replace" -ne 1 ]; then
-  fail "flowmo is already installed here; quit it and use --replace to upgrade"
-fi
+for command_name in ruby ditto shasum; do
+  command -v "$command_name" >/dev/null 2>&1 || fail "required macOS command not found: $command_name"
+done
+binary="${binary:-$script_dir/flowmo}"
+[ -f "$binary" ] || fail "selected executable is missing"
+binary_dir="$(cd "$(dirname "$binary")" && pwd -P)"
+binary="$binary_dir/$(basename "$binary")"
+bundle="$binary_dir/flowmo_FlowmoLook.bundle"
 
-staged="$(mktemp "$install_dir/.flowmo-install.XXXXXX")"
-cleanup() { rm -f -- "$staged"; }
+work_root="$(mktemp -d "${TMPDIR:-/private/tmp}/flowmo-install.XXXXXX")"
+payload_dir=""
+launcher=""
+lock=""
+cleanup() {
+  rm -rf -- "$work_root"
+  if [ -n "$payload_dir" ]; then rm -rf -- "$payload_dir"; fi
+  if [ -n "$launcher" ]; then rm -f -- "$launcher"; fi
+  if [ -n "$lock" ]; then rmdir "$lock" 2>/dev/null || true; fi
+}
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-# ditto preserves quarantine and other extended attributes on downloaded files.
-ditto "$binary" "$staged"
-cmp "$binary" "$staged" || fail "installed copy differs from the selected executable"
-chmod 755 "$staged"
-if [ "$replace" -eq 1 ]; then
-  mv -f -- "$staged" "$destination"
-else
-  ln "$staged" "$destination" || fail "destination appeared during installation; no file was replaced"
+
+# Verify before creating anything beneath the requested installation prefix.
+payload_manifest "$binary" "$bundle" >"$work_root/SHA256SUMS"
+if [ "$packaged" -eq 1 ]; then
+  [ -f "$script_dir/SHA256SUMS" ] && [ ! -L "$script_dir/SHA256SUMS" ] || fail "package checksum is missing or invalid"
+  cmp -s "$script_dir/SHA256SUMS" "$work_root/SHA256SUMS" || fail "payload checksum or inventory does not match; installation stopped"
 fi
+mkdir "$work_root/payload"
+# ditto preserves quarantine and other extended attributes on downloaded files.
+ditto "$binary" "$work_root/payload/flowmo"
+ditto "$bundle" "$work_root/payload/flowmo_FlowmoLook.bundle"
+payload_manifest "$work_root/payload/flowmo" "$work_root/payload/flowmo_FlowmoLook.bundle" >"$work_root/staged-sums"
+cmp -s "$work_root/SHA256SUMS" "$work_root/staged-sums" || fail "selected payload changed while copying"
+cp "$work_root/SHA256SUMS" "$work_root/payload/SHA256SUMS"
+printf 'Flowmo CLI payload v1\n' >"$work_root/payload/INSTALLATION"
+payload_digest="$(shasum -a 256 "$work_root/SHA256SUMS" | awk '{print $1}')"
+
+prefix="$(ruby -e 'puts File.expand_path(ARGV.fetch(0))' "$prefix")"
+for directory in "$prefix" "$prefix/bin" "$prefix/libexec" "$prefix/libexec/flowmo"; do
+  [ ! -L "$directory" ] || fail "installation directory is a symlink; choose its real path"
+  [ ! -e "$directory" ] || [ -d "$directory" ] || fail "installation directory is not a directory"
+done
+mkdir -p "$prefix/bin" "$prefix/libexec/flowmo"
+prefix="$(cd "$prefix" && pwd -P)"
+install_dir="$prefix/bin"
+payload_root="$prefix/libexec/flowmo"
+destination="$install_dir/flowmo"
+mkdir "$payload_root/.install.lock" 2>/dev/null || fail "another installation is active, or a stale install lock needs inspection"
+lock="$payload_root/.install.lock"
+
+if [ -L "$destination" ]; then
+  fail "destination is a symlink; inspect it before upgrading"
+elif [ -e "$destination" ] && [ ! -f "$destination" ]; then
+  fail "destination is not a regular executable or managed launcher"
+fi
+if { [ -e "$destination" ] || [ -L "$destination" ]; } && [ "$replace" -ne 1 ]; then
+  fail "flowmo is already installed here; quit it and use --replace to upgrade"
+fi
+
+# Every install receives a new complete payload. Never reuse an old copy and
+# inadvertently discard a new download's quarantine attributes.
+payload_dir="$(mktemp -d "$payload_root/$payload_digest.XXXXXX")"
+ditto "$work_root/payload" "$payload_dir"
+payload_manifest "$payload_dir/flowmo" "$payload_dir/flowmo_FlowmoLook.bundle" >"$work_root/installed-sums"
+cmp -s "$work_root/SHA256SUMS" "$work_root/installed-sums" || fail "installed payload differs from the selected source"
+chmod 755 "$payload_dir/flowmo"
+launcher="$(mktemp "$install_dir/.flowmo-launcher.XXXXXX")"
+# An exec launcher gives Bundle.main the actual executable's directory. A
+# symlink would leave SwiftPM looking for artwork in PREFIX/bin on macOS.
+ruby -rshellwords - "$payload_dir/flowmo" "$launcher" <<'RUBY'
+binary, launcher = ARGV
+File.write(launcher, "#!/bin/sh\n# Flowmo CLI launcher v1\nexec #{Shellwords.escape(binary)} \"$@\"\n")
+RUBY
+chmod 755 "$launcher"
+# Relinquish cleanup ownership before publication: a signal may arrive while
+# rename/ln finishes, after the new launcher already references this payload.
+# A failed publication can leave an unused complete payload, never a broken one.
+payload_dir=""
+if [ "$replace" -eq 1 ]; then
+  ruby -e 'File.rename(ARGV[0], ARGV[1])' "$launcher" "$destination"
+else
+  ln "$launcher" "$destination" || fail "destination appeared during installation; no file was replaced"
+  rm "$launcher"
+fi
+launcher=""
 printf 'Installed flowmo. Add this directory to PATH if needed:\n  '
 printf 'export PATH=%q:"$PATH"\n' "$install_dir"
 printf 'Then run: flowmo --version\n'

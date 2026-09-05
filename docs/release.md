@@ -63,10 +63,14 @@ checkout:
 This builds the SwiftPM `flowmo` product for arm64 and x86_64, combines the
 executables, ad-hoc signs with Hardened Runtime, and creates a versioned `.tar.gz`,
 SHA-256 file, and manifest in ignored `dist/`. The archive includes an installer,
-executable checksum, license, privacy policy, and readme. Packaging extracts the
-exact archive and verifies its architectures, signature, checksum, version,
-and isolated idle JSON response. It refuses existing output names, checks that
-the embedded CLI version/build matches the Mac project, and never uploads,
+the adjacent `flowmo_FlowmoLook.bundle` artwork, complete payload checksums,
+license, provenance, third-party notices, privacy policy, and readme. Packaging
+checks that both architectures produce identical resources, extracts the exact
+archive, and verifies its architectures, signature, payload checksums, version,
+isolated idle JSON response, and installed command. Separately smoke the installed
+no-argument window and Focus artwork after the build directory is gone; a version
+or status command does not load that artwork. Packaging refuses existing output
+names, checks that the embedded CLI version/build matches the Mac project, and never uploads,
 pushes, tags, or changes the preview ledger. A clean package is still a candidate
 and requires the complete gates and owner review before distribution.
 
@@ -83,10 +87,19 @@ Verify a supplied archive with `shasum -a 256 -c ARCHIVE.tar.gz.sha256` using th
 actual checksum filename, then extract it. From the extracted folder, run
 `./install.sh`; installation defaults to `~/.local/bin` and prints the PATH
 instruction without editing shell configuration. The installer checks the
-executable checksum and preserves extended attributes, including quarantine.
+complete binary/artwork inventory and checksums and preserves extended attributes,
+including quarantine. It places each complete payload beneath
+`PREFIX/libexec/flowmo/<content-digest>.<installation-id>` and makes
+`PREFIX/bin/flowmo` a small launcher that starts its executable. The artwork
+bundle must stay beside the actual executable, including when installing a local
+build with `--binary`; use the SwiftPM output path shown in the README.
 After quitting running Flowmo instances, `./install.sh --replace` explicitly
-upgrades an existing installation. `--prefix PATH` chooses another prefix.
-Removing only `PREFIX/bin/flowmo` uninstalls the command and preserves sessions.
+upgrades an existing regular executable or managed installation; `--upgrade` is
+an alias. It switches the launcher atomically only after checking the new payload,
+retains previous payloads, and rejects unrelated symlinks. `--prefix PATH` chooses
+another prefix. Removing `PREFIX/bin/flowmo` uninstalls the command. After quitting,
+the installer-owned `PREFIX/libexec/flowmo` directory may also be removed to reclaim
+binaries and artwork. Both removals preserve sessions stored separately.
 The README also documents installation directly from a permitted source build.
 
 ## Free personal testing

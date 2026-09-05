@@ -4,10 +4,11 @@ import SwiftUI
 
 /// One-line instrument field with reliable focus.
 ///
-/// Claims the caret after the phase spring. A single hairline marks the
-/// slot; it brightens and blooms on focus. Return and Esc still work; verbs sit below.
+/// Claims the caret after the phase transition. A single hairline marks the
+/// slot; it brightens on focus. Return and Esc still work; verbs sit below.
 struct FlowField: View {
     @Environment(\.atmosphere) private var atmo
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var placeholder: String
     @Binding var text: String
     var centered: Bool
@@ -41,7 +42,7 @@ struct FlowField: View {
             TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundColor(atmo.mute))
                 .textFieldStyle(.plain)
                 .focused($focused)
-                .font(.system(.body, design: .rounded).weight(.medium))
+                .font(.system(.body, design: .default).weight(.medium))
                 .multilineTextAlignment(centered ? .center : .leading)
                 .lineLimit(1)
                 .padding(.horizontal, 8)
@@ -65,8 +66,7 @@ struct FlowField: View {
                 )
                 .frame(height: 1)
                 .padding(.horizontal, 8)
-                .shadow(color: atmo.ink.opacity(focused ? 0.6 : 0), radius: 4, y: 2)
-                .animation(Motion.tick, value: focused)
+                .animation(reduceMotion ? nil : Motion.hover, value: focused)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .contentShape(Rectangle())

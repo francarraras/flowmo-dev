@@ -13,13 +13,19 @@ copied; the read-only platform reference is recorded in
 [`PROVENANCE.md`](PROVENANCE.md). No external dependency or additional asset
 license was introduced.
 
-The bundled provisional app icon is original AI-generated output created with
-OpenAI's built-in image generation tool on 2026-09-05, then resized locally.
-It is not a downloaded stock image or a redistributed OpenAI logo. Source,
-output-ownership terms, and the exact prompt are recorded in
-[`PROVENANCE.md`](PROVENANCE.md) and
-[`Apps/IconSource/README.md`](Apps/IconSource/README.md). No additional
-third-party asset license or attribution notice was identified for this icon.
+The current aperture-and-incision app icon and bundled Horizon Study artwork
+are original AI-generated output created with Codex's built-in OpenAI image
+generation tool on 2026-09-05. They are not stock images or OpenAI brand assets.
+The icon has local size derivatives; Horizon Study is the unchanged generated
+PNG in the shared SwiftPM resources. The historical crescent icon source is
+retained for build 4 provenance and no longer supplies the current catalog.
+
+Source terms and the asset inventory are recorded in
+[`PROVENANCE.md`](PROVENANCE.md), [icon records](Apps/IconSource/README.md), and
+[artwork records](Apps/ArtworkSource/README.md). The generated assets follow the
+repository's [MIT license](LICENSE). No additional third-party asset license or
+attribution notice was identified. These static images add no runtime AI,
+external service, privacy API, or user-data processing.
 
 The pinned `actions/checkout` GitHub Action is build infrastructure and is not
 distributed in the app binary.

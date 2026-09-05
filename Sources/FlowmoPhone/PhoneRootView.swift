@@ -94,7 +94,7 @@ public struct PhoneRootView: View {
                     Text(notice)
                 }
             }
-            .font(.system(.caption, design: .rounded).weight(.medium))
+            .font(.system(.caption, design: .default).weight(.medium))
             .foregroundStyle(atmo.mute)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
@@ -143,6 +143,56 @@ private struct PhoneMuteButton: View {
     }
 }
 
+private struct PhoneCenteredScroll<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                content
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}
+
+private struct PhoneActionGroup<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            verticalActions
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    content
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                verticalActions
+            }
+        }
+    }
+
+    private var verticalActions: some View {
+        VStack(spacing: 12) {
+            content
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 @MainActor
 private func worldSyncNotice(_ status: WorldSyncStatus) -> String? {
     guard status.phase == .unavailable else { return nil }
@@ -164,25 +214,26 @@ private struct SyncConflictPane: View {
     let conflict: WorldSyncConflict
 
     var body: some View {
-        VStack(spacing: 18) {
-            Spacer()
-            Text("Choose what to keep")
-                .font(.system(.title2, design: .rounded).weight(.semibold))
-            Text(message)
-                .font(.system(.body, design: .rounded))
-                .foregroundStyle(atmo.mute)
-                .multilineTextAlignment(.center)
-            VStack(spacing: 10) {
-                InkButton("Keep this iPhone") {
-                    controller.resolveSyncConflict(conflict, choosing: .local)
-                }
-                InkButton("Use iCloud version") {
-                    controller.resolveSyncConflict(conflict, choosing: .remote)
+        PhoneCenteredScroll {
+            VStack(spacing: 18) {
+                Text("Choose what to keep")
+                    .font(.system(.title2).weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text(message)
+                    .font(.system(.body))
+                    .foregroundStyle(atmo.mute)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 10) {
+                    InkButton("Keep this iPhone") {
+                        controller.resolveSyncConflict(conflict, choosing: .local)
+                    }
+                    InkButton("Use iCloud version") {
+                        controller.resolveSyncConflict(conflict, choosing: .remote)
+                    }
                 }
             }
-            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var message: String {
@@ -217,23 +268,25 @@ public struct PhoneStoreUnavailableView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Text("Flowmo unavailable")
-                .font(.system(.title2, design: .rounded).weight(.semibold))
-            Text(
-                isLocalOnly
-                    ? "Flowmo can’t access its local data right now."
-                    : "Flowmo can’t access its shared local data right now."
-            )
-            .font(.system(.body, design: .rounded))
-            .foregroundStyle(Look.mute)
-            .multilineTextAlignment(.center)
-            Text(FlowmoIssueCode.storeUnavailable.rawValue)
-                .font(.system(.caption2, design: .monospaced))
-                .foregroundStyle(Look.faint)
-            InkButton("Retry", action: retry)
-            Spacer()
+        PhoneCenteredScroll {
+            VStack(spacing: 20) {
+                Text("Flowmo unavailable")
+                    .font(.system(.title2).weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text(
+                    isLocalOnly
+                        ? "Flowmo can’t access its local data right now."
+                        : "Flowmo can’t access its shared local data right now."
+                )
+                .font(.system(.body))
+                .foregroundStyle(Look.mute)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                Text(FlowmoIssueCode.storeUnavailable.rawValue)
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(Look.faint)
+                InkButton("Retry", action: retry)
+            }
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -288,7 +341,7 @@ private struct IdlePane: View {
                             footerActions
                         }
                     }
-                    .font(.system(.caption, design: .rounded).weight(.medium))
+                    .font(.system(.caption, design: .default).weight(.medium))
                     .padding(.top, 8)
                 }
             }
@@ -381,41 +434,42 @@ private struct StoreRecoveryPane: View {
     @State private var diagnosticDocument: FlowmoJSONDocument?
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Text("Data needs attention")
-                .font(.system(.title2, design: .rounded).weight(.semibold))
-            Text(
-                controller.canPreserveAndReset
-                    ? "Flowmo couldn’t read its local data. Retry, or preserve the original and reset."
-                    : "Flowmo couldn’t safely recover its local session. Retry when local data is available."
-            )
-            .font(.system(.body, design: .rounded))
-            .foregroundStyle(atmo.mute)
-            .multilineTextAlignment(.center)
-            Text(
-                controller.canPreserveAndReset
-                    ? FlowmoIssueCode.storeUnreadable.rawValue
-                    : FlowmoIssueCode.persistenceFailed.rawValue
-            )
-            .font(.system(.caption2, design: .monospaced))
-            .foregroundStyle(atmo.faint)
-            VStack(spacing: 10) {
-                InkButton("Retry") { controller.retryStore() }
-                if controller.canPreserveAndReset {
-                    QuietButton("Preserve & Reset", minHeight: 44) {
-                        controller.preserveAndResetStore()
+        PhoneCenteredScroll {
+            VStack(spacing: 20) {
+                Text("Data needs attention")
+                    .font(.system(.title2).weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text(
+                    controller.canPreserveAndReset
+                        ? "Flowmo couldn’t read its local data. Retry, or preserve the original and reset."
+                        : "Flowmo couldn’t safely recover its local session. Retry when local data is available."
+                )
+                .font(.system(.body))
+                .foregroundStyle(atmo.mute)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    controller.canPreserveAndReset
+                        ? FlowmoIssueCode.storeUnreadable.rawValue
+                        : FlowmoIssueCode.persistenceFailed.rawValue
+                )
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(atmo.faint)
+                VStack(spacing: 10) {
+                    InkButton("Retry") { controller.retryStore() }
+                    if controller.canPreserveAndReset {
+                        QuietButton("Preserve & Reset", minHeight: 44) {
+                            controller.preserveAndResetStore()
+                        }
+                    }
+                    QuietButton("Export Redacted Diagnostics", minHeight: 44) {
+                        guard let data = controller.prepareDiagnosticExport() else { return }
+                        diagnosticDocument = FlowmoJSONDocument(data: data)
+                        exportingDiagnostics = true
                     }
                 }
-                QuietButton("Export Redacted Diagnostics", minHeight: 44) {
-                    guard let data = controller.prepareDiagnosticExport() else { return }
-                    diagnosticDocument = FlowmoJSONDocument(data: data)
-                    exportingDiagnostics = true
-                }
             }
-            Spacer()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .fileExporter(
             isPresented: $exportingDiagnostics,
             document: diagnosticDocument,
@@ -451,7 +505,7 @@ private struct DataControlsPane: View {
                     QuietButton("Back", minHeight: 44, action: dismiss)
                     Spacer()
                     Text("Data")
-                        .font(.system(.headline, design: .rounded))
+                        .font(.system(.headline, design: .default))
                 }
                 Spacer()
                 Text(
@@ -459,7 +513,7 @@ private struct DataControlsPane: View {
                         ? "Sessions stay in this app on this iPhone. Exports go only where you choose to save them."
                         : "Exports stay on this device unless you choose where to save them."
                 )
-                .font(.system(.caption, design: .rounded))
+                .font(.system(.caption, design: .default))
                 .foregroundStyle(atmo.mute)
                 .multilineTextAlignment(.center)
                 InkButton("Export Flowmo Data") {
@@ -480,7 +534,7 @@ private struct DataControlsPane: View {
                     controller.requestNotifications()
                 }
                 Text("If alerts were previously declined, enable them in system settings.")
-                    .font(.system(.caption, design: .rounded))
+                    .font(.system(.caption, design: .default))
                     .foregroundStyle(atmo.mute)
                     .multilineTextAlignment(.center)
                 Spacer()
@@ -548,11 +602,11 @@ private struct HistoryPane: View {
                 QuietButton("Back", minHeight: 44, action: dismiss)
                 Spacer()
                 Text("History")
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.headline, design: .default))
             }
             if sessions.isEmpty {
                 Text("No completed sessions yet.")
-                    .font(.system(.body, design: .rounded))
+                    .font(.system(.body, design: .default))
                     .foregroundStyle(atmo.mute)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -735,11 +789,14 @@ private struct PhoneDistantHorizonFocusPane: View {
         let kickerSize = min(18, max(13, width * 0.033) * interfaceScale)
         let baseTitleSize =
             landscape
-            ? min(50, max(34, width * 0.064))
-            : min(52, max(38, width * 0.102))
-        let titleSize = min(dynamicTypeSize.isAccessibilitySize ? 68 : 58, baseTitleSize * titleScale)
-        let clockSize = min(42, max(27, width * (landscape ? 0.052 : 0.080)) * interfaceScale)
-        let spacing = landscape ? 9.0 : 14.0
+            ? min(36, max(28, width * 0.044))
+            : min(40, max(30, width * 0.082))
+        let titleSize = min(dynamicTypeSize.isAccessibilitySize ? 60 : 46, baseTitleSize * titleScale)
+        let clockSize = min(
+            dynamicTypeSize.isAccessibilitySize ? 76 : 64,
+            max(46, width * (landscape ? 0.060 : 0.140)) * interfaceScale
+        )
+        let spacing = landscape ? 14.0 : 20.0
 
         if controller.showCapture {
             VStack(alignment: .leading, spacing: spacing) {
@@ -747,13 +804,14 @@ private struct PhoneDistantHorizonFocusPane: View {
 
                 HairlineField("Thought", text: $controller.captureDraft)
                     .focused($captureFocused)
-                    .frame(maxWidth: min(620, width * 0.82), minHeight: 48, maxHeight: 68)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, minHeight: 60)
+                    .padding(.vertical, 4)
                     .onSubmit { controller.submitCapture() }
                     .onAppear { captureFocused = true }
 
                 InstrumentClock(Format.clock(status.elapsed), size: clockSize)
-                    .foregroundStyle(Atmosphere.rest)
-                    .milestoneGrow(elapsed: status.elapsed, paused: false)
+                    .foregroundStyle(Atmosphere.canvas.ink)
 
                 Accrual(
                     seconds: status.earnedBreakSeconds,
@@ -766,14 +824,13 @@ private struct PhoneDistantHorizonFocusPane: View {
 
                 VStack(alignment: .leading, spacing: spacing) {
                     Text(status.intention)
-                        .font(.system(size: titleSize, weight: .regular, design: .rounded))
+                        .font(.system(size: titleSize, weight: .regular, design: .default))
                         .foregroundStyle(Atmosphere.canvas.ink)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 3)
                         .fixedSize(horizontal: false, vertical: true)
 
                     InstrumentClock(Format.clock(status.elapsed), size: clockSize)
-                        .foregroundStyle(Atmosphere.rest)
-                        .milestoneGrow(elapsed: status.elapsed, paused: false)
+                        .foregroundStyle(Atmosphere.canvas.ink)
 
                     Accrual(
                         seconds: status.earnedBreakSeconds,
@@ -791,7 +848,7 @@ private struct PhoneDistantHorizonFocusPane: View {
     private func sceneKicker(_ title: String, size: CGFloat) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Text(title)
-                .font(.system(size: size, weight: .medium, design: .rounded))
+                .font(.system(size: size, weight: .medium, design: .default))
                 .tracking(0.3)
                 .foregroundStyle(Atmosphere.canvas.mute)
 
@@ -875,11 +932,22 @@ private struct PhoneHorizonAction: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(.body, design: .rounded).weight(.medium))
+                .font(.system(.body, design: .default).weight(.medium))
                 .foregroundStyle(tone)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
-                .contentShape(Capsule())
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: 48)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(tone.opacity(0.06))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(tone.opacity(0.20), lineWidth: 1)
+                        }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .opacity(isEnabled ? 1 : 0.35)
         }
         .buttonStyle(PressStyle())
@@ -903,11 +971,6 @@ private struct BreakPane: View {
             ) {
                 VStack(spacing: 9) {
                     InstrumentClock(Format.remainingClock(status.remaining ?? 0), size: 40)
-                        .breakRace(
-                            remaining: status.remaining ?? 0,
-                            elapsed: status.elapsed,
-                            paused: status.isPaused
-                        )
                     EarnedRestContext(
                         focus: status.focusSeconds,
                         rest: status.breakSeconds ?? 0
@@ -967,7 +1030,7 @@ private struct RecallPane: View {
                     onContinue: { controller.continueSession() }
                 )
             } else if controller.showParkedReview {
-                HStack(spacing: 12) {
+                PhoneActionGroup {
                     QuietButton("Back", minHeight: 44) {
                         controller.endParkedReview()
                     }
@@ -977,7 +1040,7 @@ private struct RecallPane: View {
                     .disabled(selectedParkedThought == nil)
                 }
             } else if canReviewParkedThoughts {
-                HStack(spacing: 12) {
+                PhoneActionGroup {
                     QuietButton(reviewParkedTitle, minHeight: 44) {
                         parkedIndex = 0
                         controller.beginParkedReview()
