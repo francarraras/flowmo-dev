@@ -20,6 +20,10 @@
 		D0F10A0B0C0D0E0F10111203 /* FlowmoPhone in Frameworks */ = {isa = PBXBuildFile; productRef = 9F1A0B0C0D0E0F1011121311 /* FlowmoPhone */; };
 		D0F10A0B0C0D0E0F10111204 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F1A0B0C0D0E0F1011121318 /* Assets.xcassets */; };
 		D0F10A0B0C0D0E0F10111205 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D0F10A0B0C0D0E0F10111206 /* PrivacyInfo.xcprivacy */; };
+		E0F10A0B0C0D0E0F10111201 /* FlowmoFocusActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0F10A0B0C0D0E0F10111202 /* FlowmoFocusActivity.swift */; };
+		E0F10A0B0C0D0E0F10111203 /* FlowmoActivity in Frameworks */ = {isa = PBXBuildFile; productRef = E0F10A0B0C0D0E0F10111204 /* FlowmoActivity */; };
+		E0F10A0B0C0D0E0F10111205 /* FlowmoFocusActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E0F10A0B0C0D0E0F10111206 /* FlowmoFocusActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E0F10A0B0C0D0E0F1011120C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E0F10A0B0C0D0E0F1011120B /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +33,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A1B2C3D4E5F6071829304008;
 			remoteInfo = FlowmoGlance;
+		};
+		E0F10A0B0C0D0E0F10111207 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9F1A0B0C0D0E0F1011121301 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E0F10A0B0C0D0E0F10111208;
+			remoteInfo = FlowmoFocusActivity;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -40,6 +51,17 @@
 			dstSubfolderSpec = 13;
 			files = (
 				A1B2C3D4E5F6071829304005 /* FlowmoGlance.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E0F10A0B0C0D0E0F10111209 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E0F10A0B0C0D0E0F10111205 /* FlowmoFocusActivity.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -59,6 +81,10 @@
 		D0F10A0B0C0D0E0F10111202 /* FlowmoPhoneLocal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowmoPhoneLocal.swift; sourceTree = "<group>"; };
 		D0F10A0B0C0D0E0F10111206 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D0F10A0B0C0D0E0F10111207 /* FlowmoLocal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlowmoLocal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0F10A0B0C0D0E0F10111202 /* FlowmoFocusActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowmoFocusActivity.swift; sourceTree = "<group>"; };
+		E0F10A0B0C0D0E0F10111206 /* FlowmoFocusActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FlowmoFocusActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0F10A0B0C0D0E0F1011120A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E0F10A0B0C0D0E0F1011120B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -87,6 +113,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E0F10A0B0C0D0E0F1011120D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E0F10A0B0C0D0E0F10111203 /* FlowmoActivity in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -96,6 +130,7 @@
 				9F1A0B0C0D0E0F101112130A /* FlowmoPhone.swift */,
 				D0F10A0B0C0D0E0F10111202 /* FlowmoPhoneLocal.swift */,
 				D0F10A0B0C0D0E0F10111209 /* FlowmoPhoneLocal */,
+				E0F10A0B0C0D0E0F1011120E /* FlowmoFocusActivity */,
 				A1B2C3D4E5F607182930400C /* Flowmo.entitlements */,
 				C1D2E3F40516273849506003 /* PrivacyInfo.xcprivacy */,
 				9F1A0B0C0D0E0F1011121318 /* Assets.xcassets */,
@@ -109,6 +144,7 @@
 			children = (
 				9F1A0B0C0D0E0F1011121309 /* Flowmo.app */,
 				D0F10A0B0C0D0E0F10111207 /* FlowmoLocal.app */,
+				E0F10A0B0C0D0E0F10111206 /* FlowmoFocusActivity.appex */,
 				A1B2C3D4E5F6071829304006 /* FlowmoGlance.appex */,
 			);
 			name = Products;
@@ -130,6 +166,16 @@
 				D0F10A0B0C0D0E0F10111206 /* PrivacyInfo.xcprivacy */,
 			);
 			path = FlowmoPhoneLocal;
+			sourceTree = "<group>";
+		};
+		E0F10A0B0C0D0E0F1011120E /* FlowmoFocusActivity */ = {
+			isa = PBXGroup;
+			children = (
+				E0F10A0B0C0D0E0F10111202 /* FlowmoFocusActivity.swift */,
+				E0F10A0B0C0D0E0F1011120A /* Info.plist */,
+				E0F10A0B0C0D0E0F1011120B /* PrivacyInfo.xcprivacy */,
+			);
+			path = FlowmoFocusActivity;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -187,11 +233,13 @@
 				D0F10A0B0C0D0E0F1011120C /* Sources */,
 				D0F10A0B0C0D0E0F10111208 /* Frameworks */,
 				D0F10A0B0C0D0E0F1011120D /* Resources */,
+				E0F10A0B0C0D0E0F10111209 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				D0F10A0B0C0D0E0F1011120E /* PBXTargetDependency */,
+				E0F10A0B0C0D0E0F1011120F /* PBXTargetDependency */,
 			);
 			name = FlowmoPhoneLocal;
 			packageProductDependencies = (
@@ -200,6 +248,27 @@
 			productName = FlowmoLocal;
 			productReference = D0F10A0B0C0D0E0F10111207 /* FlowmoLocal.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E0F10A0B0C0D0E0F10111208 /* FlowmoFocusActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E0F10A0B0C0D0E0F10111210 /* Build configuration list for PBXNativeTarget "FlowmoFocusActivity" */;
+			buildPhases = (
+				E0F10A0B0C0D0E0F10111211 /* Sources */,
+				E0F10A0B0C0D0E0F1011120D /* Frameworks */,
+				E0F10A0B0C0D0E0F10111212 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E0F10A0B0C0D0E0F10111213 /* PBXTargetDependency */,
+			);
+			name = FlowmoFocusActivity;
+			packageProductDependencies = (
+				E0F10A0B0C0D0E0F10111204 /* FlowmoActivity */,
+			);
+			productName = FlowmoFocusActivity;
+			productReference = E0F10A0B0C0D0E0F10111206 /* FlowmoFocusActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -246,6 +315,7 @@
 				9F1A0B0C0D0E0F1011121308 /* Flowmo */,
 				A1B2C3D4E5F6071829304008 /* FlowmoGlance */,
 				D0F10A0B0C0D0E0F1011120A /* FlowmoPhoneLocal */,
+				E0F10A0B0C0D0E0F10111208 /* FlowmoFocusActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -277,6 +347,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E0F10A0B0C0D0E0F10111212 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E0F10A0B0C0D0E0F1011120C /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -304,6 +382,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E0F10A0B0C0D0E0F10111211 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E0F10A0B0C0D0E0F10111201 /* FlowmoFocusActivity.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -323,6 +409,15 @@
 		D0F10A0B0C0D0E0F1011120E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 9F1A0B0C0D0E0F1011121311 /* FlowmoPhone */;
+		};
+		E0F10A0B0C0D0E0F1011120F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E0F10A0B0C0D0E0F10111208 /* FlowmoFocusActivity */;
+			targetProxy = E0F10A0B0C0D0E0F10111207 /* PBXContainerItemProxy */;
+		};
+		E0F10A0B0C0D0E0F10111213 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = E0F10A0B0C0D0E0F10111204 /* FlowmoActivity */;
 		};
 /* End PBXTargetDependency section */
 
@@ -523,6 +618,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = app.flowmo.phone.local;
 				PRODUCT_NAME = FlowmoLocal;
 				SDKROOT = iphoneos;
@@ -557,12 +653,77 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = app.flowmo.phone.local;
 				PRODUCT_NAME = FlowmoLocal;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E0F10A0B0C0D0E0F10111214 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AD_HOC_CODE_SIGNING_ALLOWED = YES;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FlowmoFocusActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Flowmo Focus";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Fran Carrara. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.flowmo.phone.local.focus-activity";
+				PRODUCT_NAME = FlowmoFocusActivity;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		E0F10A0B0C0D0E0F10111215 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AD_HOC_CODE_SIGNING_ALLOWED = YES;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FlowmoFocusActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Flowmo Focus";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Fran Carrara. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "app.flowmo.phone.local.focus-activity";
+				PRODUCT_NAME = FlowmoFocusActivity;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
@@ -607,6 +768,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		E0F10A0B0C0D0E0F10111210 /* Build configuration list for PBXNativeTarget "FlowmoFocusActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E0F10A0B0C0D0E0F10111214 /* Debug */,
+				E0F10A0B0C0D0E0F10111215 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -631,6 +801,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9F1A0B0C0D0E0F1011121313 /* XCLocalSwiftPackageReference ".." */;
 			productName = FlowmoLook;
+		};
+		E0F10A0B0C0D0E0F10111204 /* FlowmoActivity */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9F1A0B0C0D0E0F1011121313 /* XCLocalSwiftPackageReference ".." */;
+			productName = FlowmoActivity;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -20,9 +20,9 @@ Focus Guard application identifiers. The Mac store is normally
 `FlowmoPhone` app and widget use the private `group.app.flowmo.phone` App Group
 container. **Flowmo Local** (`FlowmoPhoneLocal`, bundle `app.flowmo.phone.local`)
 instead stores `Application Support/flowmo/world.json` in its own app sandbox.
-It has no App Group or widget, does not resolve or migrate the entitled app's
-store, and cannot sync or delete that other app's data. Missing local storage
-produces an unavailable state; it never silently switches storage locations.
+It has no App Group or Home Screen widget, does not resolve or migrate the
+entitled app's store, and cannot sync or delete that other app's data. Missing
+local storage produces an unavailable state; it never silently switches storage locations.
 Deleting the app removes its container, so export first to keep a copy. Flowmo's
 local-only mode does not configure or disable the operating system's device
 backup service.
@@ -73,6 +73,31 @@ over the entitled iPhone App Group store. It does not read Flowmo Local's store.
 The command-line and `swift run` launchers do
 not carry CloudKit entitlements; their Mac-store changes synchronize when the
 entitled Mac app observes them or next opens.
+
+Flowmo Local's separate `FlowmoFocusActivity` extension displays a read-only
+Focus clock on the Lock Screen and supported Dynamic Island. The app gives
+ActivityKit only the random session identifier and Focus start timestamp. No
+intention, parked thought, Reflection text, history, or store path is included.
+The extension does not read the app's store and has no App Group, CloudKit, or
+push capability. It uses the supplied timestamp for the system-rendered clock;
+it does not create a network service or upload data. The visible clock may be
+seen by someone looking at the phone. Tapping it opens Flowmo; it does not
+control or resume the session. The app ends this display when it reconciles
+Focus ending, recovery, or a blocked store; system dismissal does not delete
+the underlying session.
+
+According to system settings, iOS may also mirror this metadata-only display to
+a paired Apple Watch or Mac, or show it in CarPlay. This is Apple's system
+presentation, not a new Flowmo Watch app, custom Mac activity surface, or
+app-run sync/network service. See [Apple's ActivityKit overview](https://developer.apple.com/documentation/activitykit).
+
+App-local preferences keep the current ActivityKit identifier, its session
+identifier, and one session dismissal marker so the app does not recreate a
+removed reminder. They contain no written text, are excluded from session
+exports and CloudKit, and are cleared by explicit Delete All. The extension's
+[`privacy manifest`](Apps/FlowmoFocusActivity/PrivacyInfo.xcprivacy) declares no
+collected data, tracking, or required-reason API access; it does not read the
+app's files or preferences.
 
 On Mac, Work Handoff observes local application activation only to
 remember the most recently active regular app before Start. It keeps that exact

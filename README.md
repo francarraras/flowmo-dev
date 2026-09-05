@@ -18,8 +18,8 @@ released.
 
 The owner has chosen a **no-paid-membership** release path: GitHub source and
 local-only Mac/terminal downloads, plus an iPhone build for free personal
-testing. Apple-trusted downloads, TestFlight, and iCloud/widget delivery are
-outside this release scope.
+testing. Apple-trusted downloads, TestFlight, and iCloud/Home Screen widget
+delivery are outside this release scope.
 
 ## The loop
 
@@ -38,8 +38,11 @@ never resumes a recovery-paused session automatically.
 
 On Mac, **Focus scene** opens a movable, resizable horizon canvas. **Back to
 window** restores Classic or Mini while the same Focus keeps counting. On
-iPhone, the horizon is the active Focus screen. History is a simple list of
-completed sessions from which you can restore a next step or intention.
+iPhone, the horizon is the active Focus screen. Flowmo Local also adds an
+Unreleased Focus count-up reminder on the Lock Screen and supported Dynamic
+Island. Tap it to return to the app; it has no session controls. History is a
+simple list of completed sessions from which you can restore a next step or
+intention.
 
 ## Run from source
 
@@ -62,13 +65,18 @@ open .build/mac/Build/Products/Release/Flowmo.app
 
 To use iPhone without a paid membership, open `Apps/FlowmoPhone.xcodeproj` in
 Xcode and select **FlowmoPhoneLocal**. Select your iPhone, sign into your Apple
-Account in Xcode, choose its Personal Team for that target, and Run. It also
-runs in the simulator. The app requires **iOS 17 or newer**.
+Account in Xcode, choose its Personal Team for both **FlowmoPhoneLocal** and
+**FlowmoFocusActivity**, and Run. It also runs in the simulator. The app requires **iOS 17 or newer**.
 
 This separate local app keeps the focus loop, recovery, exports, and local
 reminders. Its data stays in its own app container; it has no iCloud sync or
-widget and does not import the entitled app's data. Apple's free provisioning
-expires after **seven days**, requiring rebuilding/reinstalling over the app.
+Home Screen widget and does not import the entitled app's data. Its separate
+Live Activity extension receives only the session identifier and Focus start
+time, never your written text. It can start only while the app is foreground;
+after Prime ends in the background, open the app to begin the reminder. iOS
+controls its placement and duration. See [Focus Live Activity](docs/iphone.md#focus-live-activity).
+Apple's free provisioning expires after **seven days**, requiring
+rebuilding/reinstalling over the app.
 See [personal testing and installation](docs/release.md#free-personal-testing).
 
 The existing **FlowmoPhone** scheme retains the App Group, CloudKit, push, and

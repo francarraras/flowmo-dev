@@ -14,6 +14,16 @@ frameworks supplied by the operating system; no external SDK was added for
 sync. CloudKit changes privacy and provisioning facts but adds no redistributable
 third-party dependency.
 
+The Unreleased Focus Live Activity uses Apple's ActivityKit and WidgetKit
+platform frameworks, with an original extension and timestamp-only projection.
+It adds no package, downloaded asset, copied sample code, remote push service,
+or external SDK. Apple's
+[Food Truck sample configuration](https://github.com/apple/sample-food-truck#configure-the-sample-code-project)
+was consulted as read-only evidence that an app and widget extension can use
+Personal Team signing. None of its implementation or assets were incorporated.
+Maintenance follows Apple's platform API and extension requirements; the
+metadata shared with the system display is documented in [`PRIVACY.md`](PRIVACY.md).
+
 The provisional crescent-and-horizon app icon was generated with Codex's
 built-in OpenAI image generation tool on 2026-09-05 from an original text
 prompt, without reference images or third-party brand material. The unchanged

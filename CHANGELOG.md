@@ -6,11 +6,19 @@ Notable changes are recorded here.
 
 - Added a separate **FlowmoPhoneLocal** build for free Personal Team testing on
   an iPhone. It keeps the session loop and local reminders in its own app
-  container without iCloud, App Group, push, or an embedded widget. The existing
+  container without iCloud, App Group, push, or a Home Screen widget. The existing
   entitled phone app keeps its store and recovery rules. Documented the chosen
   no-paid-membership distribution path and Apple's periodic reinstall limit.
 - Stacked iPhone recovery controls at accessibility text sizes so Continue
   stays readable without splitting its label.
+- Added a read-only Focus Live Activity to Flowmo Local for the Lock Screen and
+  supported Dynamic Island. Its clock counts up from the saved Focus timestamp;
+  tapping opens the app without resuming recovery. It shares no written session
+  text and adds no cloud, push, or Home Screen widget capability. Starting an
+  activity requires the app in the foreground; a background Prime ending keeps
+  its notification, with the activity starting when the app opens into Focus.
+  Stop, recovery, and store errors end the activity when reconciled. iOS controls
+  placement and lifetime; this remains Unreleased work, outside build 4 artifacts.
 
 ## 1.0 (4) — Readiness candidate
 

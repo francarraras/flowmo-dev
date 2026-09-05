@@ -17,7 +17,10 @@ Mac host ----> FlowmoWindow ----+----> FlowmoCore
 
 Phone hosts -> FlowmoPhone -----+----> FlowmoCore
                                 +----> FlowmoLook
+                                +----> FlowmoActivity ----> FlowmoCore
                                 +----> FlowmoSync (entitled mode only at runtime)
+
+Local activity extension -------------> FlowmoActivity
 
 FlowmoCLI / checks / gate ------------> FlowmoCore
 ```
@@ -30,6 +33,7 @@ notifications, and process activation do not belong in the domain module.
 | `FlowmoCore` | Loop state, transitions, timestamp-derived clocks, action-first World commits, validation, and the local `World` store | UI, CloudKit transport, app activation |
 | `FlowmoSync` | Reconciliation, synchronized World persistence, sync metadata, record encoding, and the CloudKit adapter | Session rules or an independent copy of `World` |
 | `FlowmoLook` | Shared visual primitives, Distant Horizon backdrop, and tutorial page/completion presentation | Session authority or platform routing |
+| `FlowmoActivity` | Minimal Focus projection and shared ActivityKit attributes | Store access, session mutation, or activity lifecycle |
 | `FlowmoWindow` | Mac presentation, lifecycle, Focus Guard adapter, Focus Scene, and Work Handoff | Domain transitions or direct file mutation |
 | `FlowmoPhone` | Phone presentation, including its active-Focus Distant Horizon, lifecycle, attention, explicit store-mode selection, and entitled-mode widget coordination | A second phone-specific session model |
 | `FlowmoCLI` | Supported terminal commands and versioned JSON projections | Direct JSON editing |
@@ -57,10 +61,11 @@ Application Support fails closed; invalid data remains in that selected store
 for the ordinary repair flow. There is no fallback or transfer between variants.
 
 Local mode uses `WorldAuthority(store:)`, never starts CloudKit or reads/writes
-sync metadata, and skips widget reloads and cloud deletion. The shared module
-still imports `FlowmoSync`; linking it does not enable transport. The local
+sync metadata, and skips Home Screen widget reloads and cloud deletion. The
+shared module still imports `FlowmoSync`; linking it does not enable transport. The local
 host declares no App Group, iCloud, push, or remote-notification background
-capability and embeds no widget. Its own privacy manifest declares no collected
+capability. It embeds only the separate Focus Live Activity extension, with no
+Home Screen widget. Its own privacy manifest declares no collected
 data or tracking. Tutorial preferences belong to its bundle; local reminders,
 exports, recovery, and History reuse the same implementations. See
 [`iphone.md`](iphone.md#build-variants) and [`PRIVACY.md`](../PRIVACY.md).
@@ -78,6 +83,7 @@ ticks, determine clocks and timed transitions.
 | Focus Guard evidence | Local evidence recorder | Focus Guard evidence adapter only |
 | Display preferences | Platform presentation | Mac or phone presentation code |
 | Tutorial completion version | Device-local app `UserDefaults`, outside `World` and CloudKit | Shared `IntroductionState`; Skip and finish mark completion, replay changes presentation only |
+| Focus Live Activity tracking/dismissal IDs | Local phone app `UserDefaults`, outside `World`, CloudKit, and exports | `PhoneFocusActivityCoordinator`; explicit deletion clears its owned markers |
 | Mac Focus Scene and Work Handoff state | Current Mac process | `FlowmoWindow`; never persisted into `World` |
 | Phone Distant Horizon selection | Derived presentation state | `FlowmoPhone` derives it from the current unpaused Focus and blocking recovery/conflict facts; never persisted into `World` |
 
@@ -245,6 +251,22 @@ in-flight work, so a stale addition cannot survive a newer plan's cancellation.
 Controllers reconcile after committed state changes, foreground catch-up, sync,
 and recovery. Notification delivery remains an operating-system effect, not
 evidence that the app kept executing while suspended.
+
+Flowmo Local's Focus Live Activity is a separate presentation adapter.
+`FocusActivityProjection` in `FlowmoActivity` projects only the exact live Focus
+identifier and persisted `focusStartedAt` (falling back to `phaseStartedAt`) into
+ActivityKit; the extension receives that metadata rather than opening a Store.
+It neither owns `World` nor issues Engine events. The system renders the elapsed
+clock without a background polling loop. Requests require foreground eligibility;
+phase changes, recovery, and blocked storage reconcile by ending the activity.
+ActivityKit failures or user dismissal must never reject a session mutation.
+`PhoneFocusActivityCoordinator` serializes work through a platform client,
+reuses a matching activity, ends obsolete instances, and suppresses repeated
+requests after dismissal or a failed request for the same session. Explicit
+data deletion also clears its tracking and dismissal preferences.
+The `FlowmoFocusActivity` extension belongs only to the local phone host and
+does not share the entitled widget's App Group or CloudKit lifecycle. Its
+implementation and proof routing are indexed in [`feature-map.md`](feature-map.md).
 
 ## Landing a feature
 

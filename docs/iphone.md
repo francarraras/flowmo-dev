@@ -9,7 +9,8 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 | Later item | This slice |
 |---|---|
 | **iPhone** | Yes. Same loop, one native frame; active Focus expands into its Distant Horizon canvas. |
-| Widgets | Read-only glance in the entitled target; absent from Flowmo Local. |
+| Home Screen widget | Read-only glance in the entitled target; absent from Flowmo Local. |
+| Focus Live Activity | Unreleased count-up reminder for Flowmo Local on the Lock Screen and Dynamic Island. |
 | History | Plain local completed-session list from Idle. |
 | Theme packs | Charcoal, ink, and earned-rest gold from [`visual.md`](visual.md). Not a pack. |
 | iCloud | Private CloudKit sync in the entitled target; absent from Flowmo Local. |
@@ -37,10 +38,12 @@ owner's iPhone. This separate, Unreleased `FlowmoPhoneLocal` target and scheme
 in `Apps/FlowmoPhone.xcodeproj` produces `FlowmoLocal.app`, displays **Flowmo
 Local**, and uses bundle `app.flowmo.phone.local`. It stores
 `Application Support/flowmo/world.json` inside its own app sandbox. It has no
-App Group, CloudKit, push capability, background remote-notification mode, or
-embedded widget. Local notification reminders remain available after opt-in.
+App Group, CloudKit, push capability, or background remote-notification mode.
+It embeds only the `FlowmoFocusActivity` Live Activity extension, not a Home
+Screen widget. Local notification reminders remain available after opt-in.
 The shared controller uses the local World authority without reading or
-writing sync metadata, starting cloud transport, or refreshing widget timelines.
+writing sync metadata, starting cloud transport, or refreshing Home Screen
+widget timelines.
 
 **FlowmoPhone** remains the entitled App Group/CloudKit/widget target. Its
 existing store, private sync, and legacy migration behavior are unchanged.
@@ -67,7 +70,7 @@ new local variant.
 
 ## Out
 
-Home, tabs, mandatory setup, scores, streaks, flashcards, SM-2, history dashboard, Watch, Live Activities, a second engine, Pause during Focus, App Store launch work. The optional tutorial does not add a Loop Beat.
+Home, tabs, mandatory setup, scores, streaks, flashcards, SM-2, history dashboard, Watch, Live Activities beyond the scoped Focus reminder, a second engine, Pause during Focus, App Store launch work. The optional tutorial does not add a Loop Beat.
 
 ## Phone vs Mac (honest)
 
@@ -90,6 +93,50 @@ The UI/Core timer does not run continuously in the background. iOS may grant
 `CKSyncEngine` bounded background execution for remote database notifications
 in the entitled target only. Persisted timestamps remain the clock authority
 when the interface returns.
+
+## Focus Live Activity
+
+Flowmo Local includes an Unreleased, Focus-only Live Activity through
+`FlowmoFocusActivity` (`app.flowmo.phone.local.focus-activity`). This WidgetKit
+extension is embedded only in `FlowmoPhoneLocal`; it is not a Home Screen
+widget and adds no App Group, CloudKit, push, or session-control capability.
+The Lock Screen and compact/expanded Dynamic Island show an elapsed Focus clock.
+The minimal Island presentation is a small Focus mark when iOS allocates less
+space. Tap to open the app; touch and hold the Island to expand it. Written
+session text is never part of these presentations.
+
+The app requests the activity only while foreground with an active, unpaused
+Focus and a usable store. A Prime ending in the background still sends its
+timed notification; this implementation starts the Live Activity when the app
+next opens into Focus. It does not use remote pushes, scheduled starts, or
+App Intents to bypass that foreground entry. The operating system renders
+the count-up from the Focus timestamp while the app is suspended. Going Home
+does not pause the session. See [Apple's activity lifecycle](https://developer.apple.com/documentation/activitykit/activity).
+
+Stop, recovery, invalid/unavailable storage, or leaving Focus removes the
+activity when the app reconciles the new state. Force-quitting is different
+from going Home: a terminated app cannot immediately clean up a system display.
+Relaunch presents frozen recovery and requests removal of any stale activity.
+Apple documents that [Live Activities can outlive the app process](https://developer.apple.com/news/?id=qpqf1gru).
+Continue may start the reminder again with the recovered clock;
+opening or tapping the activity never Continues by itself. Disabling or
+dismissing Live Activities must leave the session usable and unchanged. A
+removed activity is not repeatedly recreated for that same session, including
+after relaunch. Explicit Delete All clears the activity's local tracking and
+dismissal markers along with the session data.
+
+iOS chooses placement when several activities compete. Dynamic Island requires
+supporting hardware; the Lock Screen presentation remains the other surface.
+An activity can stay active for at most eight hours; iOS then removes it from
+Dynamic Island and may retain it on the Lock Screen for up to four further
+hours. Those are display limits, not Focus deadlines. Flowmo does not restart
+an expired activity to evade them, and the underlying session keeps its clock.
+See [Apple's Live Activity presentation and constraints](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities).
+
+iOS may mirror the same metadata-only display to a paired Apple Watch or Mac,
+or show it in CarPlay, according to system settings. This adds no Flowmo Watch
+app, custom Mac activity surface, or app-run sync/network service; see
+[Apple's ActivityKit overview](https://developer.apple.com/documentation/activitykit).
 
 ## Checkable lines
 
@@ -180,7 +227,7 @@ THE SYSTEM SHALL offer full export, redacted diagnostic export, and explicitly
 confirmed Delete All whose confirmation names that variant's deletion scope.
 Data SHALL also offer How it works and Enable notifications. Delete All SHALL
 remove the selected store's Flowmo-owned recovery copies. In Flowmo Local it
-SHALL affect only that app's local data, without iCloud deletion or widget
+SHALL affect only that app's local data, without iCloud deletion or Home Screen widget
 refresh. In the entitled target it SHALL name local and synced iCloud data,
 reload the widget timeline, remove local private sync replicas immediately,
 and report incomplete deletion until queued CloudKit deletion is confirmed.

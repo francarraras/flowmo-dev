@@ -17,8 +17,8 @@ On 2026-09-05 the owner ruled out paying for Apple Developer Program membership.
 The chosen path is open source plus local-only Mac/terminal downloads, with
 explicit ad-hoc signing and installation limitations, and a free Personal Team
 iPhone build for personal use. Developer ID, notarization, TestFlight, and
-entitled iCloud/widget delivery are outside this release scope. Membership is
-not a pending purchase or a prerequisite for publishing the source. Manual
+entitled iCloud/Home Screen widget delivery are outside this release scope.
+Membership is not a pending purchase or a prerequisite for publishing the source. Manual
 quality checks and owner review still apply to every distributed build.
 
 - **Mac:** the current scripts produce ad-hoc local-only candidates. Source
@@ -101,8 +101,9 @@ Use the separate `FlowmoPhoneLocal` scheme in `Apps/FlowmoPhone.xcodeproj`:
 
 1. Connect and unlock the iPhone, and trust this Mac when prompted.
 2. Sign into the owner's Apple Account in Xcode, then select its Personal Team
-   under the **FlowmoPhoneLocal** target's Signing & Capabilities. Account login,
-   agreements, and device trust remain actions for the owner.
+   under both **FlowmoPhoneLocal** and **FlowmoFocusActivity** targets' Signing &
+   Capabilities. Account login, agreements, and device trust remain actions for
+   the owner.
 3. Select that connected iPhone as the run destination and Run. If necessary,
    follow Xcode's on-device Developer Mode and provisioning instructions.
 4. If iOS reports an untrusted developer after installation, open **Settings →
@@ -111,9 +112,13 @@ Use the separate `FlowmoPhoneLocal` scheme in `Apps/FlowmoPhone.xcodeproj`:
    from trusting the connected Mac and enabling Developer Mode.
 
 The local target uses its own bundle identifier and app-container store. It
-does not request App Group, iCloud, or push entitlements and does not embed the
-widget. The focus loop, recovery, exports, and local notification reminders
-remain available. It does not read, migrate, or sync the entitled phone store.
+does not request App Group, iCloud, or push entitlements. It embeds the
+`FlowmoFocusActivity` extension for its read-only Focus Live Activity, but no
+Home Screen widget. Apple's [Food Truck sample](https://github.com/apple/sample-food-truck#configure-the-sample-code-project)
+documents Personal Team signing for an app and widget extension; verify actual
+signing and installation for each candidate. The focus loop, recovery,
+exports, and local notification reminders remain available. It does not read,
+migrate, or sync the entitled phone store.
 Reinstall over the existing local app to refresh provisioning; deleting the app
 also deletes its app-container data, so export first if preserving data matters.
 
@@ -220,7 +225,11 @@ From a clean checkout of the candidate revision:
    ```
 
    Inspect the built `FlowmoLocal.app`: no App Group, iCloud, or push
-   entitlements, no remote-notification background mode, and no embedded widget.
+   entitlements and no remote-notification background mode. Confirm
+   `NSSupportsLiveActivities` is enabled and only `FlowmoFocusActivity.appex`
+   is embedded, with bundle `app.flowmo.phone.local.focus-activity`, no restricted
+   capabilities, and no Home Screen widget configuration. The entitled phone
+   build must not embed this local extension.
    Verify its independent store and local deletion without migration or sync.
    Keep the existing entitled phone/widget build as regression proof when shared
    phone code or project configuration changes; it is outside the chosen delivery scope:
@@ -277,6 +286,14 @@ From a clean checkout of the candidate revision:
    Continue and Restart. Profile renewal must later be checked by reinstalling
    over the same app and confirming its history remains; do not claim it from
    an initial install.
+   For the Focus Live Activity, enter Focus while foreground, go Home, and
+   verify compact/expanded Island and Lock Screen clocks without written text.
+   Tap to return without changing the session. Stop and confirm removal; force
+   quit separately and verify relaunch ends stale activity without resuming.
+   Let Prime expire in the background: notification first, Live Activity only
+   after opening into Focus. Check disabled/dismissed activities, competing
+   Island presentations, and a phone without Dynamic Island. Neither a working
+   Prime notification nor ordinary Home Screen backgrounding proves this path.
    For an entitled sync candidate, also test two signed-in devices: make an
    offline change on each, confirm distinct history unions, confirm simultaneous
    live starts block for a choose-one decision, verify account switching never
@@ -285,9 +302,11 @@ From a clean checkout of the candidate revision:
 8. Review `CHANGELOG.md`, `PRIVACY.md`, `SECURITY.md`, `PROVENANCE.md`, and
    `THIRD_PARTY_NOTICES.md`. Validate the local phone's
    `Apps/FlowmoPhoneLocal/PrivacyInfo.xcprivacy`, confirm it is bundled and declares
-   no collected data or tracking. For the Mac and entitled phone/widget builds,
-   validate their shared `Apps/PrivacyInfo.xcprivacy` and bundled copies. Archive
-   the exact test results with the release revision.
+   no collected data or tracking. Also verify
+   `Apps/FlowmoFocusActivity/PrivacyInfo.xcprivacy` in the extension, with empty
+   collected-data and accessed-API lists and no tracking. For the Mac and entitled
+   phone/widget builds, validate their shared `Apps/PrivacyInfo.xcprivacy` and
+   bundled copies. Archive the exact test results with the release revision.
 9. Record the candidate commit, Xcode version, macOS version, simulator runtime,
    and device models. Confirm `git diff --check` passes and the committed
    candidate checkout is clean.

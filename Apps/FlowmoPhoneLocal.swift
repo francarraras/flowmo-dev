@@ -15,6 +15,8 @@ struct FlowmoPhoneLocalApp: App {
                         .onChange(of: scenePhase) { _, phase in
                             if phase == .active {
                                 controller.becameActive()
+                            } else {
+                                controller.becameInactive()
                             }
                         }
                 } else {

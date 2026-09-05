@@ -7,6 +7,11 @@ assets were found in the Flowmo application at this revision. The app imports
 Apple platform frameworks supplied by the operating system.
 The private sync implementation uses Apple's CloudKit framework and service; it
 does not redistribute a third-party SDK.
+The local Focus Live Activity likewise uses Apple's ActivityKit and WidgetKit
+frameworks supplied by the operating system. No sample code or assets were
+copied; the read-only platform reference is recorded in
+[`PROVENANCE.md`](PROVENANCE.md). No external dependency or additional asset
+license was introduced.
 
 The bundled provisional app icon is original AI-generated output created with
 OpenAI's built-in image generation tool on 2026-09-05, then resized locally.

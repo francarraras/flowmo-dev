@@ -383,7 +383,8 @@ Pause exists only as **recovery**:
 | **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
 | **CLI / JSON** | Scripts and integrations | Same verbs, same store as the window |
 | **iPhone** | Native loop implemented; separate local variant Unreleased ([`iphone.md`](iphone.md)) | Local personal use; private sync remains available in the entitled target |
-| **Widgets** | Implemented for the entitled iPhone target ([`widget.md`](widget.md)); excluded from the local variant | Glance; not the product |
+| **Home Screen widget** | Implemented for the entitled iPhone target ([`widget.md`](widget.md)); excluded from the local variant | Glance; not the product |
+| **Focus Live Activity** | Unreleased read-only reminder in Flowmo Local's Dynamic Island and Lock Screen | Glance; never a session controller |
 
 ### Current delivery scope
 
@@ -392,8 +393,9 @@ Personal Team iPhone testing without paid Apple Developer membership. The
 separate **Flowmo Local** app uses the `FlowmoPhoneLocal` scheme and bundle
 `app.flowmo.phone.local`. Its `Application Support/flowmo/world.json` belongs
 only to that app's sandbox. It neither reads nor migrates the entitled phone's
-App Group store, and it never starts CloudKit, queues sync, or updates a widget.
-It has the same Loop, tutorial, local reminders, recovery, History, and exports.
+App Group store, and it never starts CloudKit, queues sync, or updates a Home
+Screen widget. It has the same Loop, tutorial, local reminders, recovery,
+History, and exports, plus the scoped Focus Live Activity below.
 This is personal-device testing, not general iPhone download distribution; see
 [`release.md`](release.md#free-personal-testing).
 
@@ -403,6 +405,24 @@ access remains an unavailable-store error, never an automatic switch to local
 storage. The local variant likewise reports unavailable storage instead of
 switching stores. Switching app variants does not transfer sessions or History.
 The local variant is new Unreleased work, outside the existing build 4 artifacts.
+
+### Focus Live Activity
+
+The owner requested an ongoing Focus reminder for Flowmo Local. During active,
+unpaused Focus, a read-only Live Activity shows the count-up clock on the Lock
+Screen and, on supported iPhones, in Dynamic Island. It has no countdown,
+progress ring, intention, parked text, or Reflection text. Tapping it opens the
+app; it never stops, pauses, starts, or Continues a session.
+
+The app must be foreground to start this local activity. If Prime expires while
+the app is in the background, its ordinary notification still arrives; the
+Live Activity can begin when the user next opens the app into Focus. The system
+renders elapsed time from the persisted Focus timestamp without keeping Flowmo
+running. Going to the Home Screen does not pause Focus. A stop, recovery, or
+blocked store ends the activity when the app reconciles those facts. The
+activity is a display, never session authority; system removal or dismissal
+does not stop Focus. Its placement and lifetime remain subject to iOS policy.
+See [`iphone.md`](iphone.md#focus-live-activity) for platform limits.
 
 ### CLI and scripts
 
@@ -585,7 +605,7 @@ The shipped Loop remains **Idle → Prime → Focus → Break → Reflection →
 
 - Visual identity / themes beyond the shipped compact pass
 - Menu bar as the product (glance is in [`menu-bar.md`](menu-bar.md))
-- Watch and Live Activities
+- Watch and Live Activities beyond Flowmo Local's scoped Focus reminder
 - Flashcards, SM-2, consolidation protocols, or long-form reflection
 - History dashboard, scoring, or charts
 - Domain-specific learning protocols such as spaced repetition, content testing,
