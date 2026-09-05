@@ -1,6 +1,6 @@
 # Release procedure
 
-Flowmo 1.0 is a close-beta candidate, not yet an Apple-trusted external release.
+Flowmo 1.0 is a local candidate being prepared for GitHub distribution.
 The repository owner is recorded as Fran Carrara. Flowmo is the working name
 until the owner reopens branding. An owner-authorized Mac-only friends-and-family
 preview may be shared under the explicit limitations below.
@@ -43,11 +43,14 @@ quality checks and owner review still apply to every distributed build.
   [TestFlight](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview/),
   and [regional alternatives](https://developer.apple.com/documentation/marketplacekit/participating-in-alternative-distribution-for-specific-regions).
 
-The owner chose an open-source direction; this working-tree candidate proposes
-MIT in `LICENSE`, using the recorded copyright owner. Review that exact license
-with the candidate before public release. Add an actual public support route,
-privacy contact, and confidential security-report route. A donation can be a
-README/About link and `.github/FUNDING.yml` once the owner supplies a destination;
+The candidate includes MIT in `LICENSE`, using the confirmed copyright owner.
+Review and include that exact license with the public candidate. The existing
+GitHub bug form can handle ordinary public reports once Issues are available;
+a separate support email is not required. Before public distribution, configure
+and monitor GitHub private vulnerability reporting or put a real confidential
+contact in `SECURITY.md`, and make the privacy policy available to recipients.
+Do not claim a private-report button is enabled without checking it. A donation
+can be a README/About link and `.github/FUNDING.yml` once the owner supplies a destination;
 no payment SDK or account system is needed. See [GitHub licensing](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository)
 and [funding links](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository).
 
@@ -154,7 +157,8 @@ cross-device sync. Never describe it as an iCloud-enabled build.
 
 - Build a fresh Release app from the candidate worktree and verify the signature,
   architectures, version, and minimum macOS version.
-- Package the app with `docs/FRIENDS_AND_FAMILY.txt` and the current `PRIVACY.md`.
+- Package the app with `docs/FRIENDS_AND_FAMILY.txt`, `PRIVACY.md`, `LICENSE`,
+  `PROVENANCE.md`, and `THIRD_PARTY_NOTICES.md`.
 - Generate a SHA-256 checksum for the final ZIP and send the checksum separately
   from the archive when practical.
 - State plainly that the build is ad-hoc signed, not Developer ID signed, and not
@@ -280,8 +284,9 @@ From a clean checkout of the candidate revision:
    Scene remains movable and resizable and returns to the exact prior
    Classic/Mini presentation without changing the clock.
    On iPhone, confirm active unpaused Focus fills the frame with Distant
-   Horizon in portrait and landscape, keeps Park thought and End focus
-   reachable, and retains the timestamp clock across background/foreground.
+   Horizon in the supported portrait orientation, keeps Park thought and End
+   focus reachable, and retains the timestamp clock across background/foreground.
+   Confirm rotation keeps the app in portrait; landscape is not supported.
    Check Dynamic Type and Reduce Motion, then terminate during Focus and
    confirm relaunch shows the compact Recovery Pause instead of resuming.
    Complete a session
@@ -336,9 +341,9 @@ Developer ID signing or notarization.
    a corrupt store privately; share a redacted diagnostic report first.
 3. Add a failing automated proof when practical, fix the underlying invariant,
    and verify both the original trigger and the legitimate behavior beside it.
-4. Run the required verification above, update `CHANGELOG.md`, and send testers
-   a new build number with concise retest steps. Keep the previous signed build
-   available for rollback.
+4. Run the required verification above, update `CHANGELOG.md`, and prepare a
+   new build number with concise retest steps for owner-reviewed distribution.
+   Keep the previous signed build available for rollback.
 
 ## Before TestFlight or Apple-trusted external distribution
 

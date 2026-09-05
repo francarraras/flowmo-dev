@@ -2,8 +2,11 @@
 
 Notable changes are recorded here.
 
-## Unreleased
+## 1.0 (5) — Release candidate
 
+- Restored standard Mac application, Edit, and Window menus, including Quit,
+  clipboard editing, Undo/Redo, Close, and Minimize. Quit uses the existing
+  recovery path, so reopening still waits for Continue or Restart.
 - Refined Mac and iPhone around a quieter graphite-and-ivory instrument:
   standard SF typography, clearer supporting text, restrained champagne for
   earned rest, and crisp rounded-rectangle controls with stable touch targets.
@@ -23,7 +26,7 @@ Notable changes are recorded here.
   and at least 48pt touch height, removed the capture field's fixed height
   ceiling, and made Reflection actions and error/recovery content adapt to
   available space. Current phone targets remain portrait-only. This polish
-  is Unreleased and does not replace the prepared build 4 preview artifacts.
+  is included in build 5; earlier build 4 preview artifacts remain unchanged.
 - Kept the terminal executable and bundled artwork together during installation
   and upgrades. Complete payload checksums reject missing or altered resources;
   an interrupted upgrade preserves a usable installed command.
@@ -41,7 +44,8 @@ Notable changes are recorded here.
   activity requires the app in the foreground; a background Prime ending keeps
   its notification, with the activity starting when the app opens into Focus.
   Stop, recovery, and store errors end the activity when reconciled. iOS controls
-  placement and lifetime; this remains Unreleased work, outside build 4 artifacts.
+  placement and lifetime. This local phone feature is included in the build 5 source;
+  Mac archives do not install the iPhone app.
 
 ## 1.0 (4) — Readiness candidate
 

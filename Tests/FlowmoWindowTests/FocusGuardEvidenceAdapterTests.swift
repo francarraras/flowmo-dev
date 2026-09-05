@@ -9,6 +9,7 @@ final class FocusGuardEvidenceAdapterTests: XCTestCase {
     private final class FakeApplication: FocusGuardApplication {
         let focusGuardProcessIdentity: FocusGuardProcessIdentity?
         var focusGuardIsHidden = false
+        var hideAccepted = true
         var activationAccepted = true
         var activationCount = 0
 
@@ -17,6 +18,7 @@ final class FocusGuardEvidenceAdapterTests: XCTestCase {
         }
 
         func focusGuardHide() -> Bool {
+            guard hideAccepted else { return false }
             focusGuardIsHidden = true
             return true
         }
@@ -147,6 +149,52 @@ final class FocusGuardEvidenceAdapterTests: XCTestCase {
 
         XCTAssertTrue(events.isEmpty)
         XCTAssertEqual(adapter.runtime, FocusGuardRuntime())
+    }
+
+    func testRepeatedHideRejectionFailsOpenWithoutPresentingOrActivating() async throws {
+        let application = FakeApplication(identity: identity)
+        application.hideAccepted = false
+        let adapter = FocusGuardAdapter { requested in requested == self.identity ? application : nil }
+        var events: [FocusGuardEvidenceEvent] = []
+        var presentations = 0
+        adapter.attach(bringForward: { presentations += 1 }, observeEvidence: { events.append($0) })
+        adapter.reconcile(world: try guardedFocusWorld())
+        defer { adapter.reconcile(world: .empty) }
+        adapter.handleActivation(processIdentity: identity, displayName: "Guarded", isSelf: false)
+
+        let deadline = Date().addingTimeInterval(2)
+        while events.isEmpty, Date() < deadline { try await Task.sleep(for: .milliseconds(10)) }
+
+        XCTAssertEqual(events, [.interceptionFailedBeforePrompt])
+        XCTAssertEqual(presentations, 0)
+        XCTAssertEqual(application.activationCount, 0)
+        XCTAssertFalse(application.focusGuardIsHidden)
+        XCTAssertTrue(adapter.runtime.degraded)
+        XCTAssertNil(adapter.runtime.interception)
+        XCTAssertNil(adapter.runtime.allowedProcessIdentity)
+    }
+
+    func testQueuedHideRetryCannotHideAnAppAfterGuardBecomesInactive() async throws {
+        let application = FakeApplication(identity: identity)
+        application.hideAccepted = false
+        let adapter = FocusGuardAdapter { requested in requested == self.identity ? application : nil }
+        var events: [FocusGuardEvidenceEvent] = []
+        var presentations = 0
+        adapter.attach(bringForward: { presentations += 1 }, observeEvidence: { events.append($0) })
+        adapter.reconcile(world: try guardedFocusWorld())
+        adapter.handleActivation(processIdentity: identity, displayName: "Guarded", isSelf: false)
+        adapter.reconcile(world: .empty)
+        application.hideAccepted = true
+
+        // Let the real delayed retry run; it must reject the obsolete demand.
+        try await Task.sleep(for: .milliseconds(350))
+
+        XCTAssertFalse(application.focusGuardIsHidden)
+        XCTAssertEqual(application.activationCount, 0)
+        XCTAssertEqual(presentations, 0)
+        XCTAssertTrue(events.isEmpty)
+        XCTAssertNil(adapter.runtime.interception)
+        XCTAssertFalse(adapter.observing)
     }
 
     func testStayFocusedReactivatesExactPriorProcessAndRequiresMatchingNotification() throws {

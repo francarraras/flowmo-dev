@@ -1,16 +1,22 @@
 FLOWMO — FRIENDS & FAMILY MAC PREVIEW
 
-Version 1.0 (build 4)
+Version 1.0 (build 5)
 Requires macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
 
 BEFORE YOU OPEN IT
 
-This is an early Mac-only preview sent directly by Fran. It is not signed with
+This is a Mac release candidate. It is not signed with
 an Apple Developer ID and has not been notarized by Apple, so macOS cannot
-verify it and will show a warning. It is not available for iPhone yet.
+verify it and will show a warning. This ZIP contains only the Mac app. The
+separate iPhone app can be built from source with Xcode; it is not included here.
 
-Only continue if you received the ZIP directly from Fran and its SHA-256 value
-matches the value Fran sent in a separate message. If macOS says the app "will
+Only continue if you received the ZIP directly from Fran or obtained it from
+the project’s official GitHub Releases page, and its SHA-256 value matches the
+provided checksum. For a private preview, compare the checksum sent separately.
+The official project release page is:
+https://github.com/francarraras/flowmo-dev/releases
+
+If macOS says the app "will
 damage your computer" or that the app is damaged, stop and contact Fran. Do not
 override that warning.
 
@@ -47,6 +53,10 @@ smaller window while the clock continues. Park thought saves a distraction for
 later. Reflection can turn a parked thought into the next step, and Done puts
 that step back into editable Idle without starting another session.
 
+Standard Mac menus provide Quit, clipboard editing, Undo/Redo, and window
+controls. This build also updates the icon, Focus artwork, typography, and
+illustrated first-run tutorial.
+
 After quit or sleep recovery, the clock stays frozen until you choose Continue
 or Restart. Simply opening a window does not resume it. Please check first-run
 guidance, repeat access to the tutorial, readable text, and keyboard controls
@@ -57,7 +67,9 @@ OPTIONAL TERMINAL COMMAND
 The Mac app ZIP does not install the separate terminal command. If you receive
 a matching terminal archive, verify its separately supplied checksum, extract
 it, and run ./install.sh from that folder. It installs into ~/.local/bin and
-prints the PATH instruction. Start with flowmo --help and flowmo --version.
+prints the PATH instruction. Keep the bundled artwork beside the executable;
+the installer places the complete payload under ~/.local/libexec/flowmo.
+Start with flowmo --help and flowmo --version.
 The command shares the Mac app's local session. To upgrade, quit running
 Flowmo instances and use ./install.sh --replace. Removing ~/.local/bin/flowmo
 uninstalls the command while preserving session data. Downloaded engineering
@@ -73,9 +85,13 @@ export is private; do not attach it to a bug report.
 
 REPORTING A PROBLEM
 
-Reply privately to the person who sent you this preview with:
+For ordinary bugs, use the project’s public bug-report form or reply privately
+to the person who sent you the preview:
+https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml
 
-- Flowmo version 1.0 (build 4)
+Include:
+
+- Flowmo version 1.0 (build 5)
 - your macOS version and Mac model
 - what you did
 - what you expected
@@ -85,13 +101,15 @@ Reply privately to the person who sent you this preview with:
 While Flowmo is idle, choose Data > Export Redacted Diagnostics and attach that
 file if possible. It excludes intention, parked-thought and recall text,
 selected app identifiers, and local store paths. Do not send screenshots or
-exports containing private session text unless you deliberately choose to.
+exports containing private session text. For sensitive privacy or security
+concerns, follow the repository’s SECURITY.md instructions and use a private
+channel; do not include those details in a public issue.
 
 UPDATES
 
-This preview does not update itself. Fran will send a new ZIP when a build is
-ready. Quit Flowmo, replace Flowmo.app in Applications, and reopen it. Your local
-Flowmo data normally remains in place.
+This app does not update itself. Obtain an update from the same official
+release page or private sender. Quit Flowmo, replace Flowmo.app in Applications,
+and reopen it. Your local Flowmo data normally remains in place.
 
 REMOVE FLOWMO
 

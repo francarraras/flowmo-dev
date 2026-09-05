@@ -7,7 +7,7 @@ analytics, advertising, or crash-reporting SDK. The entitled Mac and iPhone
 apps transmit session data only to Apple's CloudKit service for private
 cross-device synchronization. Flowmo does not transmit it to a developer-run
 server. The separate **Flowmo Local** iPhone app does not start CloudKit or
-transmit session data. It is the Unreleased variant for free Personal Team
+transmit session data. It is the build 5 variant for free Personal Team
 testing; the selected distribution scope does not require paid Apple Developer
 membership. The entitled targets remain in the source for eligible contributors.
 
@@ -211,6 +211,8 @@ with the developer; testers cannot opt out of that TestFlight collection. This
 is separate from Flowmo's own code. See [Apple's TestFlight privacy
 information](https://www.apple.com/legal/privacy/data/en/test-flight/).
 
-A public privacy-policy URL and a working privacy contact must be added before
-external beta distribution. This repository file is the current policy source,
-not yet a hosted policy or legal review.
+This file is the current privacy policy; a public GitHub copy can host it.
+Sensitive privacy concerns follow the confidential reporting route in
+[SECURITY.md](SECURITY.md). Before distribution outside the private testing
+channel, the maintainer must configure and monitor that route. No public
+contact or completed legal review is claimed here.

@@ -1,8 +1,8 @@
 # Aperture icon v2 — generation receipt
 
-Generated on 2026-09-05 with Codex’s built-in OpenAI image generation tool. One generation, no reference image, copied brand, third-party asset, or user session data. This original mark is integrated in the current Unreleased catalog; it does not settle the product name or claim trademark clearance.
+Generated on 2026-09-05 with Codex’s built-in OpenAI image generation tool. One generation, no reference image, copied brand, third-party asset, or user session data. This original mark is integrated in the current build 5 catalog; it does not settle the product name or claim trademark clearance.
 
-`flowmo-horizon-v2-master.png` is the unchanged opaque PNG output: **1254 × 1254 pixels**. The prompt requested 1024 × 1024; the tool returned 1254 × 1254. The master was copied without cropping, drawing, repainting, masking, or resampling. Fourteen opaque RGB size derivatives now fill all 19 slots in the shared Mac/iPhone AppIcon catalog. They were produced with native `sips` size conversion and checked for the required dimensions and opacity. This Unreleased catalog replacement leaves the prepared build 4 artifacts unchanged.
+`flowmo-horizon-v2-master.png` is the unchanged opaque PNG output: **1254 × 1254 pixels**. The prompt requested 1024 × 1024; the tool returned 1254 × 1254. The master was copied without cropping, drawing, repainting, masking, or resampling. Fourteen opaque RGB size derivatives now fill all 19 slots in the shared Mac/iPhone AppIcon catalog. They were produced with native `sips` size conversion and checked for the required dimensions and opacity. This build 5 catalog replacement leaves the prepared build 4 artifacts unchanged.
 
 SHA-256: `54bf78847e82aa4efe4a65a692e301adb04f8f05f17f836f2b1fccd3b5903e9f`
 

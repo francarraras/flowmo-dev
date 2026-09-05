@@ -27,6 +27,11 @@ repository's [MIT license](LICENSE). No additional third-party asset license or
 attribution notice was identified. These static images add no runtime AI,
 external service, privacy API, or user-data processing.
 
+The README's unedited native screenshots use synthetic session text; the iPhone
+captures include Apple's Simulator frame. They are documentation only and are
+not bundled in the application. Their origins and byte-identical hashes are
+recorded under [documentation screenshots](PROVENANCE.md#documentation-screenshots).
+
 The pinned `actions/checkout` GitHub Action is build infrastructure and is not
 distributed in the app binary.
 

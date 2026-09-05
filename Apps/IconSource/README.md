@@ -5,7 +5,7 @@ The current shared Mac/iPhone icon catalog uses the original
 OpenAI image generation tool. No reference image, third-party asset, font,
 brand, or private user data was supplied. The working name remains Flowmo.
 
-## Current Unreleased catalog
+## Current build 5 catalog
 
 `flowmo-horizon-v2-master.png` is the unchanged **1254 × 1254 opaque RGB** output.
 Its SHA-256 is

@@ -6,7 +6,7 @@ If a sentence here conflicts with the old repo, the old App Store launch plan, o
 
 Last updated: 2026-09-05
 Owner: Fran Carrara  
-Status: 1.0 local preview candidate; the separate local iPhone variant and current visual polish are Unreleased, outside the prepared build 4 artifacts.
+Status: 1.0 (5) local release candidate in preparation, including the native polish and separate local iPhone variant. Earlier build 4 artifacts remain unchanged.
 
 ---
 
@@ -397,9 +397,9 @@ Pause exists only as **recovery**:
 | **Menu bar** | Glance only (clock; click shows the window) | Still not the product |
 | **Terminal living view** | `flowmo live` ticks the same session | Still a view, not the product |
 | **CLI / JSON** | Scripts and integrations | Same verbs, same store as the window |
-| **iPhone** | Native loop implemented; separate local variant Unreleased ([`iphone.md`](iphone.md)) | Local personal use; private sync remains available in the entitled target |
+| **iPhone** | Native loop implemented; separate local variant in build 5 source ([`iphone.md`](iphone.md)) | Local personal use; private sync remains available in the entitled target |
 | **Home Screen widget** | Implemented for the entitled iPhone target ([`widget.md`](widget.md)); excluded from the local variant | Glance; not the product |
-| **Focus Live Activity** | Unreleased read-only reminder in Flowmo Local's Dynamic Island and Lock Screen | Glance; never a session controller |
+| **Focus Live Activity** | Read-only reminder in the build 5 source in Flowmo Local's Dynamic Island and Lock Screen | Glance; never a session controller |
 
 ### Current delivery scope
 
@@ -419,7 +419,7 @@ for contributors with the necessary signing capabilities. Missing App Group
 access remains an unavailable-store error, never an automatic switch to local
 storage. The local variant likewise reports unavailable storage instead of
 switching stores. Switching app variants does not transfer sessions or History.
-The local variant is new Unreleased work, outside the existing build 4 artifacts.
+The local variant is included in the build 5 source and remains outside the earlier build 4 artifacts. Mac downloads do not contain an iPhone installer.
 
 ### Focus Live Activity
 
@@ -589,9 +589,9 @@ GitHub: `https://github.com/francarraras/Flowmo` (private)
 
 ## 10. What is on disk in *this* folder
 
-`/Users/facspro/dev/flowmo` is the current close-beta implementation: the
+`/Users/facspro/dev/flowmo` is the current release-candidate implementation: the
 deterministic Core, native Mac window, Focus Guard, supporting glances and CLI,
-iPhone app, a separate Unreleased local iPhone host, optional entitled private
+iPhone app, a separate local iPhone host, optional entitled private
 CloudKit sync and widget, recovery paths, and privacy controls.
 The Mac window is the product; the CLI remains a side door.
 

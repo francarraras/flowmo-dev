@@ -14,7 +14,7 @@ frameworks supplied by the operating system; no external SDK was added for
 sync. CloudKit changes privacy and provisioning facts but adds no redistributable
 third-party dependency.
 
-The Unreleased Focus Live Activity uses Apple's ActivityKit and WidgetKit
+The build 5 Focus Live Activity uses Apple's ActivityKit and WidgetKit
 platform frameworks, with an original extension and timestamp-only projection.
 It adds no package, downloaded asset, copied sample code, remote push service,
 or external SDK. Apple's
@@ -24,7 +24,7 @@ Personal Team signing. None of its implementation or assets were incorporated.
 Maintenance follows Apple's platform API and extension requirements; the
 metadata shared with the system display is documented in [`PRIVACY.md`](PRIVACY.md).
 
-The current Unreleased visual treatment uses two original assets generated on
+The current build 5 visual treatment uses two original assets generated on
 2026-09-05 with Codex's built-in OpenAI image generation tool from text-only
 design prompts, without reference images, third-party brand material, or
 private session/tester data:
@@ -54,6 +54,29 @@ contained design requirements only. Existing privacy declarations remain
 unchanged by this asset work. Maintenance is limited to the checked-in images,
 SwiftPM resource packaging, and Apple's asset-catalog format. The product name
 remains provisional, and this work does not replace build 4 preview artifacts.
+
+## Documentation screenshots
+
+The README includes three unchanged native UI captures from the local polish
+check on 2026-09-05, recorded against source revision
+`8f486ba83e23caa74d92a83faa0d6e557833ee09`. All visible intentions are synthetic
+test text. The phone captures include Apple's Simulator frame; the Mac capture
+shows the isolated Focus scene. They are screenshots of the implemented app,
+not new generated artwork, edited screenshots, or evidence of a public release.
+
+The originals are retained in the local `flowmo-polish/screenshots` evidence
+folder. These byte-identical documentation copies are not bundled into the app:
+
+| Repository file | Original capture | SHA-256 |
+| --- | --- | --- |
+| [`docs/screenshots/mac-focus-scene.png`](docs/screenshots/mac-focus-scene.png) | `05-mac-focus-scene.png` | `a0abc994507f40274b54ece9713d71e17fbbe50242a21083fce0183a9f3dcb4f` |
+| [`docs/screenshots/iphone-focus.png`](docs/screenshots/iphone-focus.png) | `03-phone-focus.png` | `86588c40c7f4cafe978453e0370f0ec6eae04e8a5102f838045be160afc5d91e` |
+| [`docs/screenshots/iphone-introduction.png`](docs/screenshots/iphone-introduction.png) | `01-phone-introduction.png` | `663742b5198ed100258ec3270449bfaddf4fd8603672cc8fd5443f1c0f7278ef` |
+
+The app artwork and its source terms remain documented above. These captures
+add no runtime resource, dependency, data collection, or network behavior.
+
+## Contributor provenance
 
 AI assistance does not replace human review or establish ownership by itself.
 For every release, the owner should retain a private ledger recording:

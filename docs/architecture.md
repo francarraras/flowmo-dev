@@ -52,7 +52,7 @@ CloudKit lifecycle, and widget reloads remain unchanged. A missing App Group
 fails closed. Its validated legacy Application Support migration remains a
 dedicated Store maintenance path within that app's container.
 
-The separate, Unreleased [`FlowmoPhoneLocal.swift`](../Apps/FlowmoPhoneLocal.swift)
+The separate [`FlowmoPhoneLocal.swift`](../Apps/FlowmoPhoneLocal.swift)
 selects `.localOnly` through `PhoneStoreBootstrap`. The `FlowmoPhoneLocal`
 target/scheme uses bundle `app.flowmo.phone.local`, product `FlowmoLocal.app`,
 and its own sandbox's `Application Support/flowmo/world.json`. Store selection

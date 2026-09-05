@@ -90,6 +90,145 @@ final class PhoneFocusActivityTests: XCTestCase {
         }
     }
 
+    func testCleanupAwaitRechecksForegroundBeforeRequestingTheStillLiveFocus() async throws {
+        try await withSetup { client, coordinator, _, _ in
+            let focus = self.focus()
+            client.activities = [PhoneFocusActivitySnapshot(id: "old", projection: self.focus())]
+            client.suspendNextEnd = true
+            coordinator.reconcile(focus, canStart: true)
+            await client.waitUntilEndIsSuspended()
+            coordinator.reconcile(focus, canStart: false)
+            client.resumeEnd()
+            await coordinator.waitForPendingReconciliation()
+
+            XCTAssertTrue(client.requests.isEmpty)
+            XCTAssertTrue(client.activities.isEmpty)
+            coordinator.reconcile(focus, canStart: true)
+            await coordinator.waitForPendingReconciliation()
+            XCTAssertEqual(client.requests, [focus])
+        }
+    }
+
+    func testPrimeBackgroundCatchUpKeepsThePersistedOriginAndWaitsForForegroundActivity() async throws {
+        try await withSetup { client, coordinator, defaults, root in
+            let store = Store(root: root)
+            var world = World.empty
+            world.config.cuesEnabled = false
+            try store.save(world)
+            let controller = PhoneSessionController(
+                store: store, mode: .localOnly, attention: PhoneAttention(notificationsEnabled: false),
+                userDefaults: defaults, focusActivity: coordinator
+            )
+            controller.becameActive()
+            controller.intentionDraft = "synthetic background proof"
+            controller.start()
+            let prime = try XCTUnwrap(store.load().live)
+            let boundary = prime.phaseStartedAt.addingTimeInterval(prime.primeDuration)
+            controller.becameInactive()
+            // Model a final granted background callback after Prime elapsed.
+            controller.tick(at: boundary.addingTimeInterval(30))
+            await coordinator.waitForPendingReconciliation()
+
+            XCTAssertEqual(
+                try XCTUnwrap(store.load().live?.focusStartedAt).timeIntervalSince(boundary), 0, accuracy: 0.001)
+            XCTAssertEqual(controller.world.live?.phase, .focus)
+            XCTAssertFalse(try XCTUnwrap(controller.world.live).isPaused)
+            XCTAssertTrue(client.requests.isEmpty)
+
+            let returnTime = boundary.addingTimeInterval(600)
+            controller.becameActive(at: returnTime)
+            await coordinator.waitForPendingReconciliation()
+
+            XCTAssertEqual(controller.now, returnTime)
+            XCTAssertEqual(client.requests.count, 1)
+            XCTAssertEqual(client.requests.first?.sessionID, prime.id)
+            XCTAssertEqual(
+                try XCTUnwrap(client.requests.first).startedAt.timeIntervalSince(boundary), 0, accuracy: 0.001)
+            XCTAssertEqual(try store.load(), controller.world)
+        }
+    }
+
+    func testStopEndsActivityAndBackgroundCatchUpWaitsAtCloseUntilUserFinishes() async throws {
+        try await withSetup { client, coordinator, defaults, root in
+            let store = Store(root: root)
+            var world = World.empty
+            world.config.cuesEnabled = false
+            try store.save(world)
+            let controller = PhoneSessionController(
+                store: store, mode: .localOnly, attention: PhoneAttention(notificationsEnabled: false),
+                userDefaults: defaults, focusActivity: coordinator
+            )
+            controller.becameActive()
+            controller.intentionDraft = "synthetic stop proof"
+            controller.start()
+            controller.skip()
+            await coordinator.waitForPendingReconciliation()
+            XCTAssertEqual(client.activities.count, 1)
+
+            controller.stopFocus()
+            await coordinator.waitForPendingReconciliation()
+            XCTAssertTrue(client.activities.isEmpty)
+            XCTAssertEqual(client.ended.count, 1)
+            let onBreak = try XCTUnwrap(store.load().live)
+            let recallStart = try XCTUnwrap(onBreak.breakStartedAt)
+                .addingTimeInterval(try XCTUnwrap(onBreak.breakDuration))
+            let closeStart = recallStart.addingTimeInterval(onBreak.recallDuration)
+            controller.becameInactive()
+            controller.becameActive(at: closeStart.addingTimeInterval(60))
+            await coordinator.waitForPendingReconciliation()
+
+            XCTAssertEqual(controller.world.live?.phase, .closeBeat)
+            XCTAssertEqual(
+                try XCTUnwrap(controller.world.live).phaseStartedAt.timeIntervalSince(closeStart), 0, accuracy: 0.001)
+            XCTAssertTrue(controller.world.history.isEmpty)
+            let persisted = try XCTUnwrap(store.load().live)
+            XCTAssertEqual(persisted.phase, .closeBeat)
+            XCTAssertEqual(persisted.id, onBreak.id)
+            XCTAssertEqual(persisted.phaseStartedAt.timeIntervalSince(closeStart), 0, accuracy: 0.001)
+            controller.becameActive(at: closeStart.addingTimeInterval(86_400))
+            await coordinator.waitForPendingReconciliation()
+            XCTAssertEqual(controller.world.live?.phase, .closeBeat)
+            XCTAssertEqual(client.requests.count, 1)
+            XCTAssertNil(controller.activeIssue)
+        }
+    }
+
+    func testControllerDeletionForgetsDismissalWithoutResettingIntroductionPreference() async throws {
+        try await withSetup { client, coordinator, defaults, root in
+            let store = Store(root: root)
+            var world = World.empty
+            world.config.cuesEnabled = false
+            try store.save(world)
+            let controller = PhoneSessionController(
+                store: store, mode: .localOnly, attention: PhoneAttention(notificationsEnabled: false),
+                userDefaults: defaults, focusActivity: coordinator
+            )
+            controller.presentIntroductionIfNeeded()
+            controller.introduction.finish()
+            controller.becameActive()
+            controller.intentionDraft = "synthetic deletion proof"
+            controller.start()
+            controller.skip()
+            await coordinator.waitForPendingReconciliation()
+            client.activities = []
+            controller.becameActive()
+            await coordinator.waitForPendingReconciliation()
+            XCTAssertTrue(defaults.dictionaryRepresentation().keys.contains { $0.hasPrefix("FlowmoFocusLiveActivity") })
+            controller.stopFocus()
+            controller.skip()
+            controller.skip()
+            controller.dismissCloseBeat()
+            controller.deleteAllData()
+            await coordinator.waitForPendingReconciliation()
+
+            XCTAssertEqual(try store.load(), .empty)
+            XCTAssertTrue(client.activities.isEmpty)
+            XCTAssertFalse(
+                defaults.dictionaryRepresentation().keys.contains { $0.hasPrefix("FlowmoFocusLiveActivity") })
+            XCTAssertTrue(controller.introduction.hasCompleted)
+        }
+    }
+
     func testSystemEndedActivityIsRemovedWithoutRestartingTheSameFocus() async throws {
         try await withSetup { client, coordinator, _, _ in
             let focus = self.focus()

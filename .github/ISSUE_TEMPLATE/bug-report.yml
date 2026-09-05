@@ -1,12 +1,14 @@
 name: Bug report
-description: Report a reproducible Flowmo problem for the private beta tracker.
+description: Report a reproducible, non-sensitive Flowmo problem.
 title: "[Bug]: "
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Do not include intentions, parked thoughts, recall text, or local store contents unless the private tracker explicitly requests them.
+        This report may be public. Reproduce with synthetic text. Do not include intentions, parked thoughts, reflection text, account details, store paths, or full exports. Review screenshots and redacted diagnostics before attaching them.
+
+        For a vulnerability or sensitive privacy concern, follow SECURITY.md instead of this form. If you do not have repository access, contact the person who supplied your build through your existing private channel.
   - type: textarea
     id: summary
     attributes:
@@ -30,7 +32,8 @@ body:
     id: revision
     attributes:
       label: Revision or build
-      placeholder: "Commit SHA or development build"
+      description: Use flowmo --version for the terminal, or the app's diagnostic report. Include a commit SHA for source builds.
+      placeholder: "Version and build, or commit SHA"
     validations:
       required: true
   - type: input
@@ -46,9 +49,25 @@ body:
       label: Surface
       options:
         - Mac window
+        - Mac Focus scene or Mini
+        - Mac menu bar or Focus Guard
         - CLI or live terminal view
-        - iPhone app
-        - Widget
+        - Flowmo Local iPhone app
+        - Focus Live Activity
+        - Entitled iPhone app or Home Screen widget
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation route
+      options:
+        - Mac archive
+        - Terminal archive and installer
+        - Swift source build
+        - Xcode Personal Team on iPhone
+        - iPhone Simulator
+        - Other or unsure
     validations:
       required: true
   - type: input
@@ -61,4 +80,4 @@ body:
     id: diagnostics
     attributes:
       label: Redacted diagnostic report
-      description: Attach the app's redacted diagnostic export when it is safe and relevant. Never attach the full-data export here.
+      description: Optional. Review the app's redacted diagnostic export before attaching it. Never attach the full-data export or unredacted logs here.

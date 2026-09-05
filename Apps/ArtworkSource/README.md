@@ -45,7 +45,7 @@ Only a static PNG is bundled. It adds no runtime AI, downloaded asset, external
 SDK, font, network request, privacy API, telemetry, or user-data processing.
 Existing privacy declarations do not change for this asset. Maintenance is
 limited to the checked-in image, SwiftPM resource packaging, and native layout.
-The work remains Unreleased and does not replace build 4 preview artifacts.
+The artwork is included in the build 5 candidate and does not replace build 4 preview artifacts.
 
 ## Exact generation prompt
 

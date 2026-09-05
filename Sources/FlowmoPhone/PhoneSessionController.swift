@@ -235,8 +235,12 @@ public final class PhoneSessionController: ObservableObject {
 
     /// Background suspends the 0.25s timer. Catch up as soon as we are looking.
     public func becameActive() {
+        becameActive(at: Date())
+    }
+
+    func becameActive(at timestamp: Date) {
         isForeground = true
-        tick()
+        tick(at: timestamp)
         attention.reconcile(world: world, now: now)
         reconcileFocusActivity()
         cloudSync?.refresh()
@@ -534,25 +538,25 @@ public final class PhoneSessionController: ObservableObject {
         userNotice = nil
     }
 
-    private func tick() {
-        now = Date()
+    func tick(at timestamp: Date = Date()) {
+        now = timestamp
         var probe = Engine(world: world)
         let before = probe.world.live?.phase
         probe.sync(now: now)
         if probe.world != world {
-            persistSync(cueFrom: before)
+            persistSync(cueFrom: before, at: timestamp)
         }
     }
 
-    private func persistSync(cueFrom before: SessionPhase?) {
+    private func persistSync(cueFrom before: SessionPhase?, at timestamp: Date) {
         applying = true
         defer { applying = false }
         do {
             let engine = try store.update { engine in
-                engine.sync(now: Date())
+                engine.sync(now: timestamp)
             }
             world = engine.world
-            now = Date()
+            now = timestamp
             attention.phaseChanged(from: before, to: world.live?.phase, cuesEnabled: world.config.cuesEnabled)
             attention.reconcile(world: world, now: now)
             reconcileFocusActivity()

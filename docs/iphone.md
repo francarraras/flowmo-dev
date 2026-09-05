@@ -10,7 +10,7 @@ The iPhone app runs the same Core loop in its own native frame. The Mac window r
 |---|---|
 | **iPhone** | Yes. Same loop, one native frame; active Focus expands into its Distant Horizon canvas. |
 | Home Screen widget | Read-only glance in the entitled target; absent from Flowmo Local. |
-| Focus Live Activity | Unreleased count-up reminder for Flowmo Local on the Lock Screen and Dynamic Island. |
+| Focus Live Activity | Count-up reminder in the build 5 source for Flowmo Local on the Lock Screen and Dynamic Island. |
 | History | Plain local completed-session list from Idle. |
 | Theme packs | Charcoal, ink, and earned-rest gold from [`visual.md`](visual.md). Not a pack. |
 | iCloud | Private CloudKit sync in the entitled target; absent from Flowmo Local. |
@@ -34,7 +34,7 @@ Copy does not claim productivity, well-being, or flow.
 ## Build variants
 
 **Flowmo Local** is the chosen path for free Personal Team testing on the
-owner's iPhone. This separate, Unreleased `FlowmoPhoneLocal` target and scheme
+owner's iPhone. This separate `FlowmoPhoneLocal` target and scheme
 in `Apps/FlowmoPhone.xcodeproj` produces `FlowmoLocal.app`, displays **Flowmo
 Local**, and uses bundle `app.flowmo.phone.local`. It stores
 `Application Support/flowmo/world.json` inside its own app sandbox. It has no
@@ -96,7 +96,7 @@ when the interface returns.
 
 ## Focus Live Activity
 
-Flowmo Local includes an Unreleased, Focus-only Live Activity through
+Flowmo Local includes a Focus-only Live Activity through
 `FlowmoFocusActivity` (`app.flowmo.phone.local.focus-activity`). This WidgetKit
 extension is embedded only in `FlowmoPhoneLocal`; it is not a Home Screen
 widget and adds no App Group, CloudKit, push, or session-control capability.

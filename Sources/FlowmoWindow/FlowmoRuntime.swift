@@ -18,12 +18,13 @@ public enum FlowmoRuntime {
         AppDelegate.retained = delegate
         app.delegate = delegate
         app.setActivationPolicy(.regular)
+        MacMainMenu.install(on: app, delegate: delegate)
         app.run()
     }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
     private struct WindowPresentationState: Equatable {
         let contentSize: CGSize
         let focusSceneActive: Bool
@@ -89,6 +90,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         controller.leaveFocusScene()
         sender.orderOut(nil)
         return false
+    }
+
+    @objc func closeMainWindow(_ sender: Any?) {
+        window?.performClose(sender)
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(closeMainWindow(_:)) {
+            return window.map { $0.isVisible || $0.isMiniaturized } ?? false
+        }
+        return true
     }
 
     /// Borderless windows have no native close button, so Cmd-W enters here

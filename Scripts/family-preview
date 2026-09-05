@@ -59,6 +59,7 @@ validate_mac_app() {
   local signature_info
   local entitlements
   local privacy_manifest="$app/Contents/Resources/PrivacyInfo.xcprivacy"
+  local artwork="$app/Contents/Resources/flowmo_FlowmoLook.bundle/Contents/Resources/HorizonStudy.png"
 
   [ -d "$app" ] || fail "Mac app not found: $app"
   [ -f "$app/Contents/Info.plist" ] || fail "Info.plist not found in $app"
@@ -75,6 +76,10 @@ validate_mac_app() {
   [ "$minimum_system" = "$minimum_macos" ] \
     || fail "built minimum macOS $minimum_system does not match project target $minimum_macos"
   [ -f "$app/Contents/MacOS/$executable" ] || fail "app executable is missing"
+  [ -f "$app/Contents/Resources/AppIcon.icns" ] || fail "Mac app icon is missing"
+  [ -f "$artwork" ] && [ ! -L "$artwork" ] || fail "bundled Focus artwork is missing or is a symlink"
+  cmp -s "$source_root/Sources/FlowmoLook/Resources/HorizonStudy.png" "$artwork" \
+    || fail "bundled Focus artwork differs from the committed source"
 
   architectures="$(lipo -archs "$app/Contents/MacOS/$executable")"
   case " $architectures " in
@@ -436,7 +441,7 @@ if [ -n "$worktree_state" ]; then
 else
   cp "$friend_guide" "$package_dir/READ ME FIRST.txt"
 fi
-for document in PRIVACY.md LICENSE PROVENANCE.md THIRD_PARTY_NOTICES.md; do
+for document in PRIVACY.md LICENSE PROVENANCE.md THIRD_PARTY_NOTICES.md SECURITY.md; do
   cp "$document" "$package_dir/$document"
 done
 
@@ -451,7 +456,7 @@ extracted_package="$extract_root/$package_root"
 extracted_app="$extracted_package/Flowmo.app"
 [ -f "$extracted_package/READ ME FIRST.txt" ] || fail "tester guide is missing from the ZIP"
 cmp "$package_dir/READ ME FIRST.txt" "$extracted_package/READ ME FIRST.txt"
-for document in PRIVACY.md LICENSE PROVENANCE.md THIRD_PARTY_NOTICES.md; do
+for document in PRIVACY.md LICENSE PROVENANCE.md THIRD_PARTY_NOTICES.md SECURITY.md; do
   [ -f "$extracted_package/$document" ] || fail "$document is missing from the ZIP"
   cmp "$document" "$extracted_package/$document"
 done
@@ -515,7 +520,7 @@ fi
   printf -- '- warnings-as-errors tests and core proofs\n'
   printf -- '- CLI JSON/privacy smoke and SwiftPM Release build\n'
   printf -- '- fresh universal Mac Release build and Debug analysis\n'
-  printf -- '- Mac metadata, Hardened Runtime, signature, and entitlement checks\n'
+  printf -- '- Mac metadata, icon, exact bundled artwork, Hardened Runtime, signature, and entitlement checks\n'
   printf -- '- iPhone/widget Release simulator build, privacy manifests, and Debug analysis\n'
   printf -- '- exact ZIP extraction, content comparison, checksum, and app re-verification\n\n'
   printf 'Manual gates still required before sharing a clean candidate:\n'

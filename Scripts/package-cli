@@ -167,6 +167,7 @@ cp "$source_root/PRIVACY.md" "$package_dir/PRIVACY.md"
 cp "$source_root/LICENSE" "$package_dir/LICENSE"
 cp "$source_root/PROVENANCE.md" "$package_dir/PROVENANCE.md"
 cp "$source_root/THIRD_PARTY_NOTICES.md" "$package_dir/THIRD_PARTY_NOTICES.md"
+cp "$source_root/SECURITY.md" "$package_dir/SECURITY.md"
 cat >"$package_dir/READ ME FIRST.txt" <<EOF
 Flowmo $version (build $build) — macOS 14+ terminal engineering candidate
 
@@ -192,7 +193,7 @@ remove ~/.local/bin/flowmo. You may then remove the installer-owned
 ~/.local/libexec/flowmo directory to reclaim old binaries and artwork; this is
 separate from session data. Use the app's Idle > Data controls to delete session
 data. Read the included LICENSE, PRIVACY.md, PROVENANCE.md, and
-THIRD_PARTY_NOTICES.md before use.
+THIRD_PARTY_NOTICES.md, and SECURITY.md before use.
 EOF
 if [ -n "$worktree_state" ]; then
   printf 'DIRTY ENGINEERING TEST — DO NOT DISTRIBUTE\n' >"$package_dir/DO NOT DISTRIBUTE.txt"
@@ -207,7 +208,7 @@ extracted="$work_root/extracted/$name"
 cmp "$package_dir/flowmo" "$extracted/flowmo"
 bundle_manifest "$extracted/$bundle_name" >"$work_root/extracted-resources.SHA256SUMS"
 cmp "$work_root/resources-arm64.SHA256SUMS" "$work_root/extracted-resources.SHA256SUMS"
-for document in install.sh 'READ ME FIRST.txt' LICENSE PRIVACY.md PROVENANCE.md THIRD_PARTY_NOTICES.md SHA256SUMS; do
+for document in install.sh 'READ ME FIRST.txt' LICENSE PRIVACY.md PROVENANCE.md THIRD_PARTY_NOTICES.md SECURITY.md SHA256SUMS; do
   cmp "$package_dir/$document" "$extracted/$document"
 done
 if [ -n "$worktree_state" ]; then

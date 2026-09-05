@@ -59,28 +59,54 @@ struct PhoneNotificationPlan: Equatable, Sendable {
 }
 
 @MainActor
+protocol PhoneNotificationClient {
+    func requestPermission()
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String])
+    func add(_ request: UNNotificationRequest) async throws
+}
+
+@MainActor
+private struct SystemPhoneNotificationClient: PhoneNotificationClient {
+    func requestPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+
+    func add(_ request: UNNotificationRequest) async throws {
+        try await UNUserNotificationCenter.current().add(request)
+    }
+}
+
+@MainActor
 public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
     public static let requestID = "flowmo.timed-phase"
-    private let notificationsEnabled: Bool
+    private let client: (any PhoneNotificationClient)?
     private var reconciliationTask: Task<Void, Never>?
 
     public override init() {
-        self.notificationsEnabled = true
+        self.client = SystemPhoneNotificationClient()
         super.init()
         UNUserNotificationCenter.current().delegate = self
     }
 
     init(notificationsEnabled: Bool) {
-        self.notificationsEnabled = notificationsEnabled
+        self.client = notificationsEnabled ? SystemPhoneNotificationClient() : nil
         super.init()
         if notificationsEnabled {
             UNUserNotificationCenter.current().delegate = self
         }
     }
 
+    init(client: any PhoneNotificationClient) {
+        self.client = client
+        super.init()
+    }
+
     public func requestPermission() {
-        guard notificationsEnabled else { return }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        client?.requestPermission()
     }
 
     func phaseChanged(from: SessionPhase?, to: SessionPhase?, cuesEnabled: Bool) {
@@ -93,7 +119,7 @@ public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func reconcile(world: World, now: Date) {
-        guard notificationsEnabled else { return }
+        guard let client else { return }
         let plan = PhoneNotificationPlan(world: world, now: now)
         let cuesEnabled = world.config.cuesEnabled
         let previous = reconciliationTask
@@ -102,8 +128,7 @@ public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
             // An in-flight add must finish before the newer plan cancels it.
             await previous?.value
             guard !Task.isCancelled else { return }
-            let center = UNUserNotificationCenter.current()
-            center.removePendingNotificationRequests(withIdentifiers: PhoneNotificationPlan.identifiersToCancel)
+            client.removePendingNotificationRequests(withIdentifiers: PhoneNotificationPlan.identifiersToCancel)
             for notification in plan.notifications {
                 guard !Task.isCancelled else { return }
                 let delay = notification.fireDate.timeIntervalSinceNow
@@ -121,9 +146,13 @@ public final class PhoneAttention: NSObject, UNUserNotificationCenterDelegate {
                     content: content,
                     trigger: trigger
                 )
-                try? await center.add(request)
+                try? await client.add(request)
             }
         }
+    }
+
+    func waitForPendingReconciliation() async {
+        await reconciliationTask?.value
     }
 
     public nonisolated func userNotificationCenter(
