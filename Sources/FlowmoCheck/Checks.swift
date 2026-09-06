@@ -435,7 +435,7 @@ public func runFlowmoChecks() -> Int32 {
 
     var recordedProfile = Profile.default
     recordedProfile.breakRatio = 4.75
-    recordedProfile.recentFocusSeconds = [50 * 60, 50 * 60]
+    recordedProfile.recentFocusSeconds = [50.0 * 60, 50.0 * 60]
     recordedProfile.lastNote = "Legacy ratio movement note."
     for _ in 0..<3 {
         recordedProfile = ProfileRecorder.apply(recordedProfile, focusSeconds: 50 * 60)
@@ -445,7 +445,7 @@ public func runFlowmoChecks() -> Int32 {
     Check.expectNear(recordedProfile.totalFocusSeconds, 150 * 60, "completed focus still aggregates")
     Check.expectEqual(
         recordedProfile.recentFocusSeconds,
-        [50 * 60, 50 * 60],
+        [50.0 * 60, 50.0 * 60],
         "completions do not collect a new rolling duration sample"
     )
     Check.expect(recordedProfile.lastNote == nil, "completion clears legacy ratio movement notes")
