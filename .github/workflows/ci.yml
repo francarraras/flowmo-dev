@@ -18,6 +18,12 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+      - name: Toolchain versions
+        run: |
+          sw_vers -productVersion
+          xcodebuild -version
+          swift --version
+
       - name: Swift format lint
         run: swift format lint --strict --recursive Package.swift Sources Tests Apps
 
