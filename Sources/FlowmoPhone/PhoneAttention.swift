@@ -76,7 +76,15 @@ private struct SystemPhoneNotificationClient: PhoneNotificationClient {
     }
 
     func add(_ request: UNNotificationRequest) async throws {
-        try await UNUserNotificationCenter.current().add(request)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            UNUserNotificationCenter.current().add(request) { @Sendable error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
     }
 }
 
