@@ -1,6 +1,6 @@
 FLOWMO — FRIENDS & FAMILY MAC PREVIEW
 
-Version 1.0 (build 5)
+Version 1.0 (build 6)
 Requires macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
 
 BEFORE YOU OPEN IT
@@ -54,8 +54,9 @@ later. Reflection can turn a parked thought into the next step, and Done puts
 that step back into editable Idle without starting another session.
 
 Standard Mac menus provide Quit, clipboard editing, Undo/Redo, and window
-controls. This build also updates the icon, Focus artwork, typography, and
-illustrated first-run tutorial.
+controls. This build includes the refreshed icon, Focus artwork, typography,
+and illustrated first-run tutorial introduced in build 5. Build 6 also fixes
+compatibility for people building the app from source.
 
 After quit or sleep recovery, the clock stays frozen until you choose Continue
 or Restart. Simply opening a window does not resume it. Please check first-run
@@ -91,7 +92,7 @@ https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml
 
 Include:
 
-- Flowmo version 1.0 (build 5)
+- Flowmo version 1.0 (build 6)
 - your macOS version and Mac model
 - what you did
 - what you expected

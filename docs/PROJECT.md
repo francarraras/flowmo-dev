@@ -4,9 +4,9 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 Owner: Fran Carrara  
-Status: 1.0 (5) local release candidate in preparation, including the native polish and separate local iPhone variant. Earlier build 4 artifacts remain unchanged.
+Status: 1.0 (6) release candidate in preparation, including the native polish, separate local iPhone variant, and source-build compatibility fixes found by private GitHub CI. Earlier build 4 and 5 artifacts remain unchanged.
 
 ---
 

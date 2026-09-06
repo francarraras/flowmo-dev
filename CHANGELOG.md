@@ -2,6 +2,16 @@
 
 Notable changes are recorded here.
 
+## 1.0 (6) — Release candidate
+
+- Fixed source-build compatibility found by GitHub CI in the built-in core
+  checks and iPhone notification adapter. Reminder scheduling still waits for
+  system completion before a newer plan cancels or replaces it.
+- Added an Intel Mac CLI verification job alongside the existing native gates,
+  and recorded the operating system and toolchain versions in CI output.
+  Build 5's visual design and session behavior are retained; its earlier
+  archives remain unchanged.
+
 ## 1.0 (5) — Release candidate
 
 - Restored standard Mac application, Edit, and Window menus, including Quit,

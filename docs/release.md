@@ -218,6 +218,12 @@ is moved elsewhere.
 checks the entitled phone/widget simulator build. Run the Flowmo Local and
 physical-device checks below separately; the script does not cover them.
 
+GitHub CI also builds and runs the Release CLI and core proofs on a standard
+Intel Mac runner, including isolated JSON and privacy checks. This verifies
+native Intel execution of the candidate source; exact universal archive
+verification remains part of local packaging. Keep the reported CI operating
+system and toolchain versions with each run's result.
+
 From a clean checkout of the candidate revision:
 
 1. Run `swift format lint --strict --recursive Package.swift Sources Tests Apps`.

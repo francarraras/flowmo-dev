@@ -1,6 +1,6 @@
 # Source and asset provenance
 
-Last reviewed: 2026-09-05
+Last reviewed: 2026-09-06
 
 The project owner has represented that Flowmo's product concept, design, source
 code, and current visual material are original personal work, created with AI
@@ -24,7 +24,7 @@ Personal Team signing. None of its implementation or assets were incorporated.
 Maintenance follows Apple's platform API and extension requirements; the
 metadata shared with the system display is documented in [`PRIVACY.md`](PRIVACY.md).
 
-The current build 5 visual treatment uses two original assets generated on
+The visual treatment introduced in build 5 uses two original assets generated on
 2026-09-05 with Codex's built-in OpenAI image generation tool from text-only
 design prompts, without reference images, third-party brand material, or
 private session/tester data:

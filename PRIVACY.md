@@ -1,13 +1,13 @@
 # Privacy
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 Flowmo does not currently operate a server and contains no third-party
 analytics, advertising, or crash-reporting SDK. The entitled Mac and iPhone
 apps transmit session data only to Apple's CloudKit service for private
 cross-device synchronization. Flowmo does not transmit it to a developer-run
 server. The separate **Flowmo Local** iPhone app does not start CloudKit or
-transmit session data. It is the build 5 variant for free Personal Team
+transmit session data. It is the local-only variant for free Personal Team
 testing; the selected distribution scope does not require paid Apple Developer
 membership. The entitled targets remain in the source for eligible contributors.
 

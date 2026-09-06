@@ -1,6 +1,6 @@
 # Flowmo — visual rules
 
-Compact Flowmo is one charcoal square with one circular aperture that does not move. Phase is what the aperture holds. The Distant Horizon is the active iPhone Focus canvas and an optional Mac Focus presentation. Champagne marks rest being earned or already earned, never a Focus finish line. The current visual polish is part of the build 5 candidate; previously prepared build 4 artifacts remain unchanged.
+Compact Flowmo is one charcoal square with one circular aperture that does not move. Phase is what the aperture holds. The Distant Horizon is the active iPhone Focus canvas and an optional Mac Focus presentation. Champagne marks rest being earned or already earned, never a Focus finish line. The current visual polish was introduced in build 5 and is retained in build 6; earlier preview artifacts remain unchanged.
 
 - **Palette.** Graphite **field** `#090A0C`, ivory **ink** `#F3F1EA`, readable neutral **mute** `#AAA9A4` and **faint** `#898A87`, **line** `#1C1E21`, and **track** `#34373A`. The restrained warm-metal rest accent is **champagne** `#D6B889`.
 - **Icon.** The integrated original aperture-and-incision icon uses graphite, an ivory rim, and a restrained champagne opening. It is a provisional visual identity; the working product name remains Flowmo. The current shared Mac/iPhone catalog uses its size derivatives; the earlier crescent master remains as build 4 provenance. Source and generation records are in [`Apps/IconSource/README.md`](../Apps/IconSource/README.md).
