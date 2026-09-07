@@ -10,9 +10,10 @@ The Mac window is the main product, with a menu-bar clock and an optional
 Distant Horizon Focus scene. iPhone runs the same loop in a native interface.
 The terminal controls and displays the same local session as the Mac app.
 
-**Release preparation:** source and local packages are being prepared for
-GitHub. This README does not announce a published download. The working name
-is Flowmo, and the source includes the [MIT license](LICENSE).
+**Public preview:** [Flowmo 1.0, build 6](https://github.com/francarraras/flowmo-dev/releases/tag/v1.0.0-preview.6)
+is available for Mac and the terminal. Read its known verification limits before
+installing; this is a preview, not a fully verified production release. The
+working name is Flowmo, and the source uses the [MIT license](LICENSE).
 
 ![Mac Focus scene with a count-up clock over the bundled horizon artwork](docs/screenshots/mac-focus-scene.png)
 
@@ -28,7 +29,7 @@ Native Mac and iPhone Simulator captures with synthetic example text.
 
 | Platform | Installation | Requirements |
 | --- | --- | --- |
-| Mac app | Reviewed Mac ZIP from this repository's [Releases](https://github.com/francarraras/flowmo-dev/releases), once published; [source build](#run-from-source) is available now. | macOS 14+, Apple silicon or Intel |
+| Mac app | Reviewed Mac ZIP from this repository's [Releases](https://github.com/francarraras/flowmo-dev/releases); [source build](#run-from-source) is available now. | macOS 14+, Apple silicon or Intel |
 | Mac terminal | Separate universal CLI archive and installer from the same release, or [build and install locally](#install-the-terminal-command). | macOS 14+, Apple silicon or Intel |
 | iPhone | [Build FlowmoPhoneLocal in Xcode](#iphone-with-xcode) with your free Personal Team. | iOS 17+, a Mac with Xcode, your Apple Account |
 
@@ -39,7 +40,7 @@ Windows, Android, iCloud sync, and a Home Screen widget are outside this release
 
 ### Mac download
 
-When a reviewed release is published, download its Mac `.zip` and matching
+Download the preview’s Mac `.zip` and matching
 `.sha256` file from the same release. In the folder containing both, verify the
 checksum using its actual filename:
 
@@ -144,7 +145,7 @@ session data, or replace an existing installation without `--replace`.
 
 For a reviewed CLI download, choose the separate `macOS-universal-cli.tar.gz`
 archive and its `.sha256` file from the same
-[Release](https://github.com/francarraras/flowmo-dev/releases), once published.
+[Release](https://github.com/francarraras/flowmo-dev/releases).
 Verify the archive before extracting it, using the actual filenames:
 
 ```bash

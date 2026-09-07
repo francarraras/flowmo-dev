@@ -1,6 +1,6 @@
 # Release procedure
 
-Flowmo 1.0 is a local candidate being prepared for GitHub distribution.
+Flowmo 1.0 build 6 is published as a GitHub prerelease.
 The repository owner is recorded as Fran Carrara. Flowmo is the working name
 until the owner reopens branding. An owner-authorized Mac-only friends-and-family
 preview may be shared under the explicit limitations below.
@@ -9,9 +9,9 @@ preview may be shared under the explicit limitations below.
 
 The near-term distribution target is a GitHub release with a Mac app and a
 separate Mac terminal executable. App Store publication is not a prerequisite
-or part of this candidate. No public download, donation address, or iPhone beta
-link is configured yet; do not add invented destinations or describe a local
-candidate as published.
+or part of this candidate. [Build 6 preview downloads](https://github.com/francarraras/flowmo-dev/releases/tag/v1.0.0-preview.6)
+are available. No donation address or iPhone beta link is configured; do not add
+invented destinations.
 
 On 2026-09-05 the owner ruled out paying for Apple Developer Program membership.
 The chosen path is open source plus local-only Mac/terminal downloads, with
@@ -53,6 +53,22 @@ Do not claim a private-report button is enabled without checking it. A donation
 can be a README/About link and `.github/FUNDING.yml` once the owner supplies a destination;
 no payment SDK or account system is needed. See [GitHub licensing](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository)
 and [funding links](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository).
+
+### Build 6 preview decision
+
+On 2026-09-07 the owner explicitly approved public source/history and build 6
+Mac/terminal distribution as a preview, with these checks deferred: real macOS
+Focus Guard interception/return; full VoiceOver and large-text touch navigation;
+fresh-recipient Gatekeeper opening; installed terminal no-argument GUI artwork
+with isolated preferences; full physical-phone reminder/accessibility coverage
+and later provisioning renewal. These are unverified paths, not confirmed
+failures. The public release notes carry these limits. This decision applies
+only to build 6 and does not waive future release checks.
+
+Both archives retain source revision `be97de9020980150a6efbfa2dad6f6aeda3ed12e`;
+release tag `v1.0.0-preview.6` points to its receipt revision
+`d824c4dcfd821d20381fcce0f9769b64d2a76fd0`. GitHub confidential reporting was
+enabled and verified before the downloads were published.
 
 ### Terminal candidate packaging
 
