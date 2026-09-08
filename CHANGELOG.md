@@ -2,7 +2,7 @@
 
 Notable changes are recorded here.
 
-## Unreleased
+## 1.0 (7) — Release candidate
 
 - Added matching Canvas illustrations to the existing Mac/iPhone first-use
   tutorial. Native accessible instructions, Skip, replay, and one-time completion

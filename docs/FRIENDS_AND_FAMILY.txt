@@ -1,6 +1,6 @@
 FLOWMO — FRIENDS & FAMILY MAC PREVIEW
 
-Version 1.0 (build 6)
+Version 1.0 (build 7)
 Requires macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
 
 BEFORE YOU OPEN IT
@@ -92,7 +92,7 @@ https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml
 
 Include:
 
-- Flowmo version 1.0 (build 6)
+- Flowmo version 1.0 (build 7)
 - your macOS version and Mac model
 - what you did
 - what you expected
