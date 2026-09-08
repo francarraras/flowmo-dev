@@ -2,7 +2,7 @@
 
 Set one intention. Let Focus count up. Take the break you earn.
 
-[Watch the 25-second explainer](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/GithubExplainer.mp4)
+https://github.com/user-attachments/assets/825c43f5-21b6-424b-bde2-2ae771d6c329
 
 ## 1. Make room for one thing
 

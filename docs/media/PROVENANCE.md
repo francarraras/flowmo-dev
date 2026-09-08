@@ -12,3 +12,7 @@ Created September 7, 2026 for Flowmo. Source and exports contain synthetic inten
 - Dependency packages sourced from npm. No dependency lifecycle scripts executed during installation. Rendering uses installed Google Chrome locally; downloads were limited to production tooling. No hosted rendering service.
 
 Remotion license reviewed at https://github.com/remotion-dev/remotion/blob/main/LICENSE.md. Its free license permits individuals and companies of up to three employees to create videos. Larger organizations should consult its current terms. Remotion itself is not MIT licensed.
+
+## GitHub inline player
+
+The unchanged Remotion H.264 export was uploaded as a native GitHub attachment on 2026-09-08: https://github.com/user-attachments/assets/825c43f5-21b6-424b-bde2-2ae771d6c329. The README and release page embed this attachment as a player; archive downloads remain available separately.

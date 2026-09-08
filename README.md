@@ -8,7 +8,7 @@ Flowmo is an open-source focus timer for Mac, iPhone, and the terminal. Set one 
 
 ## See it in 25 seconds
 
-[Watch the Flowmo explainer](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/GithubExplainer.mp4)
+https://github.com/user-attachments/assets/825c43f5-21b6-424b-bde2-2ae771d6c329
 
 ## Make room for one thing
 
