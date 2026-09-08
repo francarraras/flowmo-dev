@@ -108,3 +108,14 @@ production tools; their separate terms and source receipts are recorded in
 [media provenance](docs/media/PROVENANCE.md) and
 [media notices](docs/media/THIRD_PARTY_NOTICES.md). The editable source is in the
 release's media pack. Published build 6 binaries predate this source update.
+
+## Mac first-launch help — 2026-09-08
+
+`docs/screenshots/mac-first-open-warning.png` is the unchanged warning capture
+provided by the owner for installation help. It contains only the macOS Flowmo
+alert, with no account, desktop, or session data. SHA-256: `288e9ab4e15a553ffb3f48fb69eaa40fbf4110c1925a41ebfe257fcf08165b3b`.
+It is reproduced as documentation of the system dialog, not bundled app artwork.
+Apple’s interface remains Apple’s material; the repository license does not
+relicense it. No downloaded stock asset, font, dependency, or runtime privacy
+behavior was added. Opening steps were checked against
+https://support.apple.com/en-us/102445 on 2026-09-08.
