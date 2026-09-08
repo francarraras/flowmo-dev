@@ -70,6 +70,48 @@ release tag `v1.0.0-preview.6` points to its receipt revision
 `d824c4dcfd821d20381fcce0f9769b64d2a76fd0`. GitHub confidential reporting was
 enabled and verified before the downloads were published.
 
+### Build 7 local candidate — 2026-09-08
+
+Build 7 packages source `e47264ad30d9bd20fa4e0685147a40afe97963ab`,
+including the Canvas tutorial illustrations. The owner requested packaging,
+installation, and completion of the deferred checks. This is a local candidate;
+build 6 remains the public release, and its preview deferrals do not approve
+public distribution of build 7.
+
+Completed:
+
+- Strict format, 287 tests, core proofs, release builds, and the Mac preview
+  script's build/analysis, privacy, signature, architecture, extraction, and
+  checksum gates passed.
+- Both universal archives were generated without overwriting prior releases.
+  Packaging now rejects missing tutorial images; the Mac package also compares
+  each image byte-for-byte against the committed source.
+- Build 7 Mac app installed in `/Applications/Flowmo.app`; the prior installed
+  app was archived locally for rollback. App data was not moved or deleted.
+- Build 7 CLI installed in the owner's local bin directory. A separate disposable
+  build 6 → 7 installation preserved the synthetic session store byte-for-byte.
+- Free-personal iPhone simulator static analysis passed.
+- Personal Team Release build succeeded and installed over the existing local
+  app on the connected iPhone 15 Pro Max. Device app metadata confirmed build 7.
+  All three tutorial PNGs matched source in both the installed Mac app and the
+  signed phone build. No owner session data was inspected.
+
+Still unverified:
+
+- Real macOS Focus Guard interception, Stay focused return, and fail-open paths.
+- Full VoiceOver and largest-text reachability, including tutorial page controls.
+- Fresh-recipient Gatekeeper opening. The automated rejection is expected for
+  ad-hoc signing and is not evidence that the recipient Open Anyway path works.
+- Installed terminal no-argument GUI artwork with isolated preferences.
+- Physical-phone background reminders, activity edge cases, accessibility, and
+  history preservation through an expired-profile renewal. Reinstalling today
+  establishes installation success, not these behavioral checks.
+
+The desktop-control service timed out during this attempt. Unlocked Mac and
+phone access was requested for interactive verification. Do not mark these
+paths passed until directly observed. See the build 7 manifests in local `dist/`
+and its candidate-generated receipt in `PREVIEW_RELEASES.tsv`.
+
 ### Terminal candidate packaging
 
 After the code and version metadata are reviewed, run from a clean committed
