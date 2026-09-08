@@ -1,6 +1,22 @@
 # Flowmo — Focus Guard
 
-Optional app friction during unpaused Focus. The loop and recovery behavior stay in [`PROJECT.md`](PROJECT.md).
+Focus Guard gives you a chance to reconsider opening selected Mac apps during Focus. It is optional and off by default.
+
+## Quick start
+
+1. Before starting a session, click **Guard** on the intention screen.
+2. Click **Add app** and choose the Mac apps you want to guard.
+3. Turn on the switch beside Guard, then start your session. Guard takes effect when Focus begins.
+
+When you open a selected app, Flowmo tries to hide it and shows **Stay focused** and **Open once**. **Stay focused** keeps it hidden and tries to return you to your previous app. **Open once** lets you use it until you switch away; opening it again brings back the checkpoint.
+
+Your selected apps are remembered. On the intention screen, expand **Guard** to remove an app, or turn the switch off to disable Guard.
+
+Guard only runs during active Focus. It is inactive during Prepare, breaks, reflection, and recovery while waiting for Continue. Closing Flowmo’s window keeps guarding active; quitting Flowmo removes it. It does not force-quit apps, block individual websites, or require Accessibility permission. If macOS refuses to hide an app, that app remains accessible. It is available on Mac only.
+
+## Implementation and verification
+
+The sections below describe developer behavior and evidence. The loop and recovery behavior stay in [`PROJECT.md`](PROJECT.md).
 
 ---
 
