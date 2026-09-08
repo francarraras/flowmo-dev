@@ -38,3 +38,15 @@ distributed in the app binary.
 This is a release inventory, not a promise about future revisions. Re-run the
 dependency, asset, and attribution review whenever a package, SDK, font, image,
 snippet, generated artifact, or build action is added.
+
+## Launch media and tutorial illustrations — 2026-09-07
+
+Three original HTML Canvas illustrations are bundled in FlowmoLook for the
+existing Mac/iPhone tutorial. Exact instructions remain native accessible text;
+images use synthetic examples only. No font files, renderer, new privacy API,
+network service, or application dependency is bundled. Assets follow this repo's
+MIT license. Remotion 4.0.522 and React 19.2.8 were used only as offline media
+production tools; their separate terms and source receipts are recorded in
+[media provenance](docs/media/PROVENANCE.md) and
+[media notices](docs/media/THIRD_PARTY_NOTICES.md). The editable source is in the
+release's media pack. Published build 6 binaries predate this source update.

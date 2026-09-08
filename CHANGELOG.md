@@ -2,6 +2,14 @@
 
 Notable changes are recorded here.
 
+## Unreleased
+
+- Added matching Canvas illustrations to the existing Mac/iPhone first-use
+  tutorial. Native accessible instructions, Skip, replay, and one-time completion
+  behavior are retained.
+- Added a 25-second illustrated explainer and tutorial cards to the GitHub
+  documentation, with a portrait export for X. Existing build 6 archives are unchanged.
+
 ## 1.0 (6) — Release candidate
 
 - Fixed source-build compatibility found by GitHub CI in the built-in core

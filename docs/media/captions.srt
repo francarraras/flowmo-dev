@@ -1,0 +1,29 @@
+1
+00:00:00,000 --> 00:00:03,000
+Flowmo. One thing. Your own pace.
+Focus counts up. Rest grows with it.
+
+2
+00:00:03,000 --> 00:00:07,000
+Name what you’re here to do.
+Take a moment to settle. Then Focus.
+
+3
+00:00:07,000 --> 00:00:12,000
+Focus counts up. You decide when to stop.
+Illustrated example; time condensed.
+
+4
+00:00:12,000 --> 00:00:17,000
+50 minutes focused earns 10 minutes of rest.
+Default ratio: five to one.
+
+5
+00:00:17,000 --> 00:00:21,000
+Leave an optional next step for next time.
+Finish the session. Start again when you choose.
+
+6
+00:00:21,000 --> 00:00:25,000
+Flowmo. Open source. Try the preview.
+Mac and terminal downloads. iPhone via Xcode.

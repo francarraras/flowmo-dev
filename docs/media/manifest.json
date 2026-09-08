@@ -1,0 +1,42 @@
+[
+  {
+    "file": "exports/GithubExplainer.mp4",
+    "bytes": 7567300,
+    "sha256": "1c3ffdd4c767b7d169f29086c1fdb7569c05920890f9df92bd5cbd53adac1b16"
+  },
+  {
+    "file": "exports/Illustration1.png",
+    "bytes": 491567,
+    "sha256": "a9cd46a7930b8f62abf372df849df6e1266bc020d545250a532f46f71cf9f335"
+  },
+  {
+    "file": "exports/Illustration2.png",
+    "bytes": 716450,
+    "sha256": "32549109842b25e0b2c0f9a59097dc8bf1b47a182a11f3053991d5956ef9d719"
+  },
+  {
+    "file": "exports/Illustration3.png",
+    "bytes": 669577,
+    "sha256": "8167349138bea12a18d277b1b3c2c64bc789267cdbeb4d179d20a13be6e6c403"
+  },
+  {
+    "file": "exports/Onboarding1.png",
+    "bytes": 608983,
+    "sha256": "0a45f9ecaa20e21155f6b7f012a8863cb0fbf0879efd2b45c24385a8e88c66c4"
+  },
+  {
+    "file": "exports/Onboarding2.png",
+    "bytes": 761688,
+    "sha256": "569597b70fd20e650e40370735af7a7fb18da72ac6f31c23a47980460efbaa09"
+  },
+  {
+    "file": "exports/Onboarding3.png",
+    "bytes": 801009,
+    "sha256": "9b572a2f28d53c76de6eef282ece5bc0240f5dd582a99ce0c25aa226b6189ab8"
+  },
+  {
+    "file": "exports/XExplainer.mp4",
+    "bytes": 7597438,
+    "sha256": "d6ffb6f98722babd00efca8d9e1fc5d79a2ccbbf6de8608ffbb60df1cf526c54"
+  }
+]

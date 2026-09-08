@@ -24,3 +24,21 @@ enum HorizonArtwork {
         return Image(systemName: "sun.horizon")
     }()
 }
+
+/// Canvas illustrations are decorative; tutorial instructions remain native text.
+@MainActor
+enum IntroductionArtwork {
+    static let images: [Image] = (1...3).map { page in
+        let url = Bundle.module.url(forResource: "Introduction\(page)", withExtension: "png")
+        #if os(macOS)
+            if let url, let source = NSImage(contentsOf: url) {
+                return Image(nsImage: source)
+            }
+        #elseif os(iOS)
+            if let url, let source = UIImage(contentsOfFile: url.path) {
+                return Image(uiImage: source)
+            }
+        #endif
+        return HorizonArtwork.image
+    }
+}

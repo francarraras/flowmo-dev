@@ -1,0 +1,26 @@
+[
+  {
+    "step": 1,
+    "title": "Make room for one thing.",
+    "body": "Type your intention once. Settle in. Begin when ready.",
+    "alt": "An intention card reading Write the first page, with a Start button.",
+    "card": "exports/Onboarding1.png",
+    "illustration": "exports/Illustration1.png"
+  },
+  {
+    "step": 2,
+    "title": "Follow your own rhythm.",
+    "body": "Focus counts up. You decide when to stop.",
+    "alt": "A Focus clock at 12:48 with 2 minutes 34 seconds earned rest and a reminder to park a thought.",
+    "card": "exports/Onboarding2.png",
+    "illustration": "exports/Illustration2.png"
+  },
+  {
+    "step": 3,
+    "title": "Rest. Reflect. Return.",
+    "body": "Your focus earns your break. Leave an optional next step.",
+    "alt": "A ten-minute Break ring. The example shows fifty minutes of focus earning ten minutes of rest at the default five-to-one ratio.",
+    "card": "exports/Onboarding3.png",
+    "illustration": "exports/Illustration3.png"
+  }
+]

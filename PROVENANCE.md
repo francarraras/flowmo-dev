@@ -96,3 +96,15 @@ or contractor.
 Future contributors must attest that their contribution is theirs to license,
 that required third-party notices are recorded, and that private user session
 content or unauthorized third-party code was not supplied to an AI tool.
+
+## Launch media and tutorial illustrations — 2026-09-07
+
+Three original HTML Canvas illustrations are bundled in FlowmoLook for the
+existing Mac/iPhone tutorial. Exact instructions remain native accessible text;
+images use synthetic examples only. No font files, renderer, new privacy API,
+network service, or application dependency is bundled. Assets follow this repo's
+MIT license. Remotion 4.0.522 and React 19.2.8 were used only as offline media
+production tools; their separate terms and source receipts are recorded in
+[media provenance](docs/media/PROVENANCE.md) and
+[media notices](docs/media/THIRD_PARTY_NOTICES.md). The editable source is in the
+release's media pack. Published build 6 binaries predate this source update.

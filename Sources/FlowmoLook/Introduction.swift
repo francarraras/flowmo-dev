@@ -201,49 +201,18 @@ public struct IntroductionView: View {
 
     private var illustration: some View {
         GeometryReader { geometry in
-            ZStack(alignment: .topLeading) {
-                HorizonArtwork.image
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
-                    .overlay(atmo.field.opacity(0.12))
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(illustrationLabel)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(atmo.mute)
-                    Text(illustrationValue)
-                        .font(.system(size: 24, weight: .regular))
-                        .monospacedDigit()
-                        .tracking(-0.8)
-                        .foregroundStyle(state.page == 2 ? Atmosphere.rest : atmo.ink)
+            IntroductionArtwork.images[state.page]
+                .resizable()
+                .scaledToFit()
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .background(Color(red: 0.035, green: 0.039, blue: 0.047))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(atmo.ink.opacity(0.09), lineWidth: 1)
                 }
-                .padding(16)
-            }
-            .frame(width: geometry.size.width, height: geometry.size.height)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(atmo.ink.opacity(0.09), lineWidth: 1)
-            }
         }
         .accessibilityHidden(true)
-    }
-
-    private var illustrationLabel: String {
-        switch state.page {
-        case 0: "Make a little space"
-        case 1: "Focus counts up"
-        default: "Rest follows your effort"
-        }
-    }
-
-    private var illustrationValue: String {
-        switch state.page {
-        case 0: "One intention."
-        case 1: "12:48"
-        default: "50m / 10m"
-        }
     }
 
     private var notificationChoice: some View {

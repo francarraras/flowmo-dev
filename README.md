@@ -15,6 +15,10 @@ is available for Mac and the terminal. Read its known verification limits before
 installing; this is a preview, not a fully verified production release. The
 working name is Flowmo, and the source uses the [MIT license](LICENSE).
 
+[![Watch the 25-second Flowmo explainer](docs/media/explainer-poster.jpg)](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/GithubExplainer.mp4)
+
+[Watch the flow in 25 seconds](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/GithubExplainer.mp4) · [Tutorial cards](docs/media/README.md)
+
 ![Mac Focus scene with a count-up clock over the bundled horizon artwork](docs/screenshots/mac-focus-scene.png)
 
 <p>
