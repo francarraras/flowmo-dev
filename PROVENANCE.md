@@ -119,3 +119,14 @@ Apple’s interface remains Apple’s material; the repository license does not
 relicense it. No downloaded stock asset, font, dependency, or runtime privacy
 behavior was added. Opening steps were checked against
 https://support.apple.com/en-us/102445 on 2026-09-08.
+
+## Focus Guard setup capture — 2026-09-08
+
+`docs/screenshots/mac-guard-setup.png` is an unchanged native window screenshot
+of published preview 6, captured with a disposable local store. It shows the
+synthetic intention “Write the first page” and Discord selected as an example;
+no Discord content, owner session, or desktop is included. This illustrates
+setup, not proof of foreground interception. SHA-256: `54a3d58f2154cd754071fa9ff0645f2af292c960bcd30e3134f94f70e32980a9`.
+No new artwork, external dependency, font, or app resource was added. The macOS
+window capture includes system chrome and follows the existing documentation
+screenshot notices.

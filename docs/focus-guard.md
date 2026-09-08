@@ -8,6 +8,10 @@ Focus Guard gives you a chance to reconsider opening selected Mac apps during Fo
 2. Click **Add app** and choose the Mac apps you want to guard.
 3. Turn on the switch beside Guard, then start your session. Guard takes effect when Focus begins.
 
+<img src="screenshots/mac-guard-setup.png" width="320" alt="Flowmo Focus Guard setup: sample intention Write the first page, Guard enabled for Discord, with Remove and Add app controls visible." />
+
+*Choose your apps before starting Focus. Discord is selected here as an example.*
+
 When you open a selected app, Flowmo tries to hide it and shows **Stay focused** and **Open once**. **Stay focused** keeps it hidden and tries to return you to your previous app. **Open once** lets you use it until you switch away; opening it again brings back the checkpoint.
 
 Your selected apps are remembered. On the intention screen, expand **Guard** to remove an app, or turn the switch off to disable Guard.

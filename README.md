@@ -37,6 +37,10 @@ Choose the apps you want to avoid during Focus. If you open one, Flowmo tries to
 
 **Set it up:** before starting a session, click **Guard** on the intention screen, choose **Add app**, select your apps, and turn on the switch beside Guard. Flowmo remembers your choices. To change them, return to the intention screen and use **Remove** or turn the switch off.
 
+<img src="docs/screenshots/mac-guard-setup.png" width="320" alt="Flowmo Focus Guard setup: sample intention Write the first page, Guard enabled for Discord, with Remove and Add app controls visible." />
+
+*Choose your apps before starting Focus. Discord is selected here as an example.*
+
 Guard is **off by default** and works only during active Focus. It stops during Prepare, breaks, and reflection. Closing the Flowmo window keeps it running; quitting Flowmo ends guarding.
 
 It’s a gentle checkpoint, not a hard block: it doesn’t quit apps, block individual websites, or require Accessibility permission. If macOS won’t hide an app, it stays accessible. Focus Guard is available on **Mac only**.
