@@ -112,6 +112,43 @@ phone access was requested for interactive verification. Do not mark these
 paths passed until directly observed. See the build 7 manifests in local `dist/`
 and its candidate-generated receipt in `PREVIEW_RELEASES.tsv`.
 
+### Build 7 interactive follow-up — 2026-09-08
+
+After the owner unlocked the devices, the installed Mac app was launched with
+an isolated `FLOWMO_HOME` and synthetic content. All three tutorial pages were
+visible; Set intention returned to empty Idle. Prepare advanced to open-ended
+Focus; Stop produced 44 seconds of earned Break from about 3.7 minutes of Focus.
+Reflection and Close Beat were reachable. The forced first-use launch argument
+kept tutorial version zero visible to that process, so the Mac run is not proof
+of persisted tutorial dismissal. A separate preference directory was requested
+through the process environment, but preference isolation was not established.
+
+On the disposable iPhone 17 simulator (iOS 26.5), build 7 was tested with
+`accessibility-extra-extra-extra-large` content size:
+
+- Tutorial Skip and Continue stayed visible; page navigation and body scrolling
+  were observed. Full end-to-end reading of every scrolled paragraph was not
+  established. Set intention returned to Idle without starting a session.
+- Prepare, Focus now, Park thought, End focus, earned Break, Reflection, and
+  Close Beat were operated through the UI. Focus time continued during capture.
+- A completed next step returned to editable Idle. Relaunch stayed at Idle
+  instead of replaying the tutorial; Data → How it works replayed it explicitly.
+- One typed next step appeared to lose its final character at completion. A
+  repeat with a distinctive five-digit ending preserved the exact visible field
+  value through Close Beat and Idle. Input automation/autocorrection also changed
+  typed words. The truncation observation is unresolved, not a confirmed defect
+  or a demonstrated fix; retest by direct typing before declaring this path fully
+  verified.
+
+Focus Guard was configured with Calculator in the disposable Mac store, but
+normal foreground activation and interception were not established through the
+computer-control tool. No interception pass or Guard defect is claimed. The
+installed no-argument CLI process launched, but the computer-control tool rejected
+its standalone executable as an app target; its visible artwork remains unverified.
+Full VoiceOver navigation and fresh-recipient Gatekeeper opening remain open.
+The owner was asked to observe the physical-iPhone Prepare background reminder;
+no response had arrived when these results were recorded.
+
 ### Terminal candidate packaging
 
 After the code and version metadata are reviewed, run from a clean committed
