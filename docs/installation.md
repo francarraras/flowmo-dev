@@ -21,6 +21,10 @@ The preview is not notarized by Apple. The **“Flowmo” Not Opened** warning b
 These steps follow [Apple’s opening instructions](https://support.apple.com/en-us/102445). If the message instead says the app **will damage your computer** or **is damaged**, stop and [report the problem](https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml).
 
 
+### Optional: set up Focus Guard
+
+Before starting your first session, click **Guard** on the intention screen, choose **Add app**, select the apps you want to avoid, and turn on the switch beside Guard. During Focus, opening a selected app gives you a **Stay focused** or **Open once** choice. Guard is Mac-only and off by default. [How Focus Guard works](../README.md#focus-guard-on-mac)
+
 ## Terminal download
 
 Download the `macOS-universal-cli.tar.gz` archive and its checksum from the same release. Verify and extract it, then run `./install.sh` from the extracted folder. The installer checks the executable and artwork before installing them.

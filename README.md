@@ -22,11 +22,24 @@ There’s no fixed Focus deadline. If you quit or your Mac sleeps, Flowmo keeps 
 
 ## A quiet place to focus
 
-- **Mac:** a compact window, a menu-bar clock, and a larger Focus scene. Optional Focus Guard adds friction when you open selected apps.
+- **Mac:** a compact window, a menu-bar clock, and a larger Focus scene. Optional [Focus Guard](#focus-guard-on-mac) asks you to reconsider opening selected apps.
 - **iPhone:** the same focus-and-rest rhythm, with a Focus clock on the Lock Screen and supported Dynamic Island.
 - **Terminal:** start a session, park a thought, or keep the clock beside your work. The terminal and Mac app share the same local session.
 
 Sessions stay on your device. There’s no Flowmo account, advertising, or analytics service. Export or delete your data from the app whenever you choose. [Privacy](PRIVACY.md)
+
+## Focus Guard on Mac
+
+Choose the apps you want to avoid during Focus. If you open one, Flowmo tries to hide it and brings up two choices:
+
+- **Stay focused:** keep that app hidden. Flowmo tries to return you to the app you were working in.
+- **Open once:** open it for this visit. Switch away and it becomes guarded again.
+
+**Set it up:** before starting a session, click **Guard** on the intention screen, choose **Add app**, select your apps, and turn on the switch beside Guard. Flowmo remembers your choices. To change them, return to the intention screen and use **Remove** or turn the switch off.
+
+Guard is **off by default** and works only during active Focus. It stops during Prepare, breaks, and reflection. Closing the Flowmo window keeps it running; quitting Flowmo ends guarding.
+
+It’s a gentle checkpoint, not a hard block: it doesn’t quit apps, block individual websites, or require Accessibility permission. If macOS won’t hide an app, it stays accessible. Focus Guard is available on **Mac only**.
 
 ## Get started
 
