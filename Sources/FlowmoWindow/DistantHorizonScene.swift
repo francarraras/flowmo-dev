@@ -13,7 +13,6 @@ struct DistantHorizonScene: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .title) private var titleScale: CGFloat = 1
     @ScaledMetric(relativeTo: .body) private var interfaceScale: CGFloat = 1
-    @State private var dragStartOrigin: NSPoint?
 
     var body: some View {
         GeometryReader { proxy in
@@ -26,8 +25,7 @@ struct DistantHorizonScene: View {
 
             ZStack {
                 DistantHorizonBackdrop()
-                    .contentShape(Rectangle())
-                    .gesture(sceneDragGesture)
+                    .overlay(SceneDragSurface())
                     .accessibilityHidden(true)
 
                 VStack(spacing: 0) {
@@ -62,26 +60,6 @@ struct DistantHorizonScene: View {
             }
         }
         .accessibilityElement(children: .contain)
-    }
-
-    private var sceneDragGesture: some Gesture {
-        DragGesture(minimumDistance: 2)
-            .onChanged { value in
-                guard let window = controller.attention.window else { return }
-                if dragStartOrigin == nil {
-                    dragStartOrigin = window.frame.origin
-                }
-                guard let dragStartOrigin else { return }
-                window.setFrameOrigin(
-                    FocusSceneWindowDrag.origin(
-                        from: dragStartOrigin,
-                        translation: value.translation
-                    )
-                )
-            }
-            .onEnded { _ in
-                dragStartOrigin = nil
-            }
     }
 
     @ViewBuilder
@@ -215,5 +193,23 @@ private struct DistantHorizonAction: View {
         .onHover { hovering = isEnabled && $0 }
         .animation(reduceMotion ? nil : Motion.hover, value: hovering)
         .animation(reduceMotion ? nil : Motion.hover, value: focused)
+    }
+}
+
+/// Native tracking uses screen coordinates, so moving the window cannot feed
+/// back into the gesture's translation. Controls above this surface keep clicks.
+struct SceneDragSurface: NSViewRepresentable {
+    func makeNSView(context: Context) -> SceneDragView {
+        SceneDragView(frame: .zero)
+    }
+
+    func updateNSView(_ nsView: SceneDragView, context: Context) {}
+}
+
+final class SceneDragView: NSView {
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
     }
 }

@@ -32,15 +32,6 @@ final class SceneCapableWindow: NSWindow {
     }
 }
 
-enum FocusSceneWindowDrag {
-    static func origin(from start: NSPoint, translation: CGSize) -> NSPoint {
-        NSPoint(
-            x: start.x + translation.width,
-            y: start.y - translation.height
-        )
-    }
-}
-
 /// Every AppKit property changed for the Scene is process-local and restored.
 /// This deliberately stays outside DisplayMode and the persisted World.
 struct FocusSceneWindowSnapshot {
@@ -69,6 +60,7 @@ final class FocusSceneWindowCoordinator {
     private static let maximumContentSize = NSSize(width: 10_000, height: 10_000)
 
     private weak var window: NSWindow?
+    private var isApplyingFrame = false
     private(set) var snapshot: FocusSceneWindowSnapshot?
 
     init(window: NSWindow) {
@@ -121,7 +113,7 @@ final class FocusSceneWindowCoordinator {
     /// Keep the one movable Scene visible when its screen changes or disappears.
     /// Connecting another display never clones it or moves it by itself.
     func reflow() {
-        guard snapshot != nil, let window else { return }
+        guard snapshot != nil, !isApplyingFrame, let window else { return }
         guard let screen = window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
         applySceneFrame(
             Self.clampedFrame(window.frame, within: screen.visibleFrame),
@@ -167,7 +159,9 @@ final class FocusSceneWindowCoordinator {
     }
 
     private func applySceneFrame(_ frame: NSRect, visibleFrame: NSRect) {
-        guard let window else { return }
+        guard let window, !isApplyingFrame else { return }
+        isApplyingFrame = true
+        defer { isApplyingFrame = false }
         window.contentMinSize = NSSize(width: 1, height: 1)
         window.contentMaxSize = Self.maximumContentSize
         window.setFrame(frame, display: true, animate: false)

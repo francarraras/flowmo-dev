@@ -2,6 +2,15 @@
 
 Notable changes are recorded here.
 
+## Unreleased
+
+- Removed duplicate Mac Focus Scene icon/menu entry points; the named Focus scene
+  (Scene in Mini) button remains, and the chrome menu only changes window size.
+- Replaced Scene's custom window dragging with native macOS dragging and stopped
+  repositioning it when a drag crosses displays.
+- Kept Scene's large window size limits independent of SwiftUI's Classic/Mini
+  layout, preventing clipped miniature canvases during presentation changes.
+
 ## 1.0 (7) — Release candidate
 
 - Added matching Canvas illustrations to the existing Mac/iPhone first-use

@@ -1,5 +1,6 @@
 import AppKit
 import FlowmoCore
+import FlowmoLook
 import SwiftUI
 import XCTest
 
@@ -22,7 +23,7 @@ final class FocusSceneWindowTests: XCTestCase {
         XCTAssertEqual(FocusSceneEntryControl.accessibilityLabel, "Open Focus Scene")
         XCTAssertEqual(
             FocusSceneEntryControl.accessibilityHint,
-            "Opens the same Focus in Scene. The menu also offers Focus Scene and window sizes."
+            "Opens the same Focus in a large, movable window."
         )
     }
 
@@ -196,14 +197,63 @@ final class FocusSceneWindowTests: XCTestCase {
         XCTAssertEqual(clamped.size, offscreen.size)
     }
 
-    func testSceneDragMathMatchesSwiftUIAndAppKitCoordinateDirections() {
-        XCTAssertEqual(
-            FocusSceneWindowDrag.origin(
-                from: NSPoint(x: 100, y: 200),
-                translation: CGSize(width: 30, height: 40)
-            ),
-            NSPoint(x: 130, y: 160)
-        )
+    func testHostedSceneKeepsLargeConstraintsAndPositionAfterLayoutFromBothModes() throws {
+        for mode in [DisplayMode.classic, .mini] {
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let suite = "flowmo-scene-\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            defer {
+                try? FileManager.default.removeItem(at: root)
+                defaults.removePersistentDomain(forName: suite)
+            }
+            defaults.set(mode.rawValue, forKey: "FlowmoDisplayMode")
+            defaults.set(IntroductionState.currentVersion, forKey: IntroductionState.completionKey)
+            let store = Store(root: root)
+            try store.save(.empty)
+            let controller = FlowmoSessionController(
+                store: store,
+                attention: AttentionAdapter(canNotify: false),
+                userDefaults: defaults
+            )
+            controller.beginMacProcessLifetime()
+            controller.intentionDraft = "Synthetic scene test"
+            controller.start()
+            let delegate = AppDelegate(controller: controller)
+            let window = delegate.makeWindow()
+            delegate.window = window
+            controller.attention.window = window
+            window.delegate = delegate
+            delegate.observeWindowContentSize()
+            let originalFrame = window.frame
+            controller.startFocusScene()
+            let sessionID = controller.world.live?.id
+            window.contentView?.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+
+            XCTAssertGreaterThanOrEqual(window.frame.width, 720)
+            XCTAssertGreaterThanOrEqual(window.frame.height, 480)
+            XCTAssertEqual(
+                delegate.windowWillResize(window, to: DisplayMode.mini.windowContentSize),
+                FocusSceneWindowCoordinator.minimumContentSize
+            )
+            XCTAssertGreaterThan(window.contentMaxSize.width, 720)
+            let movedOrigin = NSPoint(x: window.frame.minX + 20, y: window.frame.minY + 10)
+            window.setFrameOrigin(movedOrigin)
+            window.contentView?.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+            XCTAssertEqual(window.frame.origin, movedOrigin)
+            XCTAssertEqual(
+                delegate.windowWillResize(window, to: DisplayMode.mini.windowContentSize),
+                FocusSceneWindowCoordinator.minimumContentSize
+            )
+            controller.leaveFocusScene()
+            window.contentView?.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+            XCTAssertEqual(window.frame, originalFrame)
+            XCTAssertEqual(controller.world.live?.id, sessionID)
+            XCTAssertEqual(controller.displayMode, mode)
+            window.orderOut(nil)
+        }
     }
 
     func testRootHostingViewNeverConsumesControlClicksAsWindowDrags() {

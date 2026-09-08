@@ -10,7 +10,7 @@ enum FocusSceneEntryControl {
     static let compactTitle = "Scene"
     static let accessibilityLabel = "Open Focus Scene"
     static let accessibilityHint =
-        "Opens the same Focus in Scene. The menu also offers Focus Scene and window sizes."
+        "Opens the same Focus in a large, movable window."
 
     static func isAvailable(phase: SessionPhase?, isPaused: Bool) -> Bool {
         phase == .focus && !isPaused
@@ -77,7 +77,6 @@ struct FlowmoRootView: View {
         .environment(\.atmosphere, atmo)
         .animation(reduceMotion ? nil : Motion.phase, value: status.isPaused)
         .animation(reduceMotion ? nil : Motion.phase, value: controller.displayMode)
-        .animation(reduceMotion ? nil : Motion.phase, value: focusScene)
         .onAppear { controller.presentIntroductionIfNeeded() }
         .onChange(of: controller.canShowIntroduction) { _, _ in
             controller.presentIntroductionIfNeeded()
@@ -96,15 +95,15 @@ struct FlowmoRootView: View {
             if !focusScene, !introduction, !controller.storeNeedsRecovery, !controller.lifecycleNeedsRecovery {
                 HStack(spacing: 0) {
                     if mini {
-                        presentationControl(status: status, compact: true)
+                        presentationControl(compact: true)
                             .padding(.trailing, 4)
                     } else {
                         muteButton(atmo)
                             .opacity(atmo.chrome)
                         pinButton(atmo)
                             .opacity(atmo.chrome)
-                        presentationControl(status: status)
-                            .opacity(canEnterFocusScene(status) ? 1 : atmo.chrome)
+                        presentationControl()
+                            .opacity(atmo.chrome)
                             .padding(.trailing, 8)
                     }
                 }
@@ -120,49 +119,18 @@ struct FlowmoRootView: View {
         }
     }
 
-    private func canEnterFocusScene(_ status: SessionStatus) -> Bool {
-        FocusSceneEntryControl.isAvailable(phase: status.phase, isPaused: status.isPaused)
-    }
-
-    @ViewBuilder
-    private func presentationControl(status: SessionStatus, compact: Bool = false) -> some View {
-        if canEnterFocusScene(status) {
-            Menu {
-                Button {
-                    DispatchQueue.main.async {
-                        controller.enterFocusScene()
-                    }
-                } label: {
-                    Label("Focus Scene", systemImage: "sun.horizon")
-                }
-
-                Divider()
-                windowPresentationChoices()
-            } label: {
-                ChromeGlyph("sun.horizon", lit: true, compact: compact)
-            } primaryAction: {
-                controller.enterFocusScene()
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.visible)
-            .fixedSize()
-            .help(FocusSceneEntryControl.accessibilityLabel)
-            .accessibilityLabel(FocusSceneEntryControl.accessibilityLabel)
-            .accessibilityHint(FocusSceneEntryControl.accessibilityHint)
-            .padding(.top, compact ? 6 : 4)
-        } else {
-            Menu {
-                windowPresentationChoices()
-            } label: {
-                ChromeGlyph("rectangle.3.group", compact: compact)
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Change window size")
-            .accessibilityLabel("Change window size")
-            .padding(.top, compact ? 6 : 4)
+    private func presentationControl(compact: Bool = false) -> some View {
+        Menu {
+            windowPresentationChoices()
+        } label: {
+            ChromeGlyph("rectangle.3.group", compact: compact)
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Change window size")
+        .accessibilityLabel("Change window size")
+        .padding(.top, compact ? 6 : 4)
     }
 
     @ViewBuilder

@@ -4,7 +4,7 @@ import Darwin
 import SwiftUI
 
 /// The root host always keeps SwiftUI controls interactive. Focus Scene moves
-/// the window with an explicit gesture attached only to its empty backdrop.
+/// the window with native AppKit dragging attached only to its empty backdrop.
 final class FlowmoHostingView<Content: View>: NSHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { false }
 }
@@ -150,8 +150,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         focusSceneWindowCoordinator?.reflow()
     }
 
-    func windowDidChangeScreen(_ notification: Notification) {
-        focusSceneWindowCoordinator?.reflow()
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        guard focusSceneWindowCoordinator?.isPresented == true else { return frameSize }
+        let visibleSize = sender.screen?.visibleFrame.size ?? FocusSceneWindowCoordinator.minimumContentSize
+        let minimum = FocusSceneWindowCoordinator.minimumContentSize
+        // NSHostingView can clear contentMinSize during layout even with sizing
+        // options disabled. Enforce the Scene boundary at native live resize too.
+        return NSSize(
+            width: max(min(minimum.width, visibleSize.width), frameSize.width),
+            height: max(min(minimum.height, visibleSize.height), frameSize.height)
+        )
     }
 
     /// `swift run` is often stopped with Ctrl+C; route it through the same
@@ -173,6 +181,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     /// become a large movable canvas while a transient Focus Scene is active.
     func makeWindow() -> SceneCapableWindow {
         let hosting = FlowmoHostingView(rootView: FlowmoRootView(controller: controller))
+        // AppKit owns geometry; outgoing compact layout must never resize Scene.
+        hosting.sizingOptions = []
         let size = controller.effectiveWindowContentSize
         let window = SceneCapableWindow(
             contentRect: NSRect(origin: .zero, size: size),
