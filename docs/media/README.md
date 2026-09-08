@@ -1,15 +1,28 @@
 # How Flowmo works
 
-[Watch the 25-second explainer](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/GithubExplainer.mp4). The film is illustrated, with condensed time and the default 5:1 ratio.
+Set one intention. Let Focus count up. Take the break you earn.
+
+https://github.com/user-attachments/assets/825c43f5-21b6-424b-bde2-2ae771d6c329
+
+## 1. Make room for one thing
 
 ![Type one intention and settle in before Focus.](onboarding-1.png)
 
+## 2. Follow your own rhythm
+
 ![Focus counts up until you choose to stop. Park passing thoughts.](onboarding-2.png)
+
+## 3. Rest. Reflect. Return.
 
 ![Earn proportional rest, then leave an optional next step.](onboarding-3.png)
 
-The matching illustrations are bundled in the shared Mac/iPhone first-use tutorial in current source. Published build 6 predates this artwork update.
+[Get Flowmo](../../README.md#get-started) · [Installation guide](../installation.md)
 
-[Portrait video for X](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/XExplainer.mp4) · [Editable Remotion source and complete media pack](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/Flowmo-launch-media.zip)
+<details>
+<summary>Media downloads and credits</summary>
 
-[Captions](captions.srt), [posting copy](post-copy.md), [provenance](PROVENANCE.md), and [third-party terms](THIRD_PARTY_NOTICES.md). No media-authoring dependencies are added to the application.
+[Portrait video](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/XExplainer.mp4) · [Remotion source and media pack](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/Flowmo-launch-media.zip) · [Captions](captions.srt)
+
+The film illustrates the default 5:1 focus-to-break ratio with condensed time. [Asset provenance](PROVENANCE.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+</details>
