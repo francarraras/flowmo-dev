@@ -6,7 +6,20 @@ Flowmo runs on macOS 14+ and iOS 17+. The Mac and terminal downloads support App
 
 Download the Mac ZIP and its checksum from [Releases](https://github.com/francarraras/flowmo-dev/releases). Verify the download with `shasum -a 256 -c NAME.zip.sha256`, using its actual filename. Unzip it and move **Flowmo.app** to Applications.
 
-The Mac preview is not notarized. If macOS blocks opening it, follow [Apple’s Open Anyway instructions](https://support.apple.com/102445) for the app you downloaded. If macOS reports malware or that the app is damaged, stop and [report the problem](https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml).
+### First launch on Mac
+
+The preview is not notarized by Apple. The **“Flowmo” Not Opened** warning below means Apple could not verify the app; it is not a report that malware was detected. Only proceed if you downloaded Flowmo from **[this repository’s releases](https://github.com/francarraras/flowmo-dev/releases)** and trust the download.
+
+<img src="screenshots/mac-first-open-warning.png" width="276" alt="macOS alert: Flowmo Not Opened. Apple could not verify Flowmo is free of malware. The dialog offers Move to Trash and Done; choose Done." />
+
+1. Open **Flowmo.app** from Applications. If you see **“Flowmo” Not Opened**, click **Done**.
+2. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** beside the Flowmo warning.
+3. Authenticate if asked, then confirm **Open**. After this, launch Flowmo normally.
+
+**Can’t find Open Anyway?** Try opening Flowmo once more, dismiss the warning with **Done**, then return to Privacy & Security. A managed work or school Mac may require help from its administrator.
+
+These steps follow [Apple’s opening instructions](https://support.apple.com/en-us/102445). If the message instead says the app **will damage your computer** or **is damaged**, stop and [report the problem](https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml).
+
 
 ## Terminal download
 

@@ -50,3 +50,8 @@ production tools; their separate terms and source receipts are recorded in
 [media provenance](docs/media/PROVENANCE.md) and
 [media notices](docs/media/THIRD_PARTY_NOTICES.md). The editable source is in the
 release's media pack. Published build 6 binaries predate this source update.
+
+The installation guide also reproduces an owner-supplied macOS warning capture
+for instructional reference. Apple's interface remains Apple's material and is
+not relicensed under MIT. The unchanged image is documentation only; see
+[its provenance](PROVENANCE.md#mac-first-launch-help--2026-09-08).

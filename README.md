@@ -36,9 +36,26 @@ Sessions stay on your device. There’s no Flowmo account, advertising, or analy
 | Terminal | [Download the CLI archive](https://github.com/francarraras/flowmo-dev/releases/download/v1.0.0-preview.6/Flowmo-1.0-build6-macOS-universal-cli.tar.gz) | macOS 14+ |
 | iPhone | [Install with Xcode](docs/installation.md#iphone-with-xcode) | iOS 17+, a Mac, and a free Apple Account |
 
-Flowmo is currently a **public preview**. The Mac download is not notarized, so macOS may require [Open Anyway](https://support.apple.com/102445). Free iPhone signing needs refreshing every seven days. Mac and iPhone sessions do not sync in these builds.
+Flowmo is currently a **public preview**. Free iPhone signing needs refreshing every seven days. Mac and iPhone sessions do not sync in these builds.
 
 [Installation, updates, and removal](docs/installation.md) · [Release notes and known limitations](https://github.com/francarraras/flowmo-dev/releases/tag/v1.0.0-preview.6)
+
+### First launch on Mac
+
+The preview is not notarized by Apple, so macOS may show the warning below. If you downloaded Flowmo from **[this repository’s releases](https://github.com/francarraras/flowmo-dev/releases)** and trust the download:
+
+1. Open **Flowmo.app** from Applications. If you see **“Flowmo” Not Opened**, click **Done**.
+2. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** beside the Flowmo warning.
+3. Authenticate if asked, then confirm **Open**. After this, launch Flowmo normally.
+
+<details>
+<summary>Quick capture: the warning you may see</summary>
+
+<img src="docs/screenshots/mac-first-open-warning.png" width="276" alt="macOS alert: Flowmo Not Opened. Apple could not verify Flowmo is free of malware. Choose Done, then use Open Anyway in Privacy & Security." />
+
+</details>
+
+[Full installation help](docs/installation.md#first-launch-on-mac) · [Apple’s opening instructions](https://support.apple.com/en-us/102445)
 
 ## In the terminal
 
