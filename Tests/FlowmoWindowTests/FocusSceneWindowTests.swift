@@ -198,6 +198,8 @@ final class FocusSceneWindowTests: XCTestCase {
     }
 
     func testHostedSceneKeepsLargeConstraintsAndPositionAfterLayoutFromBothModes() throws {
+        // Initialize AppKit before SwiftUI hosting asks for a window-server connection.
+        _ = NSApplication.shared
         for mode in [DisplayMode.classic, .mini] {
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             let suite = "flowmo-scene-\(UUID().uuidString)"
