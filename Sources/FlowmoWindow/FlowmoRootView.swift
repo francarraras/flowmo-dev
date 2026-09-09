@@ -43,7 +43,15 @@ struct FlowmoRootView: View {
         let size = controller.effectiveWindowContentSize
         Group {
             if focusScene {
+                // The Scene is the same Focus seen large: it settles in with a
+                // short fade and rise rather than a cut. Reduce Motion cuts.
                 DistantHorizonScene(controller: controller, status: status)
+                    .transition(
+                        reduceMotion
+                            ? .identity
+                            : .asymmetric(
+                                insertion: .opacity.combined(with: .offset(y: 18)),
+                                removal: .opacity))
             } else if controller.storeNeedsRecovery {
                 StoreRecoveryPane(controller: controller)
             } else if let conflict = controller.syncStatus.conflict {
@@ -65,18 +73,26 @@ struct FlowmoRootView: View {
         }
         .padding(.horizontal, focusScene ? 0 : (mini ? 6 : 16))
         .padding(.bottom, focusScene ? 0 : (mini ? 8 : 14))
-        .padding(.top, focusScene ? 0 : (mini ? 26 : 28))
+        // Top padding clears the title-bar row and the chrome that sits on it.
+        .padding(.top, focusScene ? 0 : (mini ? 40 : 42))
         .frame(
             minWidth: focusScene ? 0 : size.width,
             maxWidth: focusScene ? .infinity : size.width,
             minHeight: focusScene ? 0 : size.height,
             maxHeight: focusScene ? .infinity : size.height
         )
+        // The window hides its title bar but keeps it as a safe area. Without
+        // this, the fixed compact frame is centered inside the smaller safe
+        // region: pushed down under the traffic lights and clipped at the
+        // bottom, which is where an expanded Guard panel used to run off.
+        .ignoresSafeArea()
         .foregroundStyle(atmo.ink)
         .background(FieldCanvas())
         .environment(\.atmosphere, atmo)
+        .environment(\.horizon, HorizonState.of(status))
         .animation(reduceMotion ? nil : Motion.phase, value: status.isPaused)
         .animation(reduceMotion ? nil : Motion.phase, value: controller.displayMode)
+        .animation(reduceMotion ? nil : Motion.light, value: focusScene)
         .onAppear { controller.presentIntroductionIfNeeded() }
         .onChange(of: controller.canShowIntroduction) { _, _ in
             controller.presentIntroductionIfNeeded()
@@ -88,6 +104,7 @@ struct FlowmoRootView: View {
                     muteButton(atmo, compact: true)
                     pinButton(atmo, compact: true)
                 }
+                .chromeSurface()
                 .padding(.leading, 52)
             }
         }
@@ -99,14 +116,14 @@ struct FlowmoRootView: View {
                             .padding(.trailing, 4)
                     } else {
                         muteButton(atmo)
-                            .opacity(atmo.chrome)
                         pinButton(atmo)
-                            .opacity(atmo.chrome)
                         presentationControl()
-                            .opacity(atmo.chrome)
                             .padding(.trailing, 8)
                     }
                 }
+                .chromeSurface()
+                .opacity(mini ? 1 : atmo.chrome)
+                .padding(.trailing, mini ? 0 : 6)
             }
         }
         .background(WindowPin(pinned: controller.isPinned, field: atmo.field, focusSceneActive: focusScene))
@@ -1035,31 +1052,75 @@ private struct GuardConfig: View {
                 .tint(atmo.mute)
             }
             if controller.showGuardConfig {
+                guardedApps(config.bundleIdentifiers)
+            }
+        }
+    }
+
+    /// The guarded apps sit in one quiet well, the same card History uses, so
+    /// they read as a group apart from the Idle chrome. Up to three rows show
+    /// before the list scrolls; the card sizes to its rows, and every control
+    /// stays inside it.
+    private func guardedApps(_ identifiers: [String]) -> some View {
+        let rowHeight: CGFloat = 26
+        let visibleRows = min(identifiers.count, 3)
+        return VStack(spacing: 0) {
+            if identifiers.isEmpty {
+                Text("No apps guarded yet")
+                    .font(.system(.caption, design: .default))
+                    .foregroundStyle(atmo.faint)
+                    .frame(maxWidth: .infinity, minHeight: rowHeight)
+            } else {
                 ScrollView {
-                    VStack(spacing: 6) {
-                        ForEach(config.bundleIdentifiers, id: \.self) { id in
-                            HStack {
+                    VStack(spacing: 0) {
+                        ForEach(Array(identifiers.enumerated()), id: \.element) { index, id in
+                            HStack(spacing: 8) {
                                 Text(displayName(id))
                                     .font(.system(.caption, design: .default))
                                     .lineLimit(1)
-                                Spacer()
+                                    .truncationMode(.middle)
+                                Spacer(minLength: 8)
                                 Button {
                                     controller.removeGuardedApp(bundleIdentifier: id)
                                 } label: {
                                     Text("Remove")
                                         .font(.system(.caption, design: .default).weight(.medium))
                                         .underline(false)
-                                        .modifier(QuietHoverInk())
+                                        .modifier(QuietHoverInk(reach: CGSize(width: 6, height: 3)))
                                 }
                                 .buttonStyle(PressStyle())
+                                .accessibilityLabel("Remove \(displayName(id)) from Focus Guard")
+                            }
+                            .frame(height: rowHeight)
+                            .padding(.horizontal, 12)
+                            if index < identifiers.count - 1 {
+                                Rectangle()
+                                    .fill(atmo.ink.opacity(0.06))
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 12)
                             }
                         }
                     }
                 }
-                .frame(maxHeight: 72)
-                QuietButton("Add app") { pickApp() }
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(height: CGFloat(visibleRows) * rowHeight + CGFloat(max(0, visibleRows - 1)))
             }
+            Rectangle()
+                .fill(atmo.ink.opacity(0.08))
+                .frame(height: 1)
+            QuietButton("Add app", minHeight: 28, compact: true) { pickApp() }
+                .padding(.vertical, 3)
         }
+        .frame(maxWidth: .infinity)
+        .background(atmo.well)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(atmo.ink.opacity(0.08), lineWidth: 0.5)
+        }
+        .padding(.horizontal, 2)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Guarded apps")
     }
 
     private func guardLabel(_ config: FocusGuardConfiguration) -> String {

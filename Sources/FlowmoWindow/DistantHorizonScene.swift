@@ -24,7 +24,7 @@ struct DistantHorizonScene: View {
             let controlSize = min(34, max(17, size.width * 0.011) * interfaceScale)
 
             ZStack {
-                DistantHorizonBackdrop()
+                DistantHorizonBackdrop(status: status)
                     .overlay(SceneDragSurface())
                     .accessibilityHidden(true)
 
@@ -84,10 +84,11 @@ struct DistantHorizonScene: View {
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
                 InstrumentClock(Format.clock(status.elapsed), size: clockSize)
                     .foregroundStyle(Atmosphere.canvas.ink)
+                Accrual(seconds: status.earnedBreakSeconds, label: Format.earned(status.earnedBreakSeconds))
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
-                "Focus Guard. \(interception.displayName) is guarded. Focused \(Format.clock(status.elapsed))."
+                "Focus Guard. \(interception.displayName) is guarded. Focused \(Format.clock(status.elapsed)). \(earnedAccessibilityText)"
             )
         } else {
             VStack(alignment: .leading, spacing: spacing) {
@@ -102,12 +103,19 @@ struct DistantHorizonScene: View {
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
                 InstrumentClock(Format.clock(status.elapsed), size: clockSize)
                     .foregroundStyle(Atmosphere.canvas.ink)
+                // The earned-rest mark, as on the phone canvas: the one number
+                // Focus is allowed, and it has no finish line.
+                Accrual(seconds: status.earnedBreakSeconds, label: Format.earned(status.earnedBreakSeconds))
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
-                "Focus Scene. \(status.intention). Focused \(Format.clock(status.elapsed))."
+                "Focus Scene. \(status.intention). Focused \(Format.clock(status.elapsed)). \(earnedAccessibilityText)"
             )
         }
+    }
+
+    private var earnedAccessibilityText: String {
+        status.earnedBreakSeconds >= 1 ? "\(Format.earned(status.earnedBreakSeconds))." : ""
     }
 
     @ViewBuilder
@@ -175,7 +183,7 @@ private struct DistantHorizonAction: View {
                 .padding(.horizontal, 20)
                 .frame(minHeight: 44)
                 .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .background {
+                .instrumentSurface(cornerRadius: 14) {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(Atmosphere.canvas.ink.opacity(hovering ? 0.10 : 0.04))
                         .overlay {
@@ -185,6 +193,13 @@ private struct DistantHorizonAction: View {
                                     lineWidth: 1
                                 )
                         }
+                }
+                .overlay {
+                    // Keyboard focus stays visible on glass as well.
+                    if focused {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Atmosphere.canvas.ink.opacity(0.6), lineWidth: 1)
+                    }
                 }
                 .opacity(isEnabled ? 1 : 0.35)
         }

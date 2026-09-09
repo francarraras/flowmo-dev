@@ -55,6 +55,23 @@ unchanged by this asset work. Maintenance is limited to the checked-in images,
 SwiftPM resource packaging, and Apple's asset-catalog format. The product name
 remains provisional, and this work does not replace build 4 preview artifacts.
 
+## Live Distant Horizon — 2026-09-08
+
+The Focus canvases now render an original procedural horizon from
+[`Sources/FlowmoLook/HorizonShader.swift`](Sources/FlowmoLook/HorizonShader.swift):
+Metal Shading Language written for this project and compiled at first use by the
+operating system's Metal compiler (`MTLDevice.makeLibrary(source:)`). No shader,
+noise function, texture, image, font, package, or sample code was copied from a
+third party; the value-noise and hash routines are the project's own
+implementations of standard textbook techniques. Nothing is downloaded, no binary
+library is checked in, and no runtime AI or network call is added. The shader
+reads only the session's phase, progress, focused time, and earned rest through
+`HorizonState`; it receives no intention text, session identifier, or other
+private data, and it writes nothing. Where Metal is unavailable the unchanged
+build 5 Horizon Study artwork above remains bundled and shown, so its records
+still apply. Liquid Glass is Apple's platform material, used through SwiftUI with
+no additional dependency.
+
 ## Documentation screenshots
 
 The README includes three unchanged native UI captures from the local polish

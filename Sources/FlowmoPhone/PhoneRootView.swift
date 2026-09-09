@@ -59,6 +59,7 @@ public struct PhoneRootView: View {
         .foregroundStyle(atmo.ink)
         .background(FieldCanvas())
         .environment(\.atmosphere, atmo)
+        .environment(\.horizon, HorizonState.of(status))
         .animation(reduceMotion ? nil : Motion.phase, value: status.isPaused)
         .animation(reduceMotion ? nil : Motion.phase, value: distantHorizon)
         .preferredColorScheme(.dark)
@@ -755,7 +756,7 @@ private struct PhoneDistantHorizonFocusPane: View {
             let bottomInset = max(proxy.safeAreaInsets.bottom + 14, landscape ? 16 : 24)
 
             ZStack {
-                DistantHorizonBackdrop()
+                DistantHorizonBackdrop(status: status)
 
                 ScrollView(.vertical) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -939,7 +940,7 @@ private struct PhoneHorizonAction: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .frame(minHeight: 48)
-                .background {
+                .instrumentSurface(cornerRadius: 14) {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(tone.opacity(0.06))
                         .overlay {
