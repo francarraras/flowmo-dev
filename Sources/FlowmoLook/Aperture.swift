@@ -27,6 +27,7 @@ public struct Aperture<Content: View>: View {
     }
 
     @Environment(\.atmosphere) private var atmo
+    @Environment(\.horizon) private var horizon
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public var body: some View {
@@ -35,11 +36,21 @@ public struct Aperture<Content: View>: View {
             let diameter = min(side, max(96, side * 0.92))
             ZStack {
                 well
+                HorizonInnerGlow(state: horizon)
+                    .clipShape(Circle())
+                    .animation(reduceMotion ? nil : Motion.light, value: horizon)
                 ringView
                 content.padding(contentPadding)
                     .modifier(ApertureSettle())
             }
             .frame(width: diameter, height: diameter)
+            // The dawn on the lower rim reaches into the field. A background
+            // never takes part in layout, so the circle keeps its fixed size.
+            .background {
+                HorizonRim(state: horizon, diameter: diameter)
+                    .frame(width: diameter * 1.7, height: diameter * 1.7)
+                    .animation(reduceMotion ? nil : Motion.light, value: horizon)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -455,21 +466,13 @@ public struct FieldCanvas: View {
     public init() {}
 
     /// Every falloff is concentric on the aperture. A vertical wash would draw a
-    /// straight iso-line across the width and read as a footer panel.
+    /// straight iso-line across the width and read as a footer panel. Warmth
+    /// comes only from the aperture's own dawn rim, never from the field.
     public var body: some View {
         GeometryReader { geo in
             let reach = hypot(geo.size.width, geo.size.height)
             ZStack {
                 Atmosphere.canvas.field
-                RadialGradient(
-                    colors: [
-                        Color(red: 28 / 255, green: 24 / 255, blue: 16 / 255).opacity(0.42),
-                        Color.clear,
-                    ],
-                    center: UnitPoint(x: 0.5, y: 0.40),
-                    startRadius: reach * 0.03,
-                    endRadius: reach * 0.80
-                )
                 RadialGradient(
                     colors: [
                         Color.white.opacity(0.038),
@@ -554,7 +557,11 @@ public struct QuietHoverInk: ViewModifier {
             .underline(false)
             .fontWeight(.medium)
             .foregroundStyle(hovering && isEnabled ? atmo.ink : atmo.mute)
-            .background {
+            // The well reaches past a bare label; padding out and back in keeps
+            // the layout identical while the surface covers the reach.
+            .padding(.horizontal, reach.width)
+            .padding(.vertical, reach.height)
+            .instrumentSurface(cornerRadius: 12) {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(atmo.ink.opacity(hovering && isEnabled ? 0.08 : restingWellOpacity))
                     .overlay {
@@ -564,9 +571,9 @@ public struct QuietHoverInk: ViewModifier {
                                 lineWidth: 0.5
                             )
                     }
-                    .padding(.horizontal, -reach.width)
-                    .padding(.vertical, -reach.height)
             }
+            .padding(.horizontal, -reach.width)
+            .padding(.vertical, -reach.height)
             .animation(reduceMotion ? nil : Motion.hover, value: hovering)
             .onHover { hovering = isEnabled && $0 }
             .modifier(ReducedMotionTransaction())
@@ -617,6 +624,9 @@ public struct InkButton: View {
         self.action = action
     }
 
+    /// The primary action keeps its solid ivory on every system. Glass belongs
+    /// to quiet actions and chrome: a companion window is inactive most of the
+    /// day, and system glass dims with it, while Start must stay crisp.
     public var body: some View {
         Button(action: action) {
             Text(title)
@@ -813,8 +823,13 @@ public struct PhaseColumn<Head: View, Hole: View, Verb: View, Chrome: View>: Vie
                     .frame(maxWidth: .infinity, minHeight: PhaseGrid.verb, maxHeight: PhaseGrid.verb)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Chrome is sized first so an expanded panel (Guard) never runs off
+            // the fixed window; the hole yields instead. Live phases reserve the
+            // same empty slot, so their aperture is unchanged.
             chrome
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: PhaseGrid.chrome, alignment: .top)
+                .layoutPriority(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

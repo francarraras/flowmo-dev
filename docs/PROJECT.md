@@ -303,11 +303,14 @@ surveillance, or browser-history inspection.
 ### Focus Scene
 
 **Focus scene** is the Distant Horizon presentation of the same honest,
-open-ended Focus. Its bundled original Horizon Study artwork is ambient, never progress.
-A subtle luminance change eases over 14 seconds in each direction only while
-the scene is active and Reduce Motion is off. It does not drive a clock.
-It has no ring, percentage, deadline, new phase, setup, or claim that work is
-locked down.
+open-ended Focus. Its horizon is a picture of the session, drawn from Core's
+timestamp-derived status and never from a clock of its own: the dawn rises over
+Prime, stays full through Focus while the planet turns with focused time and the
+light warms with earned rest, and sets over Break. During Focus it shows only
+open-ended quantities; it adds no text, number, ring, percentage, deadline, new
+phase, setup, or claim that work is locked down. Ambient grain and shimmer run
+only while the scene is active and Reduce Motion is off; Recovery Pause freezes
+the picture at its exact values.
 
 On Mac, it can be selected when Prime enters Focus or during an already-running
 Focus through Classic's named **Focus scene** action, Mini's named **Scene**
