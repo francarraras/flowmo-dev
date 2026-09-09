@@ -221,6 +221,14 @@ ambient motion disabled and frozen recovery with ambient motion requested.
 They establish stable rendering inputs, not a measured frame-rate or energy
 profile. No Horizon tuning or Liquid Glass behavior was reverted.
 
+Build 8 was packaged from `70f6efd`: strict format, 298 tests, core proofs,
+CLI privacy smoke, SwiftPM Release, universal Mac build/analysis, signature and
+entitlement checks, entitled phone/widget build/analysis, and exact ZIP
+extraction/content/checksum verification all passed. Flowmo Local simulator
+Release build and Debug analysis passed separately. The generated build 8
+manifest and checksum are retained with the new archive in local `dist/`, and
+its ledger receipt remains `candidate-generated`.
+
 This is a build 8 candidate preparation, not a distribution decision. The
 earlier unrelated manual gaps (including full VoiceOver, real Guard behavior,
 fresh-recipient opening, physical-phone checks, and cross-display movement)
