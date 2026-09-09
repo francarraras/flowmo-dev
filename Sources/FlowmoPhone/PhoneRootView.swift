@@ -1004,11 +1004,13 @@ private struct RecallPane: View {
             } else if controller.showParkedReview {
                 PhaseLead("Parked thoughts", cue: "Choose what comes next", tone: atmo.mute)
             } else {
-                HairlineField(FlowmoCopy.reflectionPrompt, text: $controller.recallDraft, centered: true)
-                    .onChange(of: controller.recallDraft) { _, _ in
-                        controller.persistRecall()
-                    }
-                    .onSubmit { controller.skip() }
+                HairlineField(
+                    FlowmoCopy.reflectionPrompt, text: $controller.recallDraft, centered: true, wrapsPrompt: true
+                )
+                .onChange(of: controller.recallDraft) { _, _ in
+                    controller.persistRecall()
+                }
+                .onSubmit { controller.skip() }
             }
         } hole: {
             Aperture(ring: .timed(progress: ringProgress(status))) {

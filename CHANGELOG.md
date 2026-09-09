@@ -4,10 +4,15 @@ Notable changes are recorded here.
 
 ## Unreleased
 
+## 1.0 (8) — Release candidate
+
+- Kept the full iPhone Reflection prompt readable at the largest text sizes
+  while preserving Return to finish. Mini Close Beat now shows the earned-break
+  label and duration on separate lines without truncating either.
 - Redrew the Distant Horizon as a live picture of the session instead of a
   static image: the dawn rises over Prime, stays full through Focus while the
   planet turns with focused time and the light warms toward champagne with
-  earned rest, sets over Break, and settles through Reflection. Focus still shows
+  earned rest, sets over Break, and settles through Reflection. The picture still shows
   no ring, number, deadline, or finish line, Recovery Pause freezes the picture,
   and Reduce Motion or an inactive scene stops the ambient grain, shimmer, and
   sparse stars. The compact Mac and iPhone aperture carries the same dawn on its

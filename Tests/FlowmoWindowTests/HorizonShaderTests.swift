@@ -26,4 +26,23 @@ final class HorizonShaderTests: XCTestCase {
         XCTAssertEqual(MemoryLayout<HorizonUniforms>.alignment, MemoryLayout<SIMD2<Float>>.alignment)
         XCTAssertEqual(MemoryLayout<HorizonUniforms>.stride, 72)
     }
+
+    func testDisabledAmbientMotionKeepsShaderInputsStableAsWallTimeAdvances() {
+        let state = HorizonState(light: 1, warmth: 0.4, turn: 0.2, travel: 0.3, frozen: false)
+        let first = HorizonUniforms(state: state, time: 10, ambient: false, meteorElapsed: nil, meteorSeed: 0)
+        let later = HorizonUniforms(state: state, time: 90, ambient: false, meteorElapsed: 2, meteorSeed: 0)
+        XCTAssertEqual(first, later)
+
+        let moving = HorizonUniforms(state: state, time: 90, ambient: true, meteorElapsed: 2, meteorSeed: 0)
+        XCTAssertNotEqual(first, moving)
+    }
+
+    func testFrozenHorizonSuppressesAmbientInputsEvenWhenMotionIsRequested() {
+        let state = HorizonState(light: 1, warmth: 0.4, turn: 0.2, travel: 0.3, frozen: true)
+        let first = HorizonUniforms(state: state, time: 10, ambient: true, meteorElapsed: nil, meteorSeed: 0)
+        let later = HorizonUniforms(state: state, time: 90, ambient: true, meteorElapsed: 2, meteorSeed: 0)
+        XCTAssertEqual(first, later)
+        XCTAssertEqual(first.turn, Float(state.turn))
+        XCTAssertEqual(first.warmth, Float(state.warmth))
+    }
 }

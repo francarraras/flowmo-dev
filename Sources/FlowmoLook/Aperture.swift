@@ -880,33 +880,52 @@ public struct HairlineField: View {
     var placeholder: String
     @Binding var text: String
     var centered: Bool
+    var wrapsPrompt: Bool
 
-    public init(_ placeholder: String, text: Binding<String>, centered: Bool = false) {
+    public init(_ placeholder: String, text: Binding<String>, centered: Bool = false, wrapsPrompt: Bool = false) {
         self.placeholder = placeholder
         self._text = text
         self.centered = centered
+        self.wrapsPrompt = wrapsPrompt
     }
 
     @FocusState private var focused: Bool
 
     public var body: some View {
-        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundColor(atmo.mute))
+        ZStack(alignment: centered ? .center : .leading) {
+            if wrapsPrompt {
+                // A native single-line prompt truncates at accessibility sizes.
+                // Reserve the wrapping prompt's height without changing Return
+                // into a newline or replacing the field while the user types.
+                Text(placeholder)
+                    .foregroundStyle(atmo.mute)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .opacity(text.isEmpty ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            TextField(
+                placeholder, text: $text,
+                prompt: Text(wrapsPrompt ? "" : placeholder).foregroundColor(atmo.mute)
+            )
             .textFieldStyle(.plain)
             .focused($focused)
-            .font(.system(.body).weight(.medium))
-            .multilineTextAlignment(centered ? .center : .leading)
-            .lineLimit(2)
-            .minimumScaleFactor(0.8)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .center : .leading)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(atmo.ink.opacity(focused ? 0.42 : 0.13))
-                    .frame(height: 1)
-                    .padding(.horizontal, 8)
-                    .animation(reduceMotion ? nil : Motion.hover, value: focused)
-            }
-            .modifier(ReducedMotionTransaction())
+            .accessibilityLabel(placeholder)
+        }
+        .font(.system(.body).weight(.medium))
+        .multilineTextAlignment(centered ? .center : .leading)
+        .lineLimit(wrapsPrompt ? nil : 2)
+        .minimumScaleFactor(0.8)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: centered ? .center : .leading)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(atmo.ink.opacity(focused ? 0.42 : 0.13))
+                .frame(height: 1)
+                .padding(.horizontal, 8)
+                .animation(reduceMotion ? nil : Motion.hover, value: focused)
+        }
+        .modifier(ReducedMotionTransaction())
     }
 }

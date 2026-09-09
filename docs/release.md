@@ -149,6 +149,84 @@ Full VoiceOver navigation and fresh-recipient Gatekeeper opening remain open.
 The owner was asked to observe the physical-iPhone Prepare background reminder;
 no response had arrived when these results were recorded.
 
+### Unreleased Horizon visual smoke — 2026-09-09
+
+Source `8551f36` was exercised on macOS 26.6.2 with Xcode 26.6, and a fresh
+iPhone 17 simulator running iOS 26.5. The Mac engineering app used a separate
+bundle identity and disposable session store; the phone used `FlowmoPhoneLocal`
+on the disposable simulator. These were test builds, not preview archives.
+
+Observed through the native UI:
+
+- Mac Classic Idle and Prime fit the fixed frame; the empty and single-entry
+  Guard cards kept Add app and Remove visible. Adding and removing an entry
+  worked. The primary action stayed ivory and quiet controls/chrome rendered
+  with the new material treatment.
+- Prime's Focus scene opened the live rendered Horizon with a count-up and
+  earned-rest mark. Back to window restored Classic without stopping Focus.
+  Switching to Mini, entering Scene, and returning restored Mini with the clock
+  continuing. The size menu contained only Classic and Mini.
+- Mac quit/relaunch recovery, once launch isolation was made persistent, stayed
+  frozen at 00:55 until Continue. Stop, Break, Reflect, Reflection Skip, Close
+  Beat, and Done returned to Idle. An earlier relaunch lost the process-only
+  store override; exclude that attempt from isolated recovery evidence. The
+  corrected disposable app wrapper supplied the override on every launch.
+- Phone Prime entered the live Horizon. Capture kept counting, and Discard/Park
+  remained visible above the software keyboard at ordinary text size. Park
+  saved a synthetic thought and updated the parked count.
+- The simulator's Settings showed maximum accessibility text size (100%) and
+  Reduce Motion enabled. Focus actions stacked. With the software keyboard,
+  enlarged capture scrolled to reveal Discard and Park; Park saved successfully.
+- Background/foreground retained the phone Focus, and the Home Screen showed
+  its Dynamic Island count-up. Termination/relaunch showed compact Recovery
+  Pause frozen at 05:35; only Continue resumed it. Break, Reflection, Close Beat,
+  and Done were usable at maximum text size. The synthetic next step
+  `Next step 98765` was preserved exactly into editable Idle without starting.
+
+Limitations and observations:
+
+- Coordinate dragging repeatedly failed in the desktop-control service with
+  `noWindowsAvailable`. Scene dragging, edge resizing, and movement between
+  displays are not verified by this pass.
+- Maximum-size Reflection truncates its empty placeholder visually; the full
+  prompt remains in the accessibility tree. Mini Close Beat also truncates its
+  compact earned-break label. These are observed presentation limitations, not
+  fixes made in this pass.
+- Reduce Motion was enabled on the simulator and its loop remained usable;
+  this is not frame-by-frame proof of ambient animation suppression. Mac Reduce
+  Motion, three-row Guard overflow, real Guard interception, full VoiceOver,
+  and physical-device checks remain unverified.
+- This pass does not replace exact-archive/manual distribution checks or owner
+  approval. No preview was packaged or distributed.
+
+### Build 8 visual follow-up — 2026-09-09
+
+The two presentation limitations above were fixed and retested on the same
+Mac and disposable iPhone 17 simulator. Mini Close Beat now stacks the earned
+label and duration; both were fully visible with a next step and parked thought
+also present. The iPhone Reflection prompt wrapped completely at maximum
+accessibility text size with Reduce Motion enabled. Return still completed
+Reflection and preserved the exact synthetic next step `Return proof 24680`.
+
+The desktop-control service accepted native dragging on this follow-up. Scene
+was dragged from its empty canvas and resized from bottom-right and top-left;
+the latter reached the documented 720×480 minimum with both actions visible.
+Focus kept counting and Back to window returned to Classic. Cross-display
+dragging was not tested.
+
+Mac Reduce Motion was confirmed off, enabled for Scene return/re-entry, and
+restored to off after the check. Scene and its count-up remained usable.
+Two additional shader-input regression checks cover advancing wall time with
+ambient motion disabled and frozen recovery with ambient motion requested.
+They establish stable rendering inputs, not a measured frame-rate or energy
+profile. No Horizon tuning or Liquid Glass behavior was reverted.
+
+This is a build 8 candidate preparation, not a distribution decision. The
+earlier unrelated manual gaps (including full VoiceOver, real Guard behavior,
+fresh-recipient opening, physical-phone checks, and cross-display movement)
+remain open. The exact archive's generated manifest and receipt identify its
+source and automated packaging evidence.
+
 ### Terminal candidate packaging
 
 After the code and version metadata are reviewed, run from a clean committed
@@ -379,9 +457,9 @@ From a clean checkout of the candidate revision:
    app when eligible, while a guarded target is not reopened. Keep app and
    document identity out of screenshots, notes, and bug reports. Verify
    **Focus scene** enters the same Focus from Prime. During an active Focus,
-   enter from Classic's named **Focus scene**, Mini's named **Scene**, the
-   sun-and-horizon primary action, and its explicit menu row. After **Back to
-   window**, re-enter through a named action and the primary action. Confirm
+   enter from Classic's named **Focus scene** and Mini's named **Scene**.
+   After **Back to window**, re-enter through the named action and confirm the
+   chrome size menu contains only Classic and Mini. Confirm
    Scene remains movable and resizable and returns to the exact prior
    Classic/Mini presentation without changing the clock.
    On iPhone, confirm active unpaused Focus fills the frame with Distant

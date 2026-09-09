@@ -1,6 +1,6 @@
 FLOWMO — FRIENDS & FAMILY MAC PREVIEW
 
-Version 1.0 (build 7)
+Version 1.0 (build 8)
 Requires macOS 14 Sonoma or newer. Works on Apple silicon and Intel Macs.
 
 BEFORE YOU OPEN IT
@@ -54,9 +54,17 @@ later. Reflection can turn a parked thought into the next step, and Done puts
 that step back into editable Idle without starting another session.
 
 Standard Mac menus provide Quit, clipboard editing, Undo/Redo, and window
-controls. This build includes the refreshed icon, Focus artwork, typography,
-and illustrated first-run tutorial introduced in build 5. Build 6 also fixes
-compatibility for people building the app from source.
+controls. Build 8 renders the Distant Horizon live from your session: dawn
+gathers as you prepare, warms as rest is earned, and settles as rest ends.
+Focus still counts up without a finish line. Quiet controls and window chrome
+use Liquid Glass on macOS 26 and later; primary actions remain solid ivory.
+The Guard list now sits in a card, and Mini shows the full earned-break time.
+The illustrated first-run tutorial remains available through Data > How it works.
+
+Please retest Classic and Mini, Scene entry and Back to window, dragging and
+resizing the Scene, Guard list scrolling, and Reduce Motion. Full VoiceOver,
+real Focus Guard interception, and a fresh recipient's first opening still need
+manual verification before this candidate is approved for sharing.
 
 After quit or sleep recovery, the clock stays frozen until you choose Continue
 or Restart. Simply opening a window does not resume it. Please check first-run
@@ -92,7 +100,7 @@ https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml
 
 Include:
 
-- Flowmo version 1.0 (build 7)
+- Flowmo version 1.0 (build 8)
 - your macOS version and Mac model
 - what you did
 - what you expected
