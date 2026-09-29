@@ -81,6 +81,14 @@ validate_mac_app() {
   cmp -s "$source_root/Sources/FlowmoLook/Resources/HorizonStudy.png" "$artwork" \
     || fail "bundled Focus artwork differs from the committed source"
 
+  local tutorial
+  for tutorial in Introduction1 Introduction2 Introduction3; do
+    local tutorial_asset="$app/Contents/Resources/flowmo_FlowmoLook.bundle/Contents/Resources/$tutorial.png"
+    [ -f "$tutorial_asset" ] && [ ! -L "$tutorial_asset" ] || fail "bundled tutorial artwork is missing: $tutorial"
+    cmp -s "$source_root/Sources/FlowmoLook/Resources/$tutorial.png" "$tutorial_asset" \
+      || fail "bundled tutorial artwork differs from the committed source: $tutorial"
+  done
+
   architectures="$(lipo -archs "$app/Contents/MacOS/$executable")"
   case " $architectures " in
     *" arm64 "*) ;;

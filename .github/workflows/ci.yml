@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Liquid Glass requires the Xcode 26 SDK, even with runtime availability checks.
+  DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

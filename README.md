@@ -87,14 +87,20 @@ Use `flowmo stop` to start your earned break. Run `flowmo --help` for all comman
 
 ## Build it, improve it, make it yours
 
-With Xcode and Swift 6 installed:
+Use full Xcode 26.3 or newer with Swift 6. CI currently selects Xcode 26.3;
+the source uses the macOS/iOS 26 SDK while retaining macOS 14+ and iOS 17+
+runtime support. The repository works from any editor or terminal.
 
 ```sh
-git clone https://github.com/francarraras/flowmo-dev.git
+git clone --branch codex/weekend-readiness https://github.com/francarraras/flowmo-dev.git
 cd flowmo-dev
 swift run flowmo
 ```
 
-[Development guide](docs/development.md) · [Report a bug](https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml) · [Report a security issue](SECURITY.md)
+[Development and maintainer handoff](docs/development.md) includes clean-clone
+setup, isolated test stores, CI gates, and the current source/release state. The
+candidate branch above carries build 8; the public downloads remain build 6.
+
+[Report a bug](https://github.com/francarraras/flowmo-dev/issues/new?template=bug-report.yml) · [Report a security issue](SECURITY.md)
 
 Flowmo is free and open source under the [MIT license](LICENSE).

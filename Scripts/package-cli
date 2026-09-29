@@ -34,6 +34,9 @@ Find.find(bundle) do |path|
   files['flowmo_FlowmoLook.bundle/' + relative] = path
 end
 abort 'error: required HorizonStudy.png artwork is missing' unless files.keys.any? { |name| name.end_with?('/HorizonStudy.png') }
+%w[Introduction1 Introduction2 Introduction3].each do |name|
+  abort "error: required #{name}.png tutorial artwork is missing" unless files.keys.any? { |file| file.end_with?("/#{name}.png") }
+end
 files.sort.each { |name, path| puts "#{Digest::SHA256.file(path).hexdigest}  #{name}" }
 RUBY
 }

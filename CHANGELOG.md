@@ -4,6 +4,36 @@ Notable changes are recorded here.
 
 ## Unreleased
 
+## 1.0 (8) — Release candidate
+
+- Kept the full iPhone Reflection prompt readable at the largest text sizes
+  while preserving Return to finish. Mini Close Beat now shows the earned-break
+  label and duration on separate lines without truncating either.
+- Redrew the Distant Horizon as a live picture of the session instead of a
+  static image: the dawn rises over Prime, stays full through Focus while the
+  planet turns with focused time and the light warms toward champagne with
+  earned rest, sets over Break, and settles through Reflection. The picture still shows
+  no ring, number, deadline, or finish line, Recovery Pause freezes the picture,
+  and Reduce Motion or an inactive scene stops the ambient grain, shimmer, and
+  sparse stars. The compact Mac and iPhone aperture carries the same dawn on its
+  lower rim. Where Metal is unavailable the previous artwork remains.
+- Adopted Liquid Glass for quiet actions, Scene actions, phone Focus actions,
+  and the Mac chrome on macOS 26 / iOS 26 and later; primary actions keep their
+  solid ivory, and earlier systems are unchanged.
+- Fixed the Mac compact window laying out its content 14pt too low and clipping
+  the bottom, which cut off the expanded Focus Guard panel. Guarded apps now sit
+  in one quiet card with Remove per row and Add app in its footer, and the
+  aperture makes room instead of the panel running off the window.
+- Added the earned-rest mark to the Mac Focus Scene header, matching iPhone.
+- Removed duplicate Mac Focus Scene icon/menu entry points; the named Focus scene
+  (Scene in Mini) button remains, and the chrome menu only changes window size.
+- Replaced Scene's custom window dragging with native macOS dragging and stopped
+  repositioning it when a drag crosses displays.
+- Kept Scene's large window size limits independent of SwiftUI's Classic/Mini
+  layout, preventing clipped miniature canvases during presentation changes.
+
+## 1.0 (7) — Release candidate
+
 - Added matching Canvas illustrations to the existing Mac/iPhone first-use
   tutorial. Native accessible instructions, Skip, replay, and one-time completion
   behavior are retained.

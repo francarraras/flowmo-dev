@@ -49,7 +49,10 @@ The iPhone app supports portrait orientation. Sessions stay on the phone and do 
 
 ## Build from source
 
-Install Xcode with Swift 6 or newer. From the repository root:
+Install full Xcode 26.3 or newer with Swift 6; CI currently selects Xcode 26.3.
+The source needs the macOS/iOS 26 SDK for Liquid Glass, while runtime support
+remains macOS 14+ and iOS 17+. See [development setup](development.md#start-from-a-clean-clone)
+for cloning the current candidate and selecting the toolchain. From the repository root:
 
 ```sh
 swift run flowmo

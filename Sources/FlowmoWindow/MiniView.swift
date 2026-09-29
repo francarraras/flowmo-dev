@@ -201,11 +201,14 @@ private struct MiniCloseSummary: View {
     var status: SessionStatus
 
     var body: some View {
-        VStack(spacing: 3) {
-            InstrumentClock(Format.clock(status.focusSeconds), size: 24)
+        VStack(spacing: 1) {
+            InstrumentClock(Format.clock(status.focusSeconds), size: 22)
             Text("Focused")
                 .foregroundStyle(atmo.mute)
-            Text("Break earned · \(Format.clock(status.breakSeconds ?? 0))")
+            Text("Break earned")
+                .foregroundStyle(atmo.faint)
+            Text(Format.clock(status.breakSeconds ?? 0))
+                .monospacedDigit()
                 .foregroundStyle(atmo.faint)
             if !nextStep.isEmpty {
                 Text("Next: \(nextStep)")
