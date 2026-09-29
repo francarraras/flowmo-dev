@@ -4,9 +4,9 @@ This is the source of truth for the **current** product. It replaces the iPhone 
 
 If a sentence here conflicts with the old repo, the old App Store launch plan, or the sketch CLI in this folder, **this file wins**.
 
-Last updated: 2026-09-06
+Last updated: 2026-09-29
 Owner: Fran Carrara  
-Status: 1.0 (6) release candidate in preparation, including the native polish, separate local iPhone variant, and source-build compatibility fixes found by private GitHub CI. Earlier build 4 and 5 artifacts remain unchanged.
+Status: Mac/CLI 1.0 (8) source candidate with the live Horizon and Liquid Glass treatment; phone targets remain 1.0 (7). Build 6 is the published public preview. Builds 7 and 8 remain local candidates, with release evidence and open manual checks recorded in [`release.md`](release.md) and [`PREVIEW_RELEASES.tsv`](PREVIEW_RELEASES.tsv). Earlier artifacts remain unchanged.
 
 ---
 
